@@ -422,4 +422,4 @@ if __name__ == "__main__":
     password = os.environ['X_PASSWORD']
     search_key_word = "cat"
     watcher = TwitterWatcher(chrome_driver_path, username, email, password, search_key_word)
-    watcher.run(2, "./test.csv")
+    watcher.check_login_status()
