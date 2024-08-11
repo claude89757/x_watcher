@@ -6,7 +6,6 @@
 *.pt
 *.pth
 *.cache
-*.pkl
 *.avi
 *.mp4
 test_*
