@@ -58,7 +58,7 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-st.title("Step 3: Send Promotional Msg")
+st.title("Step 4: Send Promotional Msg")
 st.markdown("Automate the sending of personalized promotional messages based on AI analysis results")
 
 st.error("Coming soon...")
