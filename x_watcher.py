@@ -41,6 +41,9 @@ class TwitterWatcher:
         service = Service(self.driver_path)
         chrome_options = Options()
         chrome_options.add_argument("--lang=en")
+        chrome_options.add_argument("--headless")  # 添加无头模式
+        chrome_options.add_argument("--disable-gpu")  # 如果需要，可以禁用GPU加速
+        chrome_options.add_argument("--window-size=1920,1080")  # 设置窗口大小
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
     def teardown_driver(self):
@@ -383,16 +386,13 @@ class TwitterWatcher:
 def collect_data_from_x(search_key_word: str, max_post_num: int, filename: str):
     """
     从X收集数据，并缓存到一个cvs文件
-    :param username:
-    :param email:
-    :param password:
     :param search_key_word:
     :param max_post_num:
     :return:
     """
-    username = 'stephen__gzhh'
-    email = "951540216@qq.com"
-    password = 'Gzh9989.'
+    username = os.environ['X_USERNAME']
+    email = os.environ['X_EMAIL']
+    password = os.environ['X_PASSWORD']
     chrome_driver_path = '/usr/local/bin/chromedriver'
     watcher = TwitterWatcher(chrome_driver_path, username, email, password, search_key_word)
     watcher.run(max_post_num, filename)
@@ -405,9 +405,9 @@ def check_service_status():
     :return:
     """
     chrome_driver_path = '/usr/local/bin/chromedriver'
-    username = 'stephen__gzhh'
-    email = "951540216@qq.com"
-    password = 'Gzh9989.'
+    username = os.environ['X_USERNAME']
+    email = os.environ['X_EMAIL']
+    password = os.environ['X_PASSWORD']
     search_key_word = "cat"
     watcher = TwitterWatcher(chrome_driver_path, username, email, password, search_key_word)
     print("health checking...")
@@ -417,11 +417,9 @@ def check_service_status():
 # test
 if __name__ == "__main__":
     chrome_driver_path = '/usr/local/bin/chromedriver'
-    username = 'stephen__gzhh'
-    email = "951540216@qq.com"
-    password = 'Gzh9989.'
-
+    username = os.environ['X_USERNAME']
+    email = os.environ['X_EMAIL']
+    password = os.environ['X_PASSWORD']
     search_key_word = "cat"
-
     watcher = TwitterWatcher(chrome_driver_path, username, email, password, search_key_word)
     watcher.run(2, "./test.csv")
