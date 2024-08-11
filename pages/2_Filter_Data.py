@@ -62,14 +62,29 @@ st.markdown("Preprocessing and filtering data, including selecting fields, choos
             " and applying necessary preprocessing steps.")
 
 # Collect filenames and extract keywords
+# 假设 st.session_state.access_code 已经被设置
 main_data_dir = f"./data/{st.session_state.access_code}/"
 search_keywords = set()
-for file_name in os.listdir(main_data_dir):
-    if file_name.startswith("raw_"):
-        parts = file_name.split('_')
-        if len(parts) > 1:
-            keyword = parts[1]
-            search_keywords.add(keyword)
+# 检查目录是否存在
+if not os.path.exists(main_data_dir):
+    st.warning("Directory does not exist. Collect raw data first, return to collect data...")
+    time.sleep(3)
+    st.switch_page("pages/1_Collect_Data.py")  # 切换到收集数据页面
+else:
+    # 检查目录中是否有符合条件的文件
+    raw_files_exist = False
+    for file_name in os.listdir(main_data_dir):
+        if file_name.startswith("raw_"):
+            raw_files_exist = True
+            parts = file_name.split('_')
+            if len(parts) > 1:
+                keyword = parts[1]
+                search_keywords.add(keyword)
+
+    if not raw_files_exist:
+        st.warning("Not raw data, collect raw data first, return to collect data...")
+        time.sleep(3)
+        st.switch_page("pages/1_Collect_Data.py")  # 切换到收集数据页面
 
 # Convert set to sorted list
 search_keywords = sorted(search_keywords)
