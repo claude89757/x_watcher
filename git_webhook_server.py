@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 @Time    : 2024/8/12 02:28
-@Author  : claude
+@Author  : claudexie
 @File    : git_webhook_server.py
 @Software: PyCharm
 """
@@ -11,10 +11,11 @@ from flask import Flask, request
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+import subprocess
 
 app = Flask(__name__)
 
-# 设置日志记录 
+# 设置日志记录
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 log_file = 'webhook_server.log'
 
@@ -32,7 +33,27 @@ def webhook():
     if request.method == 'POST':
         app.logger.info('Received POST request on /webhook')
         try:
-            os.system('cd /root/x_watcher && git fetch origin main && git reset --hard origin/main')
+            # 使用 subprocess 运行 git 命令并捕获输出
+            result = subprocess.run(
+                ['git', 'fetch', 'origin', 'main'],
+                cwd='/root/x_watcher',
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            app.logger.info(f'git fetch output: {result.stdout}')
+            app.logger.error(f'git fetch error: {result.stderr}')
+
+            result = subprocess.run(
+                ['git', 'reset', '--hard', 'origin/main'],
+                cwd='/root/x_watcher',
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            app.logger.info(f'git reset output: {result.stdout}')
+            app.logger.error(f'git reset error: {result.stderr}')
+
             app.logger.info('Successfully updated repository')
             return 'Success', 200
         except Exception as e:
