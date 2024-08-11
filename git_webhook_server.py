@@ -14,7 +14,7 @@ from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-# 设置日志记录
+# 设置日志记录 
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 log_file = 'webhook_server.log'
 
