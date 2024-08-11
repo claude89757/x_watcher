@@ -1,0 +1,15 @@
+*.pyc
+/.idea
+/venv
+/runs
+/tracker_stubs
+*.pt
+*.pth
+*.cache
+*.pkl
+*.avi
+*.mp4
+test_*
+*.log
+*.png
+*.csv
