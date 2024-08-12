@@ -65,6 +65,7 @@ st.markdown("Preprocessing and filtering data, including selecting fields, choos
 
 src_dir = f"./data/{st.session_state.access_code}/raw/"
 dst_dir = f"./data/{st.session_state.access_code}/processed/"
+
 files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
 selected_file = st.selectbox("Select a file to analyze:", files)
 selected_file_path = None
@@ -80,7 +81,6 @@ else:
 
 
 # 选择确定处理的文件
-selected_file = st.selectbox("Select file to process", st.session_state.matching_files)
 if selected_file:
     st.query_params.selected_file = selected_file
     local_file_path = os.path.join(src_dir, selected_file)
