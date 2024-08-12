@@ -8,9 +8,8 @@
 """
 import os
 import logging
-import shutil
 import time
-
+import shutil
 import pandas as pd
 import streamlit as st
 from config import CONFIG
@@ -119,6 +118,11 @@ col1, col2 = st.columns(2)
 with col1:
     # Button to confirm the file
     if st.button("Confirm File ", type="primary"):
+        dst_dir = f"./data/{st.session_state.access_code}/processed/"
+        src_dir = f"./data/{st.session_state.access_code}"
+        src_file_path = os.path.join(src_dir, selected_file)
+        dst_file_path = os.path.join(dst_dir, selected_file)
+        shutil.move(src_file_path, dst_file_path)
         st.success(f"Confirmed date successfully, entering step...")
         time.sleep(3)
         st.switch_page("pages/3_AI_Analyze_Data.py")
@@ -127,5 +131,3 @@ with col2:
     # Button to process Dat
     if st.button("Process Dat "):
         st.warning("Coming soon...")
-
-
