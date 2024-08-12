@@ -140,24 +140,27 @@ with col1:
             # Log the error
             logging.error(f"Error occurred during data collection: {e}")
             st.error(f"An error occurred: {e}")
+
+matching_files = None
 with col2:
     # 刷新展示文件列表按钮
-    selected_file = None
     if st.button(label="Refresh Collected Data"):
         try:
             # 从 COS 中获取文件列表
             all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
             matching_files = [
-                file_key for file_key in all_files if st.session_state.search_keyword in file_key
+                str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
             ]
-            # 如果有匹配的文件，显示文件名称并允许用户选择
-            if matching_files:
-                file_options = matching_files
-                selected_file = st.selectbox("Select a file to display", file_options)
-            else:
-                st.warning("No matching files found.")
         except Exception as e:
             st.error(f"Error retrieving files from COS: {e}")
+
+# 如果有匹配的文件，显示文件名称并允许用户选择
+selected_file = None
+if matching_files:
+    file_options = matching_files
+    selected_file = st.selectbox("Select a file to display", file_options)
+else:
+    st.warning("No matching files found.")
 
 # Display collected data
 if selected_file:
