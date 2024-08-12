@@ -117,6 +117,11 @@ st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
 
+# 如果有匹配的文件，显示文件名称并允许用户选择
+selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
+st.subheader(f"Current Data: {selected_file}")
+
+
 # 创建两个并排的列
 col1, col2, col3 = st.columns(3)
 
@@ -159,10 +164,6 @@ with col2:
             ]
         except Exception as e:
             st.error(f"Error retrieving files from COS: {e}")
-
-# 如果有匹配的文件，显示文件名称并允许用户选择
-selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
-st.subheader(f"Current Data: {selected_file}")
 
 with col3:
     if st.button(label="Show File Details"):
