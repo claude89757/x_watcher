@@ -39,11 +39,12 @@ def call_collect_data_from_x(username, search_key_word, max_post_num, access_cod
         'access_code': access_code
     }
     try:
+        logging.info(f"sending request...")
         response = requests.post(api_endpoint, json=data, headers=headers)
         response.raise_for_status()  # 抛出 HTTPError 异常（如果发生）
         return response.status_code, response.text
     except requests.exceptions.RequestException as e:
-        print(f'Error calling API: {e}')
+        logging.error(f'Error calling API: {e}')
         return None, str(e)
 
 
