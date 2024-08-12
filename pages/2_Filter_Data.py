@@ -3,7 +3,7 @@
 """
 @Time    : 2024/8/11 18:52
 @Author  : claude
-@File    : 1️⃣_Collect_Data.py
+@File    : 1_Collect_Data.py
 @Software: PyCharm
 """
 import os
@@ -90,7 +90,7 @@ if files:
 else:
     st.warning("No processed data, return to filter data...")
     time.sleep(3)
-    st.switch_page("pages/2️⃣_Filter_Data.py")
+    st.switch_page("pages/2_Filter_Data.py")
 
 
 col1, col2 = st.columns(2)
@@ -103,7 +103,7 @@ with col1:
         shutil.move(src_file_path, dst_file_path)
         st.success(f"Confirmed date successfully, entering step...")
         time.sleep(3)
-        st.switch_page("pages/3️⃣️_AI_Analyze_Data.py")
+        st.switch_page("pages/3_AI_Analyze_Data.py")
 
 with col2:
     # Button to process Dat
