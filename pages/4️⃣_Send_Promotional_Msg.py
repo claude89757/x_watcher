@@ -3,7 +3,7 @@
 """
 @Time    : 2024/8/11 23:08
 @Author  : claude
-@File    : 3_AI_Analyze_Data.py
+@File    : 3️⃣️_AI_Analyze_Data.py
 @Software: PyCharm
 """
 import logging

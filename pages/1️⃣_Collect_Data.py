@@ -3,7 +3,7 @@
 """
 @Time    : 2024/8/11 18:52
 @Author  : claude
-@File    : 1_Collect_Data.py
+@File    : 1️⃣_Collect_Data.py
 @Software: PyCharm
 """
 import os
@@ -217,7 +217,7 @@ if os.path.exists(downloaded_files_dir):
         if st.button(label="Next: Filter Data", type="primary"):
             st.success("Ready to filter data...")
             time.sleep(3)
-            st.switch_page("pages/2_Filter_Data.py")
+            st.switch_page("pages/2️⃣_Filter_Data.py")
         else:
             pass
     else:
