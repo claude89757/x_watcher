@@ -196,7 +196,7 @@ class TwitterWatcher:
         time.sleep(random.uniform(0, 3))
         search_input.send_keys(Keys.RETURN)
 
-    def get_top_n_posts(self, n):
+    def old_get_top_n_posts(self, n):
         tweets = []
         scroll_attempts = 0
         max_scroll_attempts = 30
@@ -221,6 +221,100 @@ class TwitterWatcher:
         logging.info(f"Final: Found {len(tweets)} tweets.")
         return self.filter_posts(tweets)
 
+    def get_top_n_posts(self, n):
+        tweets = []
+        seen_links = set()
+        scroll_attempts = 0
+        max_scroll_attempts = 30
+
+        while len(tweets) < n and scroll_attempts < max_scroll_attempts:
+            tweet_elements = self.driver.find_elements(By.XPATH,
+                                                       '//div[@data-testid="cellInnerDiv"]//article[@role="article"]')
+            logging.info(f"Scroll attempt {scroll_attempts + 1}: Found {len(tweet_elements)} tweets")
+
+            for tweet in tweet_elements:
+                if len(tweets) >= n:
+                    break
+
+                try:
+                    xpath = './/a[@href and @role="link" and contains(@href, "/status/")]'
+                    tweet_link = tweet.find_element(By.XPATH, xpath).get_attribute('href')
+                except:
+                    tweet_link = None
+
+                if not tweet_link or tweet_link in seen_links:
+                    continue
+
+                try:
+                    tweet_text = tweet.find_element(By.XPATH, './/div[@data-testid="tweetText"]').text
+                except:
+                    tweet_text = None
+
+                try:
+                    tweet_author = tweet.find_element(By.XPATH, './/div[@data-testid="User-Name"]//span').text
+                except:
+                    tweet_author = None
+
+                try:
+                    tweet_time = tweet.find_element(By.XPATH, './/time').get_attribute('datetime')
+                except:
+                    tweet_time = None
+
+                try:
+                    xpath = './/div[contains(@aria-label, "replies") and contains(@aria-label, "reposts")]'
+                    tweet_stats = tweet.find_element(By.XPATH, xpath)
+
+                    try:
+                        replies = tweet_stats.\
+                            find_element(By.XPATH, './/button[@data-testid="reply"]/div/div[2]/span/span/span').text
+                    except:
+                        replies = "0"
+
+                    try:
+                        reposts = tweet_stats.\
+                            find_element(By.XPATH, './/button[@data-testid="retweet"]/div/div[2]/span/span/span').text
+                    except:
+                        reposts = "0"
+
+                    try:
+                        likes = tweet_stats.\
+                            find_element(By.XPATH, './/button[@data-testid="like"]/div/div[2]/span/span/span').text
+                    except:
+                        likes = "0"
+
+                    try:
+                        views = tweet_stats.\
+                            find_element(By.XPATH, './/a[contains(@aria-label, "views")]//span').text
+                    except:
+                        views = "0"
+
+                except:
+                    replies = reposts = likes = views = "0"
+
+                tweet_data = {
+                    'time': tweet_time,
+                    'link': tweet_link,
+                    'text': tweet_text,
+                    'author': tweet_author,
+                    'replies': replies,
+                    'reposts': reposts,
+                    'likes': likes,
+                    'views': views
+                }
+
+                seen_links.add(tweet_link)
+                tweets.append(tweet_data)
+
+            if len(tweets) < n:
+                self.scroll_page()
+                scroll_attempts += 1
+                time.sleep(random.uniform(0, 1))
+            else:
+                break
+
+        logging.info(f"Final: Found {len(tweets)} tweets.")
+        return tweets
+
     def collect_comments_and_user_data(self, max_comments=50):
         comments_data = []
         comments_collected = 0
@@ -233,17 +327,26 @@ class TwitterWatcher:
                 if comments_collected >= max_comments:
                     break
                 try:
-                    # 获取用户名称
-                    user_element = comment.find_element(By.XPATH, './/div[@data-testid="User-Name"]')
-                    user_name = user_element.find_element(By.XPATH, './/span').text
+                    try:
+                        # Locate the reply user link (tweet status URL)
+                        xpath = './/a[@href and @role="link" and contains(@href, "/status/")]'
+                        reply_user_link = comment.find_element(By.XPATH, xpath).get_attribute('href')
 
-                    # 获取评论内容
-                    content = comment.find_element(By.XPATH, './/div[@data-testid="tweetText"]').text
+                        # 获取用户名称
+                        user_element = comment.find_element(By.XPATH, './/div[@data-testid="User-Name"]')
+                        reply_user_name = user_element.find_element(By.XPATH, './/span').text
 
-                    comments_data.append({
-                        'user_name': user_name,
-                        'content': content
-                    })
+                        # 获取评论内容
+                        reply_content = comment.find_element(By.XPATH, './/div[@data-testid="tweetText"]').text
+
+                        comments_data.append({
+                            'reply_user_link': reply_user_link,
+                            'reply_user_name': reply_user_name,
+                            'reply_content': reply_content
+                        })
+                    except Exception as e:
+                        logging.warning(f"An error occurred while locating the reply user link: {e}")
+
                     comments_collected += 1
                 except Exception as error:
                     logging.info(f"failed: {str(error).splitlines()[0]}")
@@ -287,6 +390,23 @@ class TwitterWatcher:
         # 预留的评论过滤函数
         # 在这里添加你的评论过滤逻辑
         return True
+
+    def enter_post_url(self, post_url: str):
+        """
+        进入推特的链接, 等待页面完全加载完成
+        :param post_url:
+        :return:
+        """
+        self.driver.get(post_url)
+        # Wait for the page to load completely
+        try:
+            # Wait until the tweet content is visible
+            WebDriverWait(self.driver, self.timeout).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "article"))
+            )
+            print(f"{post_url} Page loaded successfully.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     def enter_post(self, post_element):
         """
@@ -355,56 +475,92 @@ class TwitterWatcher:
         """
         try:
             self.setup_driver()
-            # 检查是否存在 cookies 文件
-            if os.path.exists(self.cookies_file) and not self.force_re_login:
-                try:
-                    self.driver.get('https://twitter.com/home')
-                    self.load_cookies()
-                    self.driver.refresh()
-                    time.sleep(3)
-                except Exception as error:
-                    logging.info(error)
-                    logging.info("Cookies are invalid, clearing cookies and re-login.")
-                    self.driver.delete_all_cookies()
+            for index in range(3):
+                # 检查是否存在 cookies 文件
+                if os.path.exists(self.cookies_file) and not self.force_re_login:
+                    try:
+                        self.driver.get('https://twitter.com/home')
+                        self.load_cookies()
+                        self.driver.refresh()
+                        time.sleep(3)
+                    except Exception as error:
+                        logging.info(error)
+                        logging.info("Cookies are invalid, clearing cookies and re-login.")
+                        self.driver.delete_all_cookies()
+                        self.login()
+                else:
                     self.login()
-            else:
-                self.login()
-            # 混淆: 随机等待时间
-            time.sleep(random.uniform(1, 3))
+                # 混淆: 随机等待时间
+                time.sleep(random.uniform(1, 3))
 
-            # 再次检查是否需要登录
+                # 再次检查是否需要登录
+                if "home" in self.driver.current_url:
+                    break
+                else:
+                    # 再试一次
+                    logging.warning(f"{index} time login failed, try again...")
+
+            # 检查是否登录成功
             if "home" in self.driver.current_url:
-                logging.info("success")
+                logging.info("login successfully")
             else:
+                # 再试一次
+                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+                self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
                 raise Exception(f"login failed: {self.driver.current_url}")
 
             # 搜索关键字的推特
             self.search()
 
-            # 搜索出的推特进行遍历
+            # 获取前N个推特
+            top_n_posts = self.get_top_n_posts(max_post_num)
 
-            for index in range(1, max_post_num+1):
-                logging.info(f"checking post [{index}] >>>>>>>>>>>>>>>>>>>")
-                # 获取前N个推特
-                top_n_posts = self.get_top_n_posts(index)
-                check_post = top_n_posts[index-1]
+            # 遍历每个推特的链接
+            data_list = []
+            for post in top_n_posts:
                 try:
-                    self.enter_post(check_post)
-                    time.sleep(3)  # 等待页面加载
-                    data = self.collect_comments_and_user_data()
-                    self.driver.back()
-                    time.sleep(3)  # 等待页面返回
+                    print(f"checking {post}")
+                    self.enter_post_url(post['link'])
+                    time.sleep(random.uniform(0, 0.5))
+                    try:
+                        replies_str = str(post['replies']).strip().upper()  # 确保字符串是大写并去除空格
+                        if replies_str.endswith("M"):
+                            max_comments = int(replies_str.strip("M")) * 1000 * 1000
+                        elif replies_str.endswith("K"):
+                            max_comments = int(replies_str.strip("K")) * 1000
+                        elif replies_str.endswith("B"):
+                            max_comments = int(replies_str.strip("B")) * 1000 * 1000 * 1000
+                        elif replies_str.endswith("T"):
+                            max_comments = int(replies_str.strip("T")) * 1000 * 1000 * 1000 * 1000
+                        elif replies_str.endswith("+"):
+                            max_comments = int(replies_str.strip("+"))  # 处理带有加号的情况
+                        elif replies_str.endswith(" "):
+                            max_comments = int(replies_str.strip())  # 处理带有空格的情况
+                        else:
+                            max_comments = int(replies_str)
+                    except:
+                        max_comments = 100
+                    data = self.collect_comments_and_user_data(max_comments=max_comments)
+                    time.sleep(random.uniform(0, 0.5))
                 except Exception as e:
                     logging.info(f"Failed to process tweet: {e}")
                     data = []
+
                 if data:
-                    current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-                    filename = f"{self.search_key_word}_{current_time}_{len(data)}_{self.username}.csv"
-                    process_and_upload_csv_to_cos(data, f"./{filename}", f"{access_code}/{filename}")
+                    for item in data:
+                        item['post_time'] = post['time']
+                        item['post_link'] = post['link']
+                        item['post_author'] = post['author']
+                        item['post_replies'] = post['replies']
+                        item['post_reposts'] = post['reposts']
+                        item['post_views'] = post['views']
+                    data_list.extend(data)
                 else:
                     pass
-                # 返回顶端
-                self.scroll_to_top()
+
+            current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+            filename = f"{self.search_key_word}_{current_time}_{len(data_list)}_{self.username}.csv"
+            process_and_upload_csv_to_cos(data_list, f"./{filename}", f"{access_code}/{filename}")
         finally:
             self.teardown_driver()
 
@@ -446,4 +602,4 @@ if __name__ == '__main__':
     username = "Zacks89757"
     email = CONFIG['x_collector_account_infos'][username]['email']
     password = CONFIG['x_collector_account_infos'][username]['password']
-    collect_data_from_x(username, email, password, 'cat', max_post_num=2, access_code='zacks')
+    collect_data_from_x(username, email, password, 'python', max_post_num=2, access_code='zacks')
