@@ -105,55 +105,59 @@ st.session_state.max_post_num = st.selectbox(
     index=[1, 3, 5, 10, 20, 50].index(st.session_state.max_post_num)
 )
 
-
 # 将用户输入的数据保存到 URL 参数
 st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
-if st.button(label="Start Collecting Data"):
-    # (todo: claude)Initialize progress elements
-    # progress_bar = st.progress(0)
-    # status_text = st.empty()
-    try:
-        # 使用 st.spinner 显示加载中的图标
-        task_num = 0
-        with st.spinner("Triggering collectors..."):
-            for alive_username in ['Zacks89757']:
-                call_collect_data_from_x(
-                    alive_username,
-                    st.session_state.search_keyword,
-                    st.session_state.max_post_num,
-                    st.session_state.access_code,
-                )
-                task_num += 1
-        # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
 
-        # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
-        for index in range(60):
-            st.write(index)
-        st.success("Data collection complete!")
-    except Exception as e:
-        # Log the error
-        logging.error(f"Error occurred during data collection: {e}")
-        st.error(f"An error occurred: {e}")
+# 创建两个并排的列
+col1, col2 = st.columns(2)
 
-# 展示已收集的数据
-selected_file = None
-if st.button(label="Show Collected Data"):
-    try:
-        # 从 COS 中获取文件列表
-        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-        matching_files = [
-            file_key for file_key in all_files if st.session_state.search_keyword in file_key
-        ]
-        # 如果有匹配的文件，显示文件名称并允许用户选择
-        if matching_files:
-            file_options = matching_files
-            selected_file = st.selectbox("Select a file to load", file_options)
-        else:
-            st.write("No matching files found.")
-    except Exception as e:
-        st.write(f"Error retrieving files from COS: {e}")
+with col1:
+    if st.button(label="Start Collecting Data", type="primary"):
+        # (todo: claude)Initialize progress elements
+        # progress_bar = st.progress(0)
+        # status_text = st.empty()
+        try:
+            # 使用 st.spinner 显示加载中的图标
+            task_num = 0
+            with st.spinner("Triggering collectors..."):
+                for alive_username in ['Zacks89757']:
+                    call_collect_data_from_x(
+                        alive_username,
+                        st.session_state.search_keyword,
+                        st.session_state.max_post_num,
+                        st.session_state.access_code,
+                    )
+                    task_num += 1
+            # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
+
+            # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
+            for index in range(60):
+                st.write(index)
+            st.success("Data collection complete!")
+        except Exception as e:
+            # Log the error
+            logging.error(f"Error occurred during data collection: {e}")
+            st.error(f"An error occurred: {e}")
+with col2:
+    # 刷新展示文件列表按钮
+    selected_file = None
+    if st.button(label="Refresh Collected Data"):
+        try:
+            # 从 COS 中获取文件列表
+            all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
+            matching_files = [
+                file_key for file_key in all_files if st.session_state.search_keyword in file_key
+            ]
+            # 如果有匹配的文件，显示文件名称并允许用户选择
+            if matching_files:
+                file_options = matching_files
+                selected_file = st.selectbox("Select a file to display", file_options)
+            else:
+                st.warning("No matching files found.")
+        except Exception as e:
+            st.error(f"Error retrieving files from COS: {e}")
 
 # Display collected data
 if selected_file:
