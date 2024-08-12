@@ -113,7 +113,7 @@ st.query_params.max_post_num = st.session_state.max_post_num
 if st.button(label="Start Collecting Data"):
     # (todo: claude)Initialize progress elements
     # progress_bar = st.progress(0)
-    status_text = st.empty()
+    # status_text = st.empty()
     try:
         # 使用 st.spinner 显示加载中的图标
         task_num = 0
@@ -126,7 +126,7 @@ if st.button(label="Start Collecting Data"):
                     st.session_state.access_code,
                 )
                 task_num += 1
-        status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
+        # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
 
         # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
         for index in range(60):
