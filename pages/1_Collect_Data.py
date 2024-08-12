@@ -9,7 +9,6 @@
 import os
 import logging
 import time
-import random
 import requests
 
 import pandas as pd
@@ -119,7 +118,7 @@ st.query_params.max_post_num = st.session_state.max_post_num
 
 
 # 创建两个并排的列
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button(label="Start Collecting Data", type="primary"):
@@ -151,7 +150,7 @@ with col1:
 
 with col2:
     # 刷新展示文件列表按钮
-    if st.button(label="Refresh Collected Data"):
+    if st.button(label="Show Files"):
         try:
             # 从 COS 中获取文件列表
             all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
@@ -165,18 +164,23 @@ with col2:
 selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
 st.subheader(f"Current Data: {selected_file}")
 
-# Display collected data
-if selected_file:
-    st.session_state.selected_file = selected_file
-    st.query_params.selected_file = selected_file
-    local_file_path = os.path.join("./data/", selected_file)
-    try:
-        download_file(object_key=f"{st.session_state.access_code}/{selected_file}", local_file_path=local_file_path)
-        data = pd.read_csv(local_file_path)
-        # 展示数据
-        if data is not None:
-            st.dataframe(data)
+with col3:
+    if st.button(label="Show File Details"):
+        # Display collected data
+        if selected_file:
+            st.session_state.selected_file = selected_file
+            st.query_params.selected_file = selected_file
+            local_file_path = os.path.join("./data/", selected_file)
+            try:
+                download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
+                              local_file_path=local_file_path)
+                data = pd.read_csv(local_file_path)
+                # 展示数据
+                if data is not None:
+                    st.dataframe(data)
+                else:
+                    st.write("No data to display.")
+            except Exception as e:
+                st.write(f"Error loading data from COS: {e}")
         else:
-            st.write("No data to display.")
-    except Exception as e:
-        st.write(f"Error loading data from COS: {e}")
+            st.warning("No selected file.")

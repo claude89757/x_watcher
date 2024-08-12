@@ -15,6 +15,9 @@ import pandas as pd
 import streamlit as st
 from config import CONFIG
 
+from common.cos import list_latest_files
+from common.cos import download_file
+
 # Configure logger
 logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
 
@@ -32,8 +35,8 @@ else:
 # Initialize session state
 if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword")
-if "raw_data_filename" not in st.session_state:
-    st.session_state.raw_data_filename = ""
+if "matching_files" not in st.session_state:
+    st.session_state.matching_files = []
 
 # Force responsive layout for columns also on mobile
 st.write(
@@ -61,91 +64,57 @@ st.title("Step 2: Preprocessing and Filter Data")
 st.markdown("Preprocessing and filtering data, including selecting fields, choosing files,"
             " and applying necessary preprocessing steps.")
 
-# Collect filenames and extract keywords
-# 假设 st.session_state.access_code 已经被设置
-main_data_dir = f"./data/{st.session_state.access_code}/"
-search_keywords = set()
-# 检查目录是否存在
-if not os.path.exists(main_data_dir):
-    st.warning("Directory does not exist. Collect raw data first, return to collect data...")
+# 刷新展示文件列表按钮
+if st.button(label="Show Collected Data"):
+    try:
+        # 从 COS 中获取文件列表
+        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
+        st.session_state.matching_files = [
+            str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
+        ]
+    except Exception as e:
+        st.error(f"Error retrieving files from COS: {e}")
+
+
+# 检查目录是否存在文件
+if not st.session_state.matching_files:
+    st.warning("Not Collected Data, return to collect data...")
     time.sleep(3)
     st.switch_page("pages/1_Collect_Data.py")  # 切换到收集数据页面
 else:
-    # 检查目录中是否有符合条件的文件
-    raw_files_exist = False
-    for file_name in os.listdir(main_data_dir):
-        if file_name.startswith("raw_"):
-            raw_files_exist = True
-            parts = file_name.split('_')
-            if len(parts) > 1:
-                keyword = parts[1]
-                search_keywords.add(keyword)
+    # Filter and display files based on the selected keyword
+    pass
 
-    if not raw_files_exist:
-        st.warning("Not raw data, collect raw data first, return to collect data...")
+
+selected_file = st.selectbox("Select file to process", st.session_state.matching_files)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    # Button to confirm the file
+    if st.button("Confirm File ", type="primary"):
+
+        st.success(f"Confirmed date successfully, entering step...")
         time.sleep(3)
-        st.switch_page("pages/1_Collect_Data.py")  # 切换到收集数据页面
+        st.switch_page("pages/3_AI_Analyze_Data.py")
 
-# Convert set to sorted list
-search_keywords = sorted(search_keywords)
+with col2:
+    # Button to process Dat
+    if st.button("Process Dat "):
+        st.warning("Coming soon...")
 
-# Allow user to select a keyword if available
-if search_keywords:
-    selected_keyword = st.selectbox("Select Key Word", search_keywords)
-else:
-    st.write("No matching files found.")
-    selected_keyword = None
-
-# Filter and display files based on the selected keyword
-selected_file_name = None
-destination_dir = f"./data/{st.session_state.access_code}/processed/"
-if selected_keyword:
-    matching_files = []
-    for file_name in os.listdir(main_data_dir):
-        if file_name.startswith(f"raw_{selected_keyword}"):
-            file_path = os.path.join(main_data_dir, file_name)
-            file_size = os.path.getsize(file_path)
-            data = pd.read_csv(file_path)
-            num_rows = len(data)
-            matching_files.append((file_name, file_size, num_rows))
-
-    # If matching files are found, display them in a dropdown with a button
-    if matching_files:
-        file_options = [
-            f"{name} ({size/1024:.2f} KB, {num_rows} rows)"
-            for name, size, num_rows in matching_files
-        ]
-        selected_file_option = st.selectbox("Select file to process", file_options)
-
-        # Get the selected filename based on the dropdown selection
-        selected_file_name = matching_files[file_options.index(selected_file_option)][0]
-
-        # Ensure the destination directory exists
-        os.makedirs(destination_dir, exist_ok=True)
-
-        # Button to move the file
-        if st.button("Confirm File ", type="primary"):
-            src_file_path = os.path.join(main_data_dir, selected_file_name)
-            dst_file_path = os.path.join(destination_dir, selected_file_name)
-            shutil.move(src_file_path, dst_file_path)
-            st.success(f"File moved to {destination_dir}, entering step...")
-            time.sleep(3)
-            st.switch_page("pages/3_AI_Analyze_Data.py")
-    else:
-        st.write("No matching files found.")
-else:
-    st.warning(f"Not raw data, collect raw data first, return to collect data...")
-    time.sleep(3)
-    st.switch_page("pages/1_Collect_Data.py")
-
-# Display the selected data if available
-if selected_file_name:
-    st.subheader(f"Current Data: {selected_file_name}")
-    selected_file_path = os.path.join(main_data_dir, selected_file_name)
-    # Display file data
-    data = pd.read_csv(selected_file_path)
-    st.write(data.head())  # Show the first few rows of the data
-
-
-
-
+# Display collected data
+if selected_file:
+    st.session_state.selected_file = selected_file
+    st.query_params.selected_file = selected_file
+    local_file_path = os.path.join("./data/", selected_file)
+    try:
+        download_file(object_key=f"{st.session_state.access_code}/{selected_file}", local_file_path=local_file_path)
+        data = pd.read_csv(local_file_path)
+        # 展示数据
+        if data is not None:
+            st.dataframe(data)
+        else:
+            st.write("No data to display.")
+    except Exception as e:
+        st.write(f"Error loading data from COS: {e}")

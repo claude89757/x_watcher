@@ -115,8 +115,8 @@ else:
 # 初始化session state
 if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword")
-if "raw_data_filename" not in st.session_state:
-    st.session_state.raw_data_filename = ""
+if "matching_files" not in st.session_state:
+    st.session_state.matching_files = ""
 if "analysis_run" not in st.session_state:
     st.session_state.analysis_run = False
 
