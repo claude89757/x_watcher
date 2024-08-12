@@ -13,7 +13,7 @@ import logging
 from quart import Quart
 from quart import request
 
-from ..config import CONFIG
+from config import CONFIG
 
 
 from pathlib import Path
