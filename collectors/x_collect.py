@@ -60,6 +60,8 @@ class TwitterWatcher:
             chrome_options.add_argument("--disable-gpu")  # 如果需要，可以禁用GPU加速
             chrome_options.add_argument("--window-size=1920,1080")  # 设置窗口大小
             # 设置 User-Agent
+            # 添加 --no-sandbox 选项
+        chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument(
             "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/91.0.4472.124 Safari/537.36")
