@@ -170,10 +170,17 @@ with col3:
         if selected_file:
             st.session_state.selected_file = selected_file
             st.query_params.selected_file = selected_file
-            local_file_path = os.path.join("./data/", selected_file)
+            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/", selected_file)
+            # 检查本地是否已有文件
+            if not os.path.exists(local_file_path):
+                try:
+                    download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
+                                  local_file_path=local_file_path)
+                    st.success("File downloaded from COS.")
+                except Exception as e:
+                    st.error(f"Error loading file from COS: {e}")
+
             try:
-                download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
-                              local_file_path=local_file_path)
                 data = pd.read_csv(local_file_path)
                 # 展示数据
                 if data is not None:
@@ -181,6 +188,6 @@ with col3:
                 else:
                     st.write("No data to display.")
             except Exception as e:
-                st.write(f"Error loading data from COS: {e}")
+                st.error(f"Error loading data from local file: {e}")
         else:
             st.warning("No selected file.")

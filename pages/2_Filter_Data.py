@@ -86,14 +86,39 @@ else:
     pass
 
 
+# 选择确定处理的文件
 selected_file = st.selectbox("Select file to process", st.session_state.matching_files)
+if selected_file:
+    st.session_state.selected_file = selected_file
+    st.query_params.selected_file = selected_file
+    local_file_path = os.path.join(f"./data/{st.session_state.access_code}/", selected_file)
+    # 检查本地是否已有文件
+    if not os.path.exists(local_file_path):
+        try:
+            download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
+                          local_file_path=local_file_path)
+            st.success("File downloaded from COS.")
+        except Exception as e:
+            st.error(f"Error loading file from COS: {e}")
+
+    try:
+        data = pd.read_csv(local_file_path)
+        # 展示数据
+        if data is not None:
+            st.dataframe(data)
+        else:
+            st.write("No data to display.")
+    except Exception as e:
+        st.error(f"Error loading data from local file: {e}")
+else:
+    st.error("No selected file.")
+
 
 col1, col2 = st.columns(2)
 
 with col1:
     # Button to confirm the file
     if st.button("Confirm File ", type="primary"):
-
         st.success(f"Confirmed date successfully, entering step...")
         time.sleep(3)
         st.switch_page("pages/3_AI_Analyze_Data.py")
@@ -103,18 +128,4 @@ with col2:
     if st.button("Process Dat "):
         st.warning("Coming soon...")
 
-# Display collected data
-if selected_file:
-    st.session_state.selected_file = selected_file
-    st.query_params.selected_file = selected_file
-    local_file_path = os.path.join("./data/", selected_file)
-    try:
-        download_file(object_key=f"{st.session_state.access_code}/{selected_file}", local_file_path=local_file_path)
-        data = pd.read_csv(local_file_path)
-        # 展示数据
-        if data is not None:
-            st.dataframe(data)
-        else:
-            st.write("No data to display.")
-    except Exception as e:
-        st.write(f"Error loading data from COS: {e}")
+
