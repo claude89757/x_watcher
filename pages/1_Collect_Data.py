@@ -8,6 +8,8 @@
 """
 import os
 import logging
+import time
+
 import requests
 
 import pandas as pd
@@ -133,6 +135,7 @@ with col1:
                         st.session_state.access_code,
                     )
                     task_num += 1
+                    time.sleep(10)
             # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
 
             # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
@@ -162,6 +165,7 @@ selected_file = None
 if matching_files:
     file_options = matching_files
     selected_file = st.selectbox("Select a file to display", file_options)
+    st.subheader(f"Current Data: {selected_file}")
 else:
     st.warning("No matching files found.")
 
@@ -169,11 +173,9 @@ else:
 if selected_file:
     st.session_state.selected_file = selected_file
     st.query_params.selected_file = selected_file
-    st.subheader(f"Current Data: {selected_file}")
     local_file_path = os.path.join("./data/", selected_file)
     try:
         download_file(object_key=f"{st.session_state.access_code}/{selected_file}", local_file_path=local_file_path)
-        st.subheader(f"Current Data: {selected_file}")
         data = pd.read_csv(local_file_path)
         # 展示数据
         if data is not None:
