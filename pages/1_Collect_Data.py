@@ -177,6 +177,3 @@ if selected_file:
             st.write("No data to display.")
     except Exception as e:
         st.write(f"Error loading data from COS: {e}")
-
-
-
