@@ -164,7 +164,6 @@ if selected_file:
     try:
         download_file(object_key=selected_file, local_file_path=local_file_path)
         st.subheader(f"Current Data: {selected_file}")
-        # 从本地 CSV 文件加载数据
         data = pd.read_csv(local_file_path)
         # 展示数据
         if data is not None:
