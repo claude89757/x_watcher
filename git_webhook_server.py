@@ -35,7 +35,7 @@ def webhook():
             # 使用 subprocess 运行 git pull 命令并捕获输出
             result = subprocess.run(
                 ['git', 'pull', 'origin', 'main'],
-                cwd='/root/x_watcher',
+                cwd='./',
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
