@@ -9,7 +9,7 @@
 import os
 import logging
 import time
-
+import random
 import requests
 
 import pandas as pd
@@ -30,7 +30,8 @@ def call_collect_data_from_x(username, search_key_word, max_post_num, access_cod
     :param access_code: 访问代码
     :return: 返回 API 响应的状态和内容
     """
-    api_endpoint = 'http://your-api-endpoint/collect_data_from_x'  # 在这里定义 API 端点 URL
+    collector_url = CONFIG['collector_urls'][0]
+    api_endpoint = f'http://{collector_url}/collect_data_from_x'  # 在这里定义 API 端点 URL
     headers = {'Content-Type': 'application/json'}
     data = {
         'username': username,
