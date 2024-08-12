@@ -34,8 +34,8 @@ else:
 # Initialize session state
 if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword")
-if "matching_files" not in st.session_state:
-    st.session_state.matching_files = []
+if "selected_file" not in st.session_state:
+    st.session_state.selected_file = st.query_params.get("selected_file")
 
 # Force responsive layout for columns also on mobile
 st.write(
@@ -63,43 +63,28 @@ st.title("Step 2: Preprocessing and Filter Data")
 st.markdown("Preprocessing and filtering data, including selecting fields, choosing files,"
             " and applying necessary preprocessing steps.")
 
-# 刷新展示文件列表按钮
-if st.button(label="Show Collected Data"):
-    try:
-        # 从 COS 中获取文件列表
-        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-        st.session_state.matching_files = [
-            str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
-        ]
-    except Exception as e:
-        st.error(f"Error retrieving files from COS: {e}")
-
-
-# 检查目录是否存在文件
-if not st.session_state.matching_files:
-    st.warning("Not Collected Data, return to collect data...")
-    time.sleep(3)
-    st.switch_page("pages/1_Collect_Data.py")  # 切换到收集数据页面
+src_dir = f"./data/{st.session_state.access_code}/raw/"
+dst_dir = f"./data/{st.session_state.access_code}/processed/"
+files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
+selected_file = st.selectbox("Select a file to analyze:", files)
+selected_file_path = None
+if selected_file:
+    selected_file_path = os.path.join(src_dir, selected_file)
+    st.subheader(f"File Data Preview: {selected_file}")
+    data = pd.read_csv(selected_file_path)
+    st.write(data)
 else:
-    # Filter and display files based on the selected keyword
-    pass
+    st.warning("No processed data, return to filter data...")
+    time.sleep(3)
+    st.switch_page("pages/2_Filter_Data.py")
 
 
 # 选择确定处理的文件
 selected_file = st.selectbox("Select file to process", st.session_state.matching_files)
 if selected_file:
-    st.session_state.selected_file = selected_file
     st.query_params.selected_file = selected_file
-    local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
+    local_file_path = os.path.join(src_dir, selected_file)
     # 检查本地是否已有文件
-    if not os.path.exists(local_file_path):
-        try:
-            download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
-                          local_file_path=local_file_path)
-            st.success("File downloaded from COS.")
-        except Exception as e:
-            st.error(f"Error loading file from COS: {e}")
-
     try:
         data = pd.read_csv(local_file_path)
         # 展示数据
@@ -118,8 +103,6 @@ col1, col2 = st.columns(2)
 with col1:
     # Button to confirm the file
     if st.button("Confirm File ", type="primary"):
-        dst_dir = f"./data/{st.session_state.access_code}/processed/"
-        src_dir = f"./data/{st.session_state.access_code}/raw/"
         src_file_path = os.path.join(src_dir, selected_file)
         dst_file_path = os.path.join(dst_dir, selected_file)
         shutil.move(src_file_path, dst_file_path)
