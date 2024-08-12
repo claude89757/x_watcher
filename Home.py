@@ -17,7 +17,7 @@ from config import CONFIG
 logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
 
 # Configure Streamlit pages and state
-st.set_page_config(page_title="(Demo)X_AI_Marketing", page_icon="🤖")
+st.set_page_config(page_title="(Demo)X_AI_Marketing", page_icon="🤖", layout="wide")
 
 # Force responsive layout for columns also on mobile
 st.write(
