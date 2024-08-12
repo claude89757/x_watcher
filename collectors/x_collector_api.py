@@ -15,6 +15,21 @@ from quart import request
 
 from ..config import CONFIG
 
+
+from pathlib import Path
+
+# 获取当前工作目录
+current_path = Path.cwd()
+print("当前工作目录:", current_path)
+
+# 获取当前脚本的路径
+script_path = Path(__file__).resolve()
+print("当前脚本路径:", script_path)
+
+# 获取当前脚本所在的目录
+script_dir = script_path.parent
+print("当前脚本所在目录:", script_dir)
+
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 
