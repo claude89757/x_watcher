@@ -118,8 +118,6 @@ st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
 
-
-
 # 创建两个并排的列
 col1, col2 = st.columns(2)
 
@@ -155,19 +153,16 @@ with col2:
 
 # 如果有匹配的文件，显示文件名称并允许用户选择
 selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
-st.subheader(f"Current Data: {selected_file}")
-
-
 if st.button(label="Refresh File List"):
-    try:
-        # 从 COS 中获取文件列表
-        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-        st.session_state.matching_files = [
-            str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
-        ]
-    except Exception as e:
-        st.error(f"Error retrieving files from COS: {e}")
-
+    with st.spinner("Retrieving files from COS..."):
+        try:
+            # 从 COS 中获取文件列表
+            all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
+            st.session_state.matching_files = [
+                str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
+            ]
+        except Exception as e:
+            st.error(f"Error retrieving files from COS: {e}")
 
 if selected_file and download_button:
     st.session_state.selected_file = selected_file
@@ -191,7 +186,7 @@ if selected_file and download_button:
     except Exception as e:
         st.error(f"Error loading data from local file: {e}")
 else:
-    st.warning("No selected file.")
+    pass
 
 
 # 展示已下载文件列表的逻辑
@@ -202,14 +197,32 @@ downloaded_files_dir = f"./data/{st.session_state.access_code}/raw/"
 if os.path.exists(downloaded_files_dir):
     downloaded_files = os.listdir(downloaded_files_dir)
     if downloaded_files:
-        st.write("Downloaded files:")
+        file_info_list = []
         for file in downloaded_files:
             file_path = os.path.join(downloaded_files_dir, file)
             file_size = os.path.getsize(file_path)
             file_mtime = os.path.getmtime(file_path)
             formatted_mtime = datetime.datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d %H:%M:%S')
-            st.write(f"File: {file}, Size: {file_size} bytes, Last Modified: {formatted_mtime}")
+            file_info_list.append({
+                "File Name": file,
+                "Size (bytes)": file_size,
+                "Last Modified": formatted_mtime
+            })
+
+        # 创建 DataFrame 并展示
+        file_info_df = pd.DataFrame(file_info_list)
+        st.dataframe(file_info_df)
+
+        # Next
+        if st.button(label="Next: Filter Data", type="primary"):
+            st.success("Ready to filter data...")
+            time.sleep(3)
+            st.switch_page("pages/2_Filter_Data.py")
+        else:
+            pass
     else:
         st.write("No files downloaded yet.")
 else:
     st.write("No files downloaded yet.")
+
+
