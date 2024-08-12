@@ -9,19 +9,15 @@
 
 import os
 import logging
-import requests
 import time
-import pandas as pd
-import streamlit as st
-from io import StringIO
-from config import ACCESS_CODE_LIST
-from config import AZURE_API_KEY
-
 
 import pandas as pd
 import requests
 import streamlit as st
 from io import StringIO
+
+from config import CONFIG
+
 
 def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1000) -> pd.DataFrame:
     """
@@ -63,7 +59,7 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
             "https://chatgpt3.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-15-preview",
             headers={
                 "Content-Type": "application/json",
-                "api-key": AZURE_API_KEY,
+                "api-key": CONFIG.get("azure_open_api_key"),
             },
             json=payload
         )
@@ -108,9 +104,9 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
 # 配置日志记录器
 logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
 
-if st.session_state.get('access_code') and st.session_state.get('access_code') in ACCESS_CODE_LIST:
+if st.session_state.get('access_code') and st.session_state.get('access_code') in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
-elif st.query_params.get('access_code') and st.query_params.get('access_code') in ACCESS_CODE_LIST:
+elif st.query_params.get('access_code') and st.query_params.get('access_code') in CONFIG['access_code_list']:
     st.session_state.access_code = st.query_params.access_code
 else:
     st.warning("Access not Granted!")

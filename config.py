@@ -1,7 +1,20 @@
-
+import json
 import os
 
-# 邀请码逻辑
-ACCESS_CODE_LIST = ["zacks"]
 
-AZURE_API_KEY = os.environ.get('AZURE_API_KEY')
+def load_config():
+    # 获取当前目录
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # 配置文件路径
+    config_file_path = os.path.join(current_dir, 'config.json')
+
+    # 读取配置文件
+    with open(config_file_path, 'r') as config_file:
+        config = json.load(config_file)
+
+    return config
+
+
+# 加载配置
+CONFIG = load_config()

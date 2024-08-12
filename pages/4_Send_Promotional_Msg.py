@@ -6,24 +6,20 @@
 @File    : 3_AI_Analyze_Data.py
 @Software: PyCharm
 """
-
-import os
 import logging
-import shutil
-import openai  # Assuming you will use OpenAI's GPT model via an API call
 
-import pandas as pd
 import streamlit as st
-from utils import load_comments_from_csv
-from config import ACCESS_CODE_LIST
+from config import CONFIG
+
 
 # Configure logger
 logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
 
-if st.session_state.get('access_code') and st.session_state.get('access_code') in ACCESS_CODE_LIST:
+
+if st.session_state.get('access_code') and st.session_state.get('access_code') in CONFIG['access_code_list']:
     # session中有缓存
     st.query_params.access_code = st.session_state.access_code
-elif st.query_params.get('access_code') and st.query_params.get('access_code') in ACCESS_CODE_LIST:
+elif st.query_params.get('access_code') and st.query_params.get('access_code') in CONFIG['access_code_list']:
     # URL中有缓存
     st.session_state.access_code = st.query_params.access_code
 else:

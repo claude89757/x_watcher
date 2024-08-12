@@ -11,7 +11,7 @@ import logging
 import time
 
 import streamlit as st
-from config import ACCESS_CODE_LIST
+from config import CONFIG
 
 # Configure logger
 logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
@@ -45,11 +45,11 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 st.title("Demo: X AI Marketing")
 
 access_granted = False
-if st.session_state.get('access_code') and st.session_state.get('access_code') in ACCESS_CODE_LIST:
+if st.session_state.get('access_code') and st.session_state.get('access_code') in CONFIG['access_code_list']:
     # session中有缓存
     st.query_params.access_code = st.session_state.access_code
     access_granted = True
-elif st.query_params.get('access_code') and st.query_params.get('access_code') in ACCESS_CODE_LIST:
+elif st.query_params.get('access_code') and st.query_params.get('access_code') in CONFIG['access_code_list']:
     # URL中有缓存
     st.session_state.access_code = st.query_params.access_code
     access_granted = True
@@ -57,7 +57,7 @@ else:
     st.title("Please Enter the Access Code")
     code = st.text_input("Access Code", type="password")
     if st.button("Submit", type="primary"):
-        if code in ACCESS_CODE_LIST:
+        if code in CONFIG['access_code_list']:
             access_granted = True
             st.query_params.access_code = code
             st.session_state.access_code = code

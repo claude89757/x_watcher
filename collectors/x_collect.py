@@ -3,13 +3,16 @@
 """
 @Time    : 2024/8/9 20:06
 @Author  : claude
-@File    : x_watcher.py
+@File    : x_collect.py
 @Software: PyCharm
 """
 import time
 import os
 import pickle
 import random
+import datetime
+import logging
+
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -21,12 +24,22 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 
-from utils import save_comments_to_csv
+from common.cos import process_and_upload_csv_to_cos
+
+# 配置日志记录到文件
+logging.basicConfig(
+    filename='x_collect.log',  # 日志文件名
+    filemode='a',        # 追加模式 ('a') 或覆盖模式 ('w')
+    level=logging.INFO,  # 日志级别
+    format='%(asctime)s - %(levelname)s - %(message)s' # 日志格式
+)
+logger = logging.getLogger(__name__)
 
 
 class TwitterWatcher:
     def __init__(self, driver_path, username, email, password, search_key_word,
-                 timeout=10, cookies_file='cookies.pkl'):
+                 timeout=10, cookies_file='cookies.pkl', headless: bool = True,
+                 force_re_login: bool = False):
         self.driver_path = driver_path
         self.username = username
         self.email = email
@@ -36,14 +49,22 @@ class TwitterWatcher:
         self.interaction_timeout = 600
         self.cookies_file = cookies_file
         self.driver = None
+        self.headless = headless
+        self.force_re_login = force_re_login
 
     def setup_driver(self):
         service = Service(self.driver_path)
         chrome_options = Options()
         chrome_options.add_argument("--lang=en")
-        chrome_options.add_argument("--headless")  # 添加无头模式
-        chrome_options.add_argument("--disable-gpu")  # 如果需要，可以禁用GPU加速
-        chrome_options.add_argument("--window-size=1920,1080")  # 设置窗口大小
+        if self.headless:
+            chrome_options.add_argument("--headless")  # 添加无头模式
+            chrome_options.add_argument("--disable-gpu")  # 如果需要，可以禁用GPU加速
+            chrome_options.add_argument("--window-size=1920,1080")  # 设置窗口大小
+            # 设置 User-Agent
+        chrome_options.add_argument(
+            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/91.0.4472.124 Safari/537.36")
+        self.driver = webdriver.Chrome(service=service, options=chrome_options)
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
     def teardown_driver(self):
@@ -55,7 +76,7 @@ class TwitterWatcher:
             # 使用BeautifulSoup格式化HTML源代码
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             formatted_html = soup.prettify()
-            print(formatted_html)
+            logging.info(formatted_html)
 
     def find_element(self, by, value):
         return WebDriverWait(self.driver, self.timeout).until(
@@ -63,12 +84,12 @@ class TwitterWatcher:
         )
 
     def save_cookies(self):
-        print("saving cookies")
+        logging.info("saving cookies")
         with open(self.cookies_file, 'wb') as file:
             pickle.dump(self.driver.get_cookies(), file)
 
     def load_cookies(self):
-        print("loading cookies")
+        logging.info("loading cookies")
         if os.path.exists(self.cookies_file):
             with open(self.cookies_file, 'rb') as file:
                 cookies = pickle.load(file)
@@ -76,7 +97,7 @@ class TwitterWatcher:
                     self.driver.add_cookie(cookie)
 
     def login(self):
-        print(f"try to login...")
+        logging.info(f"try to login...")
         self.driver.get('https://twitter.com/login?lang=en')
 
         # 输入账号
@@ -87,7 +108,7 @@ class TwitterWatcher:
 
         # 点击“下一步”按钮
         next_button = self.find_element(By.XPATH, '//span[text()="Next"]/ancestor::button[@role="button"]')
-        print(f"click {next_button.text}")
+        logging.info(f"click {next_button.text}")
         next_button.click()
         time.sleep(1)
 
@@ -102,10 +123,10 @@ class TwitterWatcher:
                 input_type = "email"
             except TimeoutException:
                 input_type = "check_people"
-        print(f"input_type: {input_type}")
+        logging.info(f"input_type: {input_type}")
 
         if input_type == "password":
-            print("直接账号密码登录")
+            logging.info("直接账号密码登录")
             time.sleep(random.uniform(1, 3))
             current_input.send_keys(self.password)
             time.sleep(random.uniform(0, 1))
@@ -114,13 +135,13 @@ class TwitterWatcher:
 
             # 等待浏览器页面变成home页面
             try:
-                print("Waiting for the home pages to load...")
+                logging.info("Waiting for the home pages to load...")
                 WebDriverWait(self.driver, self.interaction_timeout).until(
                     EC.url_to_be('https://x.com/home')
                 )
             except Exception as error:
-                print(error)
-                print(f"可能账号受限，需要输入邮箱验证")
+                logging.info(error)
+                logging.info(f"可能账号受限，需要输入邮箱验证")
                 # 定位并输入邮箱
                 email_input = self.find_element(By.XPATH, '//input[@name="text" and @autocomplete="email" '
                                                           'and @type="email" and @data-testid="ocfEnterTextTextInput"]')
@@ -130,12 +151,12 @@ class TwitterWatcher:
                 # 按回车键
                 email_input.send_keys(Keys.RETURN)
 
-                print("Waiting for the home pages to load...")
+                logging.info("Waiting for the home pages to load...")
                 WebDriverWait(self.driver, self.interaction_timeout).until(
                     EC.url_to_be('https://x.com/home')
                 )
         elif input_type == "email":
-            print("账号受限可能需要输入邮箱")
+            logging.info("账号受限可能需要输入邮箱")
             # 定位并输入账号
             email_input = self.find_element(By.XPATH, '//input[@name="text" and @autocomplete="on" and '
                                                       '@type="text" and @data-testid="ocfEnterTextTextInput"]')
@@ -154,16 +175,17 @@ class TwitterWatcher:
             password_input.send_keys(Keys.RETURN)
 
             # 等待浏览器页面变成home页面
-            print("Waiting for the home pages to load...")
+            logging.info("Waiting for the home pages to load...")
             WebDriverWait(self.driver, self.interaction_timeout).until(
                 EC.url_to_be('https://x.com/home')
             )
         else:
-            print("需人工介入")
+            logging.info("需人工介入")
+            self.driver.save_screenshot('screenshot.png')
             time.sleep(99999999)
 
         self.save_cookies()
-        print(f"login successfully")
+        logging.info(f"login successfully")
 
     def search(self):
         self.driver.get('https://twitter.com/home')
@@ -181,7 +203,7 @@ class TwitterWatcher:
         while len(tweets) < n and scroll_attempts < max_scroll_attempts:
             tweet_elements = self.driver.find_elements(By.XPATH,
                                                        '//div[@data-testid="cellInnerDiv"]//article[@role="article"]')
-            print(f"Scroll attempt {scroll_attempts + 1}: Found {len(tweet_elements)} tweets")
+            logging.info(f"Scroll attempt {scroll_attempts + 1}: Found {len(tweet_elements)} tweets")
 
             for tweet in tweet_elements:
                 if tweet not in tweets:
@@ -195,7 +217,7 @@ class TwitterWatcher:
                 time.sleep(2)
             else:
                 break
-        print(f"Final: Found {len(tweets)} tweets.")
+        logging.info(f"Final: Found {len(tweets)} tweets.")
         return self.filter_posts(tweets)
 
     def collect_comments_and_user_data(self, max_comments=50):
@@ -223,15 +245,15 @@ class TwitterWatcher:
                     })
                     comments_collected += 1
                 except Exception as error:
-                    print(f"failed: {str(error).splitlines()[0]}")
+                    logging.info(f"failed: {str(error).splitlines()[0]}")
 
             if comments_collected < max_comments:
                 self.scroll_page()
                 scroll_attempts += 1
-            print(f"comments_collected: {comments_collected}")
+            logging.info(f"comments_collected: {comments_collected}")
             for comment in comments_data:
-                print(comment)
-        print(f"Collected {comments_collected} comments.")
+                logging.info(comment)
+        logging.info(f"Collected {comments_collected} comments.")
         return comments_data
 
     def scroll_page(self):
@@ -241,9 +263,9 @@ class TwitterWatcher:
 
             self.driver.execute_script(f"window.scrollBy(0, {scroll_distance});")
             time.sleep(scroll_pause_time)
-            print(f"Scrolled the pages by {scroll_distance} pixels and paused for {scroll_pause_time} seconds.")
+            logging.info(f"Scrolled the pages by {scroll_distance} pixels and paused for {scroll_pause_time} seconds.")
         except Exception as e:
-            print(f"Failed to scroll the pages: {e}")
+            logging.info(f"Failed to scroll the pages: {e}")
 
     def scroll_to_top(self):
         try:
@@ -251,9 +273,9 @@ class TwitterWatcher:
 
             self.driver.execute_script("window.scrollTo(0, 0);")
             time.sleep(scroll_pause_time)
-            print(f"Scrolled to the top of the pages and paused for {scroll_pause_time} seconds.")
+            logging.info(f"Scrolled to the top of the pages and paused for {scroll_pause_time} seconds.")
         except Exception as e:
-            print(f"Failed to scroll to the top of the pages: {e}")
+            logging.info(f"Failed to scroll to the top of the pages: {e}")
 
     def filter_posts(self, tweets):
         # 预留的推特过滤函数
@@ -297,50 +319,51 @@ class TwitterWatcher:
         try:
             self.setup_driver()
             # 检查是否存在 cookies 文件
-            if os.path.exists(self.cookies_file):
+            if os.path.exists(self.cookies_file) and not self.force_re_login:
                 try:
                     self.driver.get('https://twitter.com/home')
                     self.load_cookies()
                     self.driver.refresh()
                 except Exception as error:
-                    print(error)
-                    print("Cookies are invalid, clearing cookies and re-login.")
+                    logging.info(error)
+                    logging.info("Cookies are invalid, clearing cookies and re-login.")
                     self.driver.delete_all_cookies()
                     self.login()
             else:
                 self.login()
-
-            print("Waiting for the home pages to load...")
+            time.sleep(10)
+            logging.info("Waiting for the home pages to load...")
+            logging.info(self.driver.current_url)
             WebDriverWait(self.driver, self.interaction_timeout).until(
                 EC.url_to_be('https://x.com/home')
             )
-            print("success")
+            logging.info("success")
             self.teardown_driver()
             return "Available"
         except Exception as error:
-            print(error)
+            logging.info(error)
             self.teardown_driver()
             return "Unavailable"
 
-    def run(self, max_post_num: int, filename: str):
+    def run(self, max_post_num: int, access_code: str):
         """
         运行程序
         :param max_post_num:
-        :param filename:
+        :param access_code:
         :return:
         """
         try:
             self.setup_driver()
             # 检查是否存在 cookies 文件
-            if os.path.exists(self.cookies_file):
+            if os.path.exists(self.cookies_file) and not self.force_re_login:
                 try:
                     self.driver.get('https://twitter.com/home')
                     self.load_cookies()
                     self.driver.refresh()
                     time.sleep(3)
                 except Exception as error:
-                    print(error)
-                    print("Cookies are invalid, clearing cookies and re-login.")
+                    logging.info(error)
+                    logging.info("Cookies are invalid, clearing cookies and re-login.")
                     self.driver.delete_all_cookies()
                     self.login()
             else:
@@ -350,7 +373,7 @@ class TwitterWatcher:
 
             # 再次检查是否需要登录
             if "home" in self.driver.current_url:
-                print("success")
+                logging.info("success")
             else:
                 raise Exception(f"login failed: {self.driver.current_url}")
 
@@ -360,7 +383,7 @@ class TwitterWatcher:
             # 搜索出的推特进行遍历
 
             for index in range(1, max_post_num+1):
-                print(f"checking post [{index}] >>>>>>>>>>>>>>>>>>>")
+                logging.info(f"checking post [{index}] >>>>>>>>>>>>>>>>>>>")
                 # 获取前N个推特
                 top_n_posts = self.get_top_n_posts(index)
                 check_post = top_n_posts[index-1]
@@ -371,10 +394,12 @@ class TwitterWatcher:
                     self.driver.back()
                     time.sleep(3)  # 等待页面返回
                 except Exception as e:
-                    print(f"Failed to process tweet: {e}")
+                    logging.info(f"Failed to process tweet: {e}")
                     data = []
                 if data:
-                    save_comments_to_csv(data, file_name=filename)
+                    current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+                    filename = f"{self.search_key_word}_{current_time}_{len(data)}_{self.username}.csv"
+                    process_and_upload_csv_to_cos(data, f"./{filename}", f"{access_code}/{filename}")
                 else:
                     pass
                 # 返回顶端
@@ -383,43 +408,32 @@ class TwitterWatcher:
             self.teardown_driver()
 
 
-def collect_data_from_x(search_key_word: str, max_post_num: int, filename: str):
+CHROME_DRIVER = './chromedriver'
+
+
+def collect_data_from_x(username: str, email: str, password: str, search_key_word: str, max_post_num: int,
+                        access_code: str):
     """
     从X收集数据，并缓存到一个cvs文件
+    :param access_code:
+    :param password:
+    :param email:
+    :param username:
     :param search_key_word:
     :param max_post_num:
     :return:
     """
-    username = os.environ['X_USERNAME']
-    email = os.environ['X_EMAIL']
-    password = os.environ['X_PASSWORD']
-    chrome_driver_path = '/usr/local/bin/chromedriver'
-    watcher = TwitterWatcher(chrome_driver_path, username, email, password, search_key_word)
-    watcher.run(max_post_num, filename)
-    print("done collecting data.")
+    logging.info("start collecting data.")
+    watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, search_key_word)
+    watcher.run(max_post_num, access_code)
+    logging.info("done collecting data.")
 
 
-def check_service_status():
+def check_service_status(username: str, email: str, password: str):
     """
     检查当前服务的状态，账号是否能正常登录
     :return:
     """
-    chrome_driver_path = '/usr/local/bin/chromedriver'
-    username = os.environ['X_USERNAME']
-    email = os.environ['X_EMAIL']
-    password = os.environ['X_PASSWORD']
-    search_key_word = "cat"
-    watcher = TwitterWatcher(chrome_driver_path, username, email, password, search_key_word)
-    print("health checking...")
+    watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, "cat")
+    logging.info("health checking...")
     return watcher.check_login_status()
-
-
-# test
-if __name__ == "__main__":
-    chrome_driver_path = '/usr/local/bin/chromedriver'
-    username = os.environ['X_USERNAME']
-    email = os.environ['X_EMAIL']
-    password = os.environ['X_PASSWORD']
-    search_key_word = "cat"
-    watcher = TwitterWatcher(chrome_driver_path, username, email, password, search_key_word)
-    watcher.check_login_status()
