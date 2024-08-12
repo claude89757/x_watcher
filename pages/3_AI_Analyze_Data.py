@@ -146,16 +146,16 @@ st.title("Step 3: AI Analyze Data")
 st.markdown("Sending data to a large model for analysis, where the model will process "
             "and generate insights based on the provided data.")
 
-data_dir = f"./data/{st.session_state.access_code}/processed/"
+src_dir = f"./data/{st.session_state.access_code}/processed/"
+dst_dir = f"./data/{st.session_state.access_code}/analyzed/"
+files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
+selected_file = st.selectbox("Select a file to analyze:", files)
 selected_file_path = None
-if os.path.exists(data_dir):
-    files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
-    selected_file = st.selectbox("Select a file to analyze:", files)
-    if selected_file:
-        selected_file_path = os.path.join(data_dir, selected_file)
-        st.subheader(f"File Data Preview: {selected_file}")
-        data = pd.read_csv(selected_file_path)
-        st.write(data)
+if selected_file:
+    selected_file_path = os.path.join(src_dir, selected_file)
+    st.subheader(f"File Data Preview: {selected_file}")
+    data = pd.read_csv(selected_file_path)
+    st.write(data)
 else:
     st.warning("No processed data, return to filter data...")
     time.sleep(3)
@@ -168,7 +168,7 @@ prompt = st.text_area("Enter your prompt for analysis:",
 analyze_button = st.button("Start Analysis" if not st.session_state.analysis_run else "Reanalyze", type="primary")
 
 # 在分析之后
-if analyze_button and selected_file_path:
+if analyze_button:
     with st.spinner('Analyzing data...'):
         data = pd.read_csv(selected_file_path)
         st.write("Data loaded successfully. Starting analysis...")
@@ -179,10 +179,7 @@ if analyze_button and selected_file_path:
 
             if not result_df.empty:
                 # 定义新的输出目录
-                output_dir = os.path.join(data_dir, "analysis_results")
-                os.makedirs(output_dir, exist_ok=True)
-                output_file = os.path.join(output_dir, "analysis_result.csv")
-
+                output_file = os.path.join(dst_dir, f"res_{selected_file}")
                 # 保存分析结果
                 result_df.to_csv(output_file, index=False)
 

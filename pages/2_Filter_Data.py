@@ -90,7 +90,7 @@ selected_file = st.selectbox("Select file to process", st.session_state.matching
 if selected_file:
     st.session_state.selected_file = selected_file
     st.query_params.selected_file = selected_file
-    local_file_path = os.path.join(f"./data/{st.session_state.access_code}/", selected_file)
+    local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
     # 检查本地是否已有文件
     if not os.path.exists(local_file_path):
         try:
@@ -119,7 +119,7 @@ with col1:
     # Button to confirm the file
     if st.button("Confirm File ", type="primary"):
         dst_dir = f"./data/{st.session_state.access_code}/processed/"
-        src_dir = f"./data/{st.session_state.access_code}"
+        src_dir = f"./data/{st.session_state.access_code}/raw/"
         src_file_path = os.path.join(src_dir, selected_file)
         dst_file_path = os.path.join(dst_dir, selected_file)
         shutil.move(src_file_path, dst_file_path)

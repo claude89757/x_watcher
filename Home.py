@@ -9,6 +9,7 @@
 
 import logging
 import time
+import os
 
 import streamlit as st
 from config import CONFIG
@@ -74,6 +75,20 @@ if access_granted:
     st.page_link("pages/2_Filter_Data.py", label="Preprocess & Filter Data", icon="2️⃣", use_container_width=True)
     st.page_link("pages/3_AI_Analyze_Data.py", label="AI Analyze Data", icon="3️⃣️", use_container_width=True)
     st.page_link("pages/4_Send_Promotional_Msg.py", label="Send Promotional MSG", icon="4️⃣", use_container_width=True)
+
+    # 创建文件夹
+    base_path = os.path.join("./data", st.session_state.access_code)
+    folders = ['raw', 'processed', 'analyzed']
+    for folder in folders:
+        path = os.path.join(base_path, folder)
+        if not os.path.exists(path):
+            os.makedirs(path)
+            st.write(f"Created directory: {path}")
+        else:
+            # st.write(f"Directory already exists: {path}")
+            pass
+
+    # todo: 显示当前用户的状态和数据信息
 
     if st.sidebar.button(label="Log out", type="primary"):
         st.query_params.clear()

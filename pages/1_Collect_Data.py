@@ -123,7 +123,7 @@ st.subheader(f"Current Data: {selected_file}")
 
 
 # 创建两个并排的列
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 with col1:
     if st.button(label="Start Collecting Data", type="primary"):
@@ -153,25 +153,23 @@ with col1:
             st.error(f"An error occurred: {e}")
 
 
-with col2:
-    # 刷新展示文件列表按钮
-    if st.button(label="Show Files"):
-        try:
-            # 从 COS 中获取文件列表
-            all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-            st.session_state.matching_files = [
-                str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
-            ]
-        except Exception as e:
-            st.error(f"Error retrieving files from COS: {e}")
+try:
+    # 从 COS 中获取文件列表
+    all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
+    st.session_state.matching_files = [
+        str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
+    ]
+except Exception as e:
+    st.error(f"Error retrieving files from COS: {e}")
 
-with col3:
-    if st.button(label="Show File Details"):
+
+with col2:
+    if st.button(label="Download File"):
         # Display collected data
         if selected_file:
             st.session_state.selected_file = selected_file
             st.query_params.selected_file = selected_file
-            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/", selected_file)
+            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
             # 检查本地是否已有文件
             if not os.path.exists(local_file_path):
                 try:
@@ -180,7 +178,6 @@ with col3:
                     st.success("File downloaded from COS.")
                 except Exception as e:
                     st.error(f"Error loading file from COS: {e}")
-
             try:
                 data = pd.read_csv(local_file_path)
                 # 展示数据
