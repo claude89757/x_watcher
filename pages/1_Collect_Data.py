@@ -135,12 +135,10 @@ with col1:
                         st.session_state.access_code,
                     )
                     task_num += 1
-                    time.sleep(10)
+                    time.sleep(60)
             # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
 
             # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
-            for index in range(60):
-                st.write(index)
             st.success("Data collection complete!")
         except Exception as e:
             # Log the error
