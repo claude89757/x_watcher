@@ -8,7 +8,6 @@
 """
 
 from flask import Flask, request
-import os
 import logging
 from logging.handlers import RotatingFileHandler
 import subprocess
