@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class TwitterWatcher:
-    def __init__(self, driver_path, username, email, password, search_key_word,
-                 timeout=10, cookies_file='cookies.pkl', headless: bool = True,
+    def __init__(self, driver_path, username, email, password, search_key_word, timeout=10, headless: bool = True,
                  force_re_login: bool = False):
         self.driver_path = driver_path
         self.username = username
@@ -47,7 +46,7 @@ class TwitterWatcher:
         self.search_key_word = search_key_word
         self.timeout = timeout
         self.interaction_timeout = 600
-        self.cookies_file = cookies_file
+        self.cookies_file = f'{username}_cookies.pkl'
         self.driver = None
         self.headless = headless
         self.force_re_login = force_re_login
@@ -408,7 +407,7 @@ class TwitterWatcher:
             self.teardown_driver()
 
 
-CHROME_DRIVER = './chromedriver'
+CHROME_DRIVER = '/usr/local/bin/chromedriver'
 
 
 def collect_data_from_x(username: str, email: str, password: str, search_key_word: str, max_post_num: int,
@@ -437,3 +436,12 @@ def check_service_status(username: str, email: str, password: str):
     watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, "cat")
     logging.info("health checking...")
     return watcher.check_login_status()
+
+
+# Test
+if __name__ == '__main__':
+    from config import CONFIG
+    username = "Zacks89757"
+    email = CONFIG['x_collector_account_infos'][username]['email']
+    password = CONFIG['x_collector_account_infos'][username]['password']
+    collect_data_from_x(username, email, password, 'cat', max_post_num=2, access_code='zacks')
