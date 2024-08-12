@@ -33,26 +33,17 @@ def webhook():
     if request.method == 'POST':
         app.logger.info('Received POST request on /webhook')
         try:
-            # 使用 subprocess 运行 git 命令并捕获输出
+            # 使用 subprocess 运行 git pull 命令并捕获输出
             result = subprocess.run(
-                ['git', 'fetch', 'origin', 'main'],
+                ['git', 'pull', 'origin', 'main'],
                 cwd='/root/x_watcher',
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
-            app.logger.info(f'git fetch output: {result.stdout}')
-            app.logger.error(f'git fetch error: {result.stderr}')
-
-            result = subprocess.run(
-                ['git', 'reset', '--hard', 'origin/main'],
-                cwd='/root/x_watcher',
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            app.logger.info(f'git reset output: {result.stdout}')
-            app.logger.error(f'git reset error: {result.stderr}')
+            app.logger.info(f'git pull output: {result.stdout}')
+            if result.returncode != 0:
+                app.logger.error(f'git pull error: {result.stderr}')
 
             app.logger.info('Successfully updated repository')
             return 'Success', 200
