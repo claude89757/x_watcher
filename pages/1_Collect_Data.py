@@ -10,6 +10,7 @@ import os
 import logging
 import time
 import requests
+import datetime
 
 import pandas as pd
 import streamlit as st
@@ -117,9 +118,6 @@ st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
 
-# 如果有匹配的文件，显示文件名称并允许用户选择
-selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
-st.subheader(f"Current Data: {selected_file}")
 
 
 # 创建两个并排的列
@@ -152,40 +150,66 @@ with col1:
             logging.error(f"Error occurred during data collection: {e}")
             st.error(f"An error occurred: {e}")
 
-
-try:
-    # 从 COS 中获取文件列表
-    all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-    st.session_state.matching_files = [
-        str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
-    ]
-except Exception as e:
-    st.error(f"Error retrieving files from COS: {e}")
-
-
 with col2:
-    if st.button(label="Download File"):
-        # Display collected data
-        if selected_file:
-            st.session_state.selected_file = selected_file
-            st.query_params.selected_file = selected_file
-            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
-            # 检查本地是否已有文件
-            if not os.path.exists(local_file_path):
-                try:
-                    download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
-                                  local_file_path=local_file_path)
-                    st.success("File downloaded from COS.")
-                except Exception as e:
-                    st.error(f"Error loading file from COS: {e}")
-            try:
-                data = pd.read_csv(local_file_path)
-                # 展示数据
-                if data is not None:
-                    st.dataframe(data)
-                else:
-                    st.write("No data to display.")
-            except Exception as e:
-                st.error(f"Error loading data from local file: {e}")
+    download_button = st.button(label="Download File")
+
+# 如果有匹配的文件，显示文件名称并允许用户选择
+selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
+st.subheader(f"Current Data: {selected_file}")
+
+
+if st.button(label="Refresh File List"):
+    try:
+        # 从 COS 中获取文件列表
+        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
+        st.session_state.matching_files = [
+            str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
+        ]
+    except Exception as e:
+        st.error(f"Error retrieving files from COS: {e}")
+
+
+if selected_file and download_button:
+    st.session_state.selected_file = selected_file
+    st.query_params.selected_file = selected_file
+    local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
+    # 检查本地是否已有文件
+    if not os.path.exists(local_file_path):
+        try:
+            download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
+                          local_file_path=local_file_path)
+            st.success("File downloaded from COS.")
+        except Exception as e:
+            st.error(f"Error loading file from COS: {e}")
+    try:
+        data = pd.read_csv(local_file_path)
+        # 展示数据
+        if data is not None:
+            st.dataframe(data)
         else:
-            st.warning("No selected file.")
+            st.write("No data to display.")
+    except Exception as e:
+        st.error(f"Error loading data from local file: {e}")
+else:
+    st.warning("No selected file.")
+
+
+# 展示已下载文件列表的逻辑
+st.header("Downloaded Files")
+
+# 获取已下载文件的列表
+downloaded_files_dir = f"./data/{st.session_state.access_code}/raw/"
+if os.path.exists(downloaded_files_dir):
+    downloaded_files = os.listdir(downloaded_files_dir)
+    if downloaded_files:
+        st.write("Downloaded files:")
+        for file in downloaded_files:
+            file_path = os.path.join(downloaded_files_dir, file)
+            file_size = os.path.getsize(file_path)
+            file_mtime = os.path.getmtime(file_path)
+            formatted_mtime = datetime.datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d %H:%M:%S')
+            st.write(f"File: {file}, Size: {file_size} bytes, Last Modified: {formatted_mtime}")
+    else:
+        st.write("No files downloaded yet.")
+else:
+    st.write("No files downloaded yet.")
