@@ -139,11 +139,10 @@ if st.button(label="Start Collecting Data"):
 
 # 展示已收集的数据
 selected_file = None
-prefix = f"{st.session_state.access_code}/"
-if st.session_state.get("search_keyword"):
+if st.button(label="Show Collected Data"):
     try:
         # 从 COS 中获取文件列表
-        all_files = list_latest_files(prefix=prefix)
+        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
         matching_files = [
             file_key for file_key in all_files if st.session_state.search_keyword in file_key
         ]
