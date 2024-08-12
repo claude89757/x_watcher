@@ -99,13 +99,12 @@ st.markdown("""Collecting data from X, which may take some time to complete.""")
 
 
 st.session_state.search_keyword = st.text_input(label="Search Keyword", value=st.session_state.search_keyword)
-st.session_state.max_post_num = st.slider(
+st.session_state.max_post_num = st.selectbox(
     label="Max Post Number",
-    min_value=1,         # 最小值
-    max_value=50,        # 最大值
-    value=st.session_state.max_post_num,  # 默认值
-    step=1               # 步长
+    options=[1, 3, 5, 10, 20, 50],
+    index=[1, 3, 5, 10, 20, 50].index(st.session_state.max_post_num)
 )
+
 
 # 将用户输入的数据保存到 URL 参数
 st.query_params.search_keyword = st.session_state.search_keyword
