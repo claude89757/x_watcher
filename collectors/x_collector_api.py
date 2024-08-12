@@ -63,5 +63,5 @@ async def webhook():
 
 
 if __name__ == '__main__':
-    app.logger.info('Starting Quart server')
+    app.logger.info('Starting Quart server...')
     app.run(host='0.0.0.0', port=8080, debug=True)
