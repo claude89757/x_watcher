@@ -74,7 +74,8 @@ if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword", "")
 if "selected_file" not in st.session_state:
     st.session_state.selected_file = st.query_params.get("selected_file", "")
-
+if "matching_files" not in st.session_state:
+    st.session_state.matching_files = []
 
 # Force responsive layout for columns also on mobile
 st.write(
@@ -147,21 +148,21 @@ with col1:
             logging.error(f"Error occurred during data collection: {e}")
             st.error(f"An error occurred: {e}")
 
-matching_files = None
+
 with col2:
     # 刷新展示文件列表按钮
     if st.button(label="Refresh Collected Data"):
         try:
             # 从 COS 中获取文件列表
             all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-            matching_files = [
+            st.session_state.matching_files = [
                 str(file_key).split('/')[-1] for file_key in all_files if st.session_state.search_keyword in file_key
             ]
         except Exception as e:
             st.error(f"Error retrieving files from COS: {e}")
 
 # 如果有匹配的文件，显示文件名称并允许用户选择
-selected_file = st.selectbox("Select a file to display", matching_files)
+selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
 st.subheader(f"Current Data: {selected_file}")
 
 # Display collected data
