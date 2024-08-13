@@ -132,16 +132,16 @@ if analyze_button:
                 st.success(f"Analysis complete! Results saved to {output_file}.")
                 st.dataframe(result_df.head(500), use_container_width=True, height=400)
 
-                # Next
-                if st.button(label="Next: Send Promotional Msg", type='primary'):
-                    st.success("Ready to Send Promotional Msg...")
-                    st.balloons()
-                    time.sleep(3)
-                    st.switch_page("pages/4_Send_Promotional_Msg.py")
-                else:
-                    pass
-
             else:
                 st.error("Failed to generate analysis results. Please check your prompt or API settings.")
         else:
             st.warning("Prompt cannot be empty. Please provide a valid prompt.")
+
+# Next
+if st.button(label="Next: Send Promotional Msg", type='primary'):
+    st.success("Ready to Send Promotional Msg...")
+    st.balloons()
+    time.sleep(3)
+    st.switch_page("pages/4_Send_Promotional_Msg.py")
+else:
+    pass
