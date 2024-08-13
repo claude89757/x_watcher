@@ -121,14 +121,16 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
         )
 
         if csv_rows:
-            # 将 CSV 行转换为 DataFrame 并显示
+            # 将 CSV 行转换为 DataFrame 并选择第一列和最后一列
             df = pd.DataFrame(csv_rows[1:], columns=csv_rows[0])  # 使用第一行作为列名
-            status_message += "\nData:\n" + df.to_string()  # 将 DataFrame 转换为字符串并附加到消息中
+            df_subset = df.iloc[:, [0, -1]]  # 选择第一列和最后一列
+            markdown_table = df_subset.to_markdown(index=False)  # 转换为 Markdown 表格格式
+            status_message += f"\n\nData:\n{markdown_table}"
         else:
             status_message += "\nNo data."
 
-        # 更新 Streamlit 状态文本
-        status_text.text(status_message)
+        # 更新 Streamlit 状态文本为 Markdown 格式
+        status_text.markdown(status_message)
 
     # 合并所有 DataFrame
     if results:
@@ -240,14 +242,16 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
         )
 
         if csv_rows:
-            # 将 CSV 行转换为 DataFrame 并显示
+            # 将 CSV 行转换为 DataFrame 并选择第一列和最后一列
             df = pd.DataFrame(csv_rows[1:], columns=csv_rows[0])  # 使用第一行作为列名
-            status_message += "\nData:\n" + df.to_string()  # 将 DataFrame 转换为字符串并附加到消息中
+            df_subset = df.iloc[:, [0, -1]]  # 选择第一列和最后一列
+            markdown_table = df_subset.to_markdown(index=False)  # 转换为 Markdown 表格格式
+            status_message += f"\n\nData:\n{markdown_table}"
         else:
             status_message += "\nNo data."
 
-        # 更新 Streamlit 状态文本
-        status_text.text(status_message)
+        # 更新 Streamlit 状态文本为 Markdown 格式
+        status_text.markdown(status_message)
 
     # 合并所有 DataFrame
     if results:
