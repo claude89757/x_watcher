@@ -104,10 +104,10 @@ prompt = st.text_area("Enter your prompt for analysis:",
 
 selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
 
+batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
+
 analyze_button = st.button("Start Analysis" if not st.session_state.get('analysis_run', False)
                            else "Reanalyze", type="primary")
-
-batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
 
 # 在分析之后
 if analyze_button:
