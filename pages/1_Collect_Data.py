@@ -118,8 +118,8 @@ st.session_state.max_post_num = st.selectbox(
 st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
-
-if st.button(label="Start Collecting"):
+collect_button = st.button(label="Start Collecting")
+if collect_button:
     # (todo: claude)Initialize progress elements
     # progress_bar = st.progress(0)
     # status_text = st.empty()
@@ -143,17 +143,17 @@ if st.button(label="Start Collecting"):
         logging.error(f"Error occurred during data collection: {e}")
         st.error(f"An error occurred: {e}")
 
-# 加载COS已存在的文件列表
-if st.session_state.search_keyword:
-    try:
-        # 从 COS 中获取文件列表
-        modified_keyword = re.sub(r'\s+', '_', st.session_state.search_keyword)
-        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-        st.session_state.matching_files = [
-            str(file_key).split('/')[-1] for file_key in all_files if modified_keyword in file_key
-        ]
-    except Exception as e:
-        st.error(f"Error retrieving files from COS: {e}")
+    # 加载COS已存在的文件列表
+    if st.session_state.search_keyword:
+        try:
+            # 从 COS 中获取文件列表
+            modified_keyword = re.sub(r'\s+', '_', st.session_state.search_keyword)
+            all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
+            st.session_state.matching_files = [
+                str(file_key).split('/')[-1] for file_key in all_files if modified_keyword in file_key
+            ]
+        except Exception as e:
+            st.error(f"Error retrieving files from COS: {e}")
 
 # 显示COS已存在的文件列表
 if st.session_state.matching_files:
@@ -181,7 +181,6 @@ if st.session_state.matching_files:
             pass
     else:
         pass
-
 
 # 获取已下载文件的列表
 local_files_dir = f"./data/{st.session_state.access_code}/raw/"
