@@ -76,11 +76,12 @@ if access_granted:
     st.page_link("pages/1_Collect_Data.py", label="Collect Data", icon="1️⃣", use_container_width=True)
     st.page_link("pages/2_Filter_Data.py", label="Preprocess & Filter Data", icon="2️⃣", use_container_width=True)
     st.page_link("pages/3_AI_Analyze_Data.py", label="AI Analyze Data", icon="3️⃣️", use_container_width=True)
-    st.page_link("pages/4_Send_Promotional_Msg.py", label="Send Promotional MSG", icon="4️⃣", use_container_width=True)
+    st.page_link("pages/4_AI_Generate_Msg.py", label="Send Promotional MSG", icon="4️⃣", use_container_width=True)
+    st.page_link("pages/5_Send_Promotional_Msg.py", label="Send Promotional MSG", icon="5️⃣", use_container_width=True)
 
     # 创建文件夹
     base_path = os.path.join("./data", st.session_state.access_code)
-    folders = ['raw', 'processed', 'analyzed']
+    folders = ['raw', 'processed', 'analyzed', 'msg']
     for folder in folders:
         path = os.path.join(base_path, folder)
         if not os.path.exists(path):

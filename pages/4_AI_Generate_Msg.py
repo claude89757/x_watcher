@@ -23,7 +23,7 @@ from sidebar import sidebar
 # Configure logger
 logger = setup_logger(__name__)
 
-st.set_page_config(page_title="Promotional Msg", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Generate Msg", page_icon="🤖", layout="wide")
 
 
 # init session state
@@ -67,7 +67,7 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-st.title("Step 4: Send Promotional Msg")
+st.title("Step 4: AI Generate Msg")
 st.markdown("Automate the sending of personalized promotional messages based on AI analysis results")
 
 cur_dir = f"./data/{st.session_state.access_code}/analyzed/"
@@ -115,52 +115,28 @@ if not filtered_data.empty:
     model = st.selectbox("Select a model:", ["gpt-4o-mini", "gpt-4o"])
 
     # 生成推广短信按钮
-    if st.button("Generate Promotional SMS"):
+    if st.button("Generate Promotional Msg"):
         result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=1)
-
-        # 预览推广短信
-        st.subheader("Generated Promotional SMS")
-        st.dataframe(result_df)
-
-        # 登录相关的逻辑
+        st.query_params.analysis_run = True
         if not result_df.empty:
-            st.markdown("------")
-            st.subheader("Twitter Account Login")
-            username = st.text_input("Twitter Username")
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
+            dst_dir = f"./data/{st.session_state.access_code}/msg/"
+            output_file = os.path.join(dst_dir, f"{st.session_state.selected_file}")
+            # 保存分析结果
+            # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            # logger.info(result_df.head(10))
+            # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            result_df.to_csv(output_file, index=False)
 
-            if st.button("Verify Login Status"):
-                return_code, msg = check_x_login_status(username, email, password)
-                # 登录验证
-                if return_code == 200:
-                    st.success("Verify Login Status successful!")
-                    if st.button("Send Promotional Messages"):
-                        # 初始化进度条
-                        progress_bar = st.progress(0)
-                        results = []
-                        # 发送推广私信
-                        for index, row in result_df.iterrows():
-                            user_id = row[0]
-                            message = row[-1]
-                            user_link = f"https://x.com/{user_id}"
-                            code, text = send_promotional_msg(username, email, password, user_link, message)
-                            results.append({
-                                'User ID': user_id,
-                                'Message': message,
-                                'Status': 'Success' if code == 200 else 'Failure',
-                                'Details': text
-                            })
-                            # 更新进度条
-                            progress_bar.progress((index + 1) / len(result_df))
-                            time.sleep(random.uniform(1, 10))
+            # 显示结果output_file
+            st.success(f"Analysis complete! Results saved to {output_file}.")
+            st.dataframe(result_df.head(500), use_container_width=True, height=400)
 
-                        # 转换结果为 DataFrame
-                        results_df = pd.DataFrame(results)
+        else:
+            st.error("Failed to generate analysis results. Please check your prompt or API settings.")
 
-                        # 显示结果
-                        st.success("All promotional messages processed!")
-                        st.subheader("Results")
-                        st.table(results_df)
-                else:
-                    st.error("Please enter all login details.")
+# Next
+if st.button(label="Next: Send Promotional Msg", type='primary'):
+    st.success("Ready to Send Promotional Msg...")
+    st.balloons()
+    time.sleep(3)
+    st.switch_page("pages/4_AI_Generate_Msg.py")

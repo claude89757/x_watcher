@@ -138,10 +138,10 @@ if analyze_button:
             st.warning("Prompt cannot be empty. Please provide a valid prompt.")
 
 # Next
-if st.button(label="Next: Send Promotional Msg", type='primary'):
-    st.success("Ready to Send Promotional Msg...")
+if st.button(label="Next: AI Generate Msg", type='primary'):
+    st.success("Ready to AI Generate Msg...")
     st.balloons()
     time.sleep(3)
-    st.switch_page("pages/4_Send_Promotional_Msg.py")
+    st.switch_page("pages/4_AI_Generate_Msg.py")
 else:
     pass
