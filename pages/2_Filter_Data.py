@@ -121,9 +121,11 @@ with col1:
                 return match.group(1)
             return None
 
-
         # 添加新列 'reply_user_id'
         df['reply_user_id'] = df['reply_user_link'].apply(extract_user_id)
+
+        # 过滤掉'reply_content'列中非字符串类型的数据
+        df = df[df['reply_content'].apply(lambda x: isinstance(x, str))]
 
         # 去重逻辑：根据'reply_user_id'去重，保留'reply_content'最长的记录
         df = df.loc[df.groupby('reply_user_id')['reply_content'].apply(lambda x: x.str.len().idxmax())]
