@@ -8,6 +8,7 @@
 """
 import os
 import time
+import datetime
 import shutil
 import pandas as pd
 import streamlit as st
@@ -77,10 +78,18 @@ if files:
         local_file_path = os.path.join(src_dir, st.session_state.selected_file)
         # 检查本地是否已有文件
         try:
+            # 获取文件信息
             data = pd.read_csv(local_file_path)
-            # 展示数据
+            file_size = os.path.getsize(local_file_path)  # 文件大小（字节）
+            file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(local_file_path))  # 文件修改时间
+
+            # 显示文件信息
+            st.write(f"File Size: {file_size / 1024:.2f} KB")  # 转换为 KB
+            st.write(f"Number of Rows: {data.shape[0]}")
+            st.write(f"Last Modified Time: {file_mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
             if data is not None:
-                st.dataframe(data)
+                st.dataframe(data.head(500))
             else:
                 st.write("No data to display.")
         except Exception as e:
