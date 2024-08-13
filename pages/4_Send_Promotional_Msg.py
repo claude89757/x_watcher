@@ -102,9 +102,16 @@ for folder_name, folder_path in folders.items():
     count = count_files(folder_path)
     st.sidebar.write(f"{folder_name} 文件数量: {count}")
 
-# 在主区域中创建下拉框来展示文件列表
-st.header("文件展示")
-selected_folder = st.selectbox("选择一个文件夹", list(folders.keys()))
+# 在侧边栏中创建一个展开器来展示文件列表
+selected_folder = st.sidebar.selectbox("选择一个文件夹", list(folders.keys()))
 selected_folder_path = folders[selected_folder]
-display_files(selected_folder_path)
+
+with st.sidebar.expander(f"查看 {selected_folder} 文件列表", expanded=True):
+    files = list_files(selected_folder_path)
+    if files:
+        st.sidebar.write("文件列表:")
+        for file in files:
+            st.sidebar.write(file)
+    else:
+        st.sidebar.write("目录为空或不存在")
 
