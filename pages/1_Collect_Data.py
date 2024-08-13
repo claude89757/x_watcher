@@ -173,41 +173,42 @@ if st.session_state.matching_files:
                     st.error(f"Error loading file from COS: {e}")
             try:
                 st.success(f"{st.session_state.selected_file} is loaded")
-                st.rerun()
             except Exception as e:
                 st.error(f"Error loading data from local file: {e}")
+
+            # 获取已下载文件的列表
+            local_files_dir = f"./data/{st.session_state.access_code}/raw/"
+            downloaded_files = os.listdir(local_files_dir)
+            if downloaded_files:
+                st.header("Loaded collected files")
+                file_info_list = []
+                for file in downloaded_files:
+                    file_path = os.path.join(local_files_dir, file)
+                    file_size = os.path.getsize(file_path)
+                    file_mtime = os.path.getmtime(file_path)
+                    formatted_mtime = datetime.datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    file_info_list.append({
+                        "File Name": file,
+                        "Size (bytes)": file_size,
+                        "Last Modified": formatted_mtime
+                    })
+
+                # 创建 DataFrame 并展示
+                file_info_df = pd.DataFrame(file_info_list)
+                st.dataframe(file_info_df)
+
+                # Next
+                if st.button(label="Next: Filter Data", type='primary'):
+                    st.success("Ready to filter data...")
+                    time.sleep(1)
+                    st.switch_page("pages/2_Filter_Data.py")
+                else:
+                    pass
+            else:
+                st.error("No files loaded yet.")
         else:
             pass
     else:
         pass
 
-# 获取已下载文件的列表
-local_files_dir = f"./data/{st.session_state.access_code}/raw/"
-downloaded_files = os.listdir(local_files_dir)
-if downloaded_files:
-    st.header("Loaded collected files")
-    file_info_list = []
-    for file in downloaded_files:
-        file_path = os.path.join(local_files_dir, file)
-        file_size = os.path.getsize(file_path)
-        file_mtime = os.path.getmtime(file_path)
-        formatted_mtime = datetime.datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d %H:%M:%S')
-        file_info_list.append({
-            "File Name": file,
-            "Size (bytes)": file_size,
-            "Last Modified": formatted_mtime
-        })
 
-    # 创建 DataFrame 并展示
-    file_info_df = pd.DataFrame(file_info_list)
-    st.dataframe(file_info_df)
-
-    # Next
-    if st.button(label="Next: Filter Data", type='primary'):
-        st.success("Ready to filter data...")
-        time.sleep(1)
-        st.switch_page("pages/2_Filter_Data.py")
-    else:
-        pass
-else:
-    st.write("No files loaded yet.")
