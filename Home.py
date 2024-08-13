@@ -62,11 +62,12 @@ else:
             st.query_params.access_code = code
             st.session_state.access_code = code
             st.success("Access Granted!")
-            logger.info(f"{st.query_params.access_code} login successfully.")
+            logger.info(f"{code} login successfully.")
             time.sleep(1)
             st.switch_page("pages/1_Collect_Data.py", )
         else:
             st.error("Incorrect Code. Please try again.")
+            logger.warning(f"{code} login failed.")
 
 if access_granted:
     st.success("Access Granted!")
