@@ -142,4 +142,4 @@ if st.session_state.msg_data_file_count:
         st.success("Ready to Send Promotional Msg...")
         st.balloons()
         time.sleep(3)
-        st.switch_page("pages/4_AI_Generate_Msg.py")
+        st.switch_page("pages/5_Send_Promotional_Msg.py")
