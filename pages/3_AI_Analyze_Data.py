@@ -23,7 +23,7 @@ from common.log_config import setup_logger
 logger = setup_logger(__name__)
 
 
-def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1000) -> pd.DataFrame:
+def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_size: int = 1000) -> pd.DataFrame:
     """
     发送数据到GPT模型，获取分析结果。
     :param system_prompt: 系统级指令，用于提供分析上下文。
@@ -31,7 +31,6 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
     :param batch_size: 每次发送的数据行数，默认1000行。
     :return: 包含分析结果的DataFrame。
     """
-    model = "gpt-4o-mini"
     results = []
     max_tokens = 2000  # 假设每行输入和输出都很长
 
@@ -202,6 +201,9 @@ prompt = st.text_area("Enter your prompt for analysis:",
 # 根据是否已经运行分析来确定按钮标签
 analyze_button = st.button("Start Analysis" if not st.session_state.analysis_run else "Reanalyze", type="primary")
 
+# 选择模型
+selected_model = st.selectbox("Select a model for analysis:",  ["gpt-4o-mini", "gpt-4o"])
+
 # 在分析之后
 if analyze_button:
     with st.spinner('Analyzing data...'):
@@ -209,8 +211,7 @@ if analyze_button:
         st.write("Data loaded successfully. Starting analysis...")
 
         if prompt:
-            # 调用AI模型进行分析
-            result_df = send_text_to_gpt(prompt, data)
+            result_df = send_text_to_gpt(selected_model, prompt, data)
 
             if not result_df.empty:
                 # 定义新的输出目录
