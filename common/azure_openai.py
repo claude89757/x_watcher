@@ -132,7 +132,7 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
 
     # 合并所有 DataFrame
     if results:
-        result_df = pd.concat(pd.DataFrame(results[1:], columns=results[0]), ignore_index=True)
+        result_df = pd.DataFrame(results[1:], columns=results[0])
     else:
         result_df = pd.DataFrame()
 
@@ -251,7 +251,7 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
 
     # 合并所有 DataFrame
     if results:
-        result_df = pd.concat(pd.DataFrame(results[1:], columns=results[0]), ignore_index=True)
+        result_df = pd.DataFrame(results[1:], columns=results[0])
     else:
         result_df = pd.DataFrame()
 
