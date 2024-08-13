@@ -12,6 +12,7 @@ import os
 import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
+from sidebar import sidebar
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -71,6 +72,7 @@ else:
             logger.warning(f"{code} login failed.")
 
 if access_granted:
+    sidebar()
     st.success("Access Granted!")
     st.markdown("-----")
     st.page_link("pages/1_Collect_Data.py", label="Collect Data", icon="1️⃣", use_container_width=True)
