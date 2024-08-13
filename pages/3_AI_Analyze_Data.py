@@ -162,12 +162,8 @@ st.markdown("Sending data to a large model for analysis, where the model will pr
 src_dir = f"./data/{st.session_state.access_code}/processed/"
 dst_dir = f"./data/{st.session_state.access_code}/analyzed/"
 files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
-# 获取默认文件在列表中的索引
-if st.session_state.selected_file and st.session_state.selected_file in files:
-    default_index = files.index(st.session_state.selected_file)
-else:
-    default_index = 0  # 如果默认文件不在列表中，选择第一个文件
-st.session_state.selected_file = st.selectbox("Select a file to analyze:", files, index=default_index)
+files.sort(key=lambda f: os.path.getmtime(os.path.join(src_dir, f)), reverse=True)
+st.session_state.selected_file = st.selectbox("Select a file to analyze:", files)
 selected_file_path = None
 if st.session_state.selected_file:
     selected_file_path = os.path.join(src_dir, st.session_state.selected_file)
