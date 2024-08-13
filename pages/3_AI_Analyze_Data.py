@@ -197,14 +197,12 @@ prompt = st.text_area("Enter your prompt for analysis:",
                       value="Analyze the data and identify potential customers interested in purchasing product XYZ")
 
 
-col1, col2 = st.columns([2, 1])  # 你可以根据需要调整列宽比例
+col1, col2 = st.columns(2)  # 你可以根据需要调整列宽比例
 
 with col1:
-    # 选择模型
     selected_model = st.selectbox("LLM Model:", ["gpt-4o-mini", "gpt-4o"])
 
 with col2:
-    # 根据是否已经运行分析来确定按钮标签
     analyze_button = st.button("Start Analysis" if not st.session_state.get('analysis_run', False)
                                else "Reanalyze", type="primary")
 
