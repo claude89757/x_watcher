@@ -121,8 +121,8 @@ if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
 if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword")
-if "matching_files" not in st.session_state:
-    st.session_state.matching_files = ""
+if "selected_file" not in st.session_state:
+    st.session_state.selected_file = ""
 if "analysis_run" not in st.session_state:
     st.session_state.analysis_run = False
 
@@ -163,11 +163,16 @@ st.markdown("Sending data to a large model for analysis, where the model will pr
 src_dir = f"./data/{st.session_state.access_code}/processed/"
 dst_dir = f"./data/{st.session_state.access_code}/analyzed/"
 files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
-selected_file = st.selectbox("Select a file to analyze:", files)
+# 获取默认文件在列表中的索引
+if st.session_state.selected_file and st.session_state.selected_file in files:
+    default_index = files.index(st.session_state.selected_file)
+else:
+    default_index = 0  # 如果默认文件不在列表中，选择第一个文件
+st.session_state.selected_file = st.selectbox("Select a file to analyze:", index=default_index)
 selected_file_path = None
-if selected_file:
-    selected_file_path = os.path.join(src_dir, selected_file)
-    st.subheader(f"File Data Preview: {selected_file}")
+if st.session_state.selected_file:
+    selected_file_path = os.path.join(src_dir, st.session_state.selected_file)
+    st.subheader(f"File Data Preview: {st.session_state.selected_file}")
     # 检查本地是否已有文件
     try:
         # 获取文件信息
@@ -209,7 +214,7 @@ if analyze_button:
 
             if not result_df.empty:
                 # 定义新的输出目录
-                output_file = os.path.join(dst_dir, f"res_{selected_file}")
+                output_file = os.path.join(dst_dir, f"res_{st.session_state.selected_file}")
                 # 保存分析结果
                 result_df.to_csv(output_file, index=False)
 
