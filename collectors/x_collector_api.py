@@ -53,7 +53,7 @@ async def async_check_login_status(username, email, password):
 
 
 @app.route('/collect_data_from_x', methods=['POST'])
-async def webhook():
+async def collect_data_from_x():
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_data_from_x ')
         data = await request.get_json()
@@ -88,7 +88,7 @@ async def webhook():
 
 
 @app.route('/check_login_status', methods=['POST'])
-async def webhook():
+async def check_login_status():
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_data_from_x ')
         data = await request.get_json()
@@ -113,7 +113,7 @@ async def webhook():
 
 
 @app.route('/send_msg_to_user', methods=['POST'])
-async def webhook():
+async def send_msg_to_user():
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_data_from_x ')
         data = await request.get_json()
