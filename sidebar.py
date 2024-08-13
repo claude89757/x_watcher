@@ -51,7 +51,7 @@ def sidebar():
             ("Analyzed Data Files", "analyzed", "analyzed"),
             ("Msg Data Files", "msg", "msg")
         ]:
-            col1, col2 = st.columns([3, 1])
+            col1, col2 = st.columns([1, 2])
             with col1:
                 st.caption(f"{label}: {st.session_state[f'{key}_data_file_count']}")
             with col2:
