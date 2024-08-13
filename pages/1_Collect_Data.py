@@ -118,32 +118,31 @@ st.session_state.max_post_num = st.selectbox(
 st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
-col1, col2 = st.columns(2)
 
-with col1:
-    if st.button(label="Start Collecting"):
-        # (todo: claude)Initialize progress elements
-        # progress_bar = st.progress(0)
-        # status_text = st.empty()
-        try:
-            # 使用 st.spinner 显示加载中的图标
-            task_num = 0
-            with st.spinner("Collecting..."):
-                for alive_username in ['Zacks89757']:
-                    call_collect_data_from_x(
-                        alive_username,
-                        st.session_state.search_keyword,
-                        st.session_state.max_post_num,
-                        st.session_state.access_code,
-                    )
-                    task_num += 1
-            # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-            # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
-            st.success("Data collection complete!")
-        except Exception as e:
-            # Log the error
-            logging.error(f"Error occurred during data collection: {e}")
-            st.error(f"An error occurred: {e}")
+
+if st.button(label="Start Collecting"):
+    # (todo: claude)Initialize progress elements
+    # progress_bar = st.progress(0)
+    # status_text = st.empty()
+    try:
+        # 使用 st.spinner 显示加载中的图标
+        task_num = 0
+        with st.spinner("Collecting..."):
+            for alive_username in ['Zacks89757']:
+                call_collect_data_from_x(
+                    alive_username,
+                    st.session_state.search_keyword,
+                    st.session_state.max_post_num,
+                    st.session_state.access_code,
+                )
+                task_num += 1
+        # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
+        # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
+        st.success("Data collection complete!")
+    except Exception as e:
+        # Log the error
+        logging.error(f"Error occurred during data collection: {e}")
+        st.error(f"An error occurred: {e}")
 
 # 加载COS已存在的文件列表
 if st.session_state.search_keyword and not st.session_state.matching_files:
@@ -159,43 +158,43 @@ if st.session_state.search_keyword and not st.session_state.matching_files:
 
 # 显示COS已存在的文件列表
 if st.session_state.matching_files:
-    st.session_state.selected_file = st.selectbox("Select a file to display", st.session_state.matching_files)
+    st.session_state.selected_file = st.selectbox("Select a file to load", st.session_state.matching_files)
 
 # 确定是否预览选择的数据
 if st.session_state.selected_file:
-    with col2:
-        st.query_params.selected_file = st.session_state.selected_file
-        if st.button("Load file") and st.session_state.matching_files:
-            st.empty()
-            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", st.session_state.selected_file)
-            # 检查本地是否已有文件
-            if not os.path.exists(local_file_path):
-                try:
-                    download_file(object_key=f"{st.session_state.access_code}/{st.session_state.selected_file}",
-                                  local_file_path=local_file_path)
-                    st.success("File downloaded from COS.")
-                except Exception as e:
-                    st.error(f"Error loading file from COS: {e}")
+    st.query_params.selected_file = st.session_state.selected_file
+    load_button = st.button("Load file")
+    if load_button and st.session_state.matching_files:
+        st.empty()
+        local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", st.session_state.selected_file)
+        # 检查本地是否已有文件
+        if not os.path.exists(local_file_path):
             try:
-                st.success(f"{st.session_state.selected_file} is loaded")
-                # data = pd.read_csv(local_file_path)
-                # 展示数据
-                # if data is not None:
-                #     st.dataframe(data)
-                # else:
-                #     st.write("No data to display.")
+                download_file(object_key=f"{st.session_state.access_code}/{st.session_state.selected_file}",
+                              local_file_path=local_file_path)
+                st.success("File downloaded from COS.")
             except Exception as e:
-                st.error(f"Error loading data from local file: {e}")
-        else:
-            st.warning(f"Please collect more data first")
+                st.error(f"Error loading file from COS: {e}")
+        try:
+            st.success(f"{st.session_state.selected_file} is loaded")
+            # data = pd.read_csv(local_file_path)
+            # 展示数据
+            # if data is not None:
+            #     st.dataframe(data)
+            # else:
+            #     st.write("No data to display.")
+        except Exception as e:
+            st.error(f"Error loading data from local file: {e}")
+    else:
+        st.warning(f"Please collect more data first")
 else:
-    pass
+    load_button = None
 
 
 # 获取已下载文件的列表
 local_files_dir = f"./data/{st.session_state.access_code}/raw/"
 downloaded_files = os.listdir(local_files_dir)
-if downloaded_files:
+if downloaded_files or load_button:
     st.header("Loaded collected files")
     file_info_list = []
     for file in downloaded_files:
