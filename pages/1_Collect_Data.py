@@ -206,7 +206,7 @@ if downloaded_files:
     st.dataframe(file_info_df)
 
     # Next
-    if st.button(label="Next: Filter Data", type='submit'):
+    if st.button(label="Next: Filter Data", type='primary'):
         st.success("Ready to filter data...")
         time.sleep(3)
         st.switch_page("pages/2_Filter_Data.py")
