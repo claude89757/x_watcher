@@ -66,8 +66,8 @@ st.markdown("Automate the sending of personalized promotional messages based on 
 st.error("Coming soon...")
 
 
-def list_files(directory):
-    """返回目录中的所有文件列表"""
+def get_file_list(directory):
+    """Returns a list of all files in the directory"""
     try:
         files = os.listdir(directory)
         files = [f for f in files if os.path.isfile(os.path.join(directory, f))]
@@ -75,43 +75,34 @@ def list_files(directory):
     except FileNotFoundError:
         return []
 
+
 def count_files(directory):
-    """返回目录中的文件数量"""
-    return len(list_files(directory))
+    """Returns the number of files in the directory"""
+    return len(get_file_list(directory))
 
-def display_files(directory):
-    """显示目录中的文件列表"""
-    files = list_files(directory)
-    if files:
-        selected_file = st.selectbox(f"选择一个文件 (目录: {directory})", files)
-        if selected_file:
-            st.write(f"选择的文件: {selected_file}")
-    else:
-        st.write("目录为空或不存在")
 
-# 在侧边栏中创建显示文件数量的组件
-st.sidebar.header("文件统计")
+# Create a component in the sidebar to display file counts
+st.sidebar.header("File Statistics")
 
 folders = {
-    "原始数据": f"./data/{st.session_state.access_code}/raw/",
-    "处理后数据": f"./data/{st.session_state.access_code}/processed/",
-    "分析后数据": f"./data/{st.session_state.access_code}/analyzed/"
+    "Raw Data": f"./data/{st.session_state.access_code}/raw/",
+    "Processed Data": f"./data/{st.session_state.access_code}/processed/",
+    "Analyzed Data": f"./data/{st.session_state.access_code}/analyzed/"
 }
 
 for folder_name, folder_path in folders.items():
     count = count_files(folder_path)
-    st.sidebar.write(f"{folder_name} 文件数量: {count}")
+    st.sidebar.write(f"{folder_name} File Count: {count}")
 
-# 在侧边栏中创建一个展开器来展示文件列表
-selected_folder = st.sidebar.selectbox("选择一个文件夹", list(folders.keys()))
+# Create an expander in the sidebar to display the file list
+selected_folder = st.sidebar.selectbox("Select a Folder", list(folders.keys()))
 selected_folder_path = folders[selected_folder]
 
-with st.sidebar.expander(f"查看 {selected_folder} 文件列表", expanded=True):
-    files = list_files(selected_folder_path)
-    if files:
-        st.sidebar.write("文件列表:")
-        for file in files:
+with st.sidebar.expander(f"View {selected_folder} File List", expanded=True):
+    file_list = get_file_list(selected_folder_path)
+    if file_list:
+        st.sidebar.write("File List:")
+        for file in file_list:
             st.sidebar.write(file)
     else:
-        st.sidebar.write("目录为空或不存在")
-
+        st.sidebar.write("Directory is empty or does not exist")
