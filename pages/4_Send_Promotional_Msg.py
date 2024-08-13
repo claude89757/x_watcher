@@ -103,32 +103,27 @@ st.subheader("Filtered Data")
 st.dataframe(filtered_data)
 
 
+result_df = None
 if not filtered_data.empty:
     # 输入示例的提示词
     system_prompt = st.text_input("Enter the prompt for generating promotional SMS:",
-                                  "You are a marketing assistant. Your task is to generate personalized promotional SMS messages for promoting product XYZ.")
+                                  "You are a marketing assistant. Your task is to generate personalized "
+                                  "promotional SMS messages for promoting product 【XYZ】.")
 
     # 选择模型
     model = st.selectbox("Select a model:", ["gpt-4o-mini", "gpt-4o"])
 
-    # 初始化 session state 中的 result_df 变量
-    if "result_df" not in st.session_state:
-        st.session_state.result_df = None
-
     # 生成推广短信按钮
     if st.button("Generate Promotional SMS"):
         result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=1)
-        # 将生成的推广短信插入到 DataFrame 的第一列
-        result_df.insert(0, 'Promotional SMS', result_df.pop('Promotional SMS'))
-        st.session_state.result_df = result_df
 
-    # 预览推广短信
-    if st.session_state.result_df is not None:
+        # 预览推广短信
         st.subheader("Generated Promotional SMS")
-        st.dataframe(st.session_state.result_df)
+        st.dataframe(result_df)
+
 
 # 登录相关的逻辑
-if st.session_state.result_df is not None:
+if result_df:
     st.subheader("Twitter Account Login")
     twitter_username = st.text_input("Twitter Username")
     email = st.text_input("Email")

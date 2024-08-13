@@ -128,9 +128,16 @@ if analyze_button:
 
                 # 显示结果output_file
                 st.success(f"Analysis complete! Results saved to {output_file}.")
-                st.write("## Analysis Data info:")
-                st.write(result_df.info)
                 st.dataframe(result_df.head(500), use_container_width=True, height=400)
+
+                # Next
+                if st.button(label="Next: Send Promotional Msg", type='primary'):
+                    st.success("Ready to Send Promotional Msg...")
+                    time.sleep(1)
+                    st.switch_page("pages/4_Send_Promotional_Msg.py")
+                else:
+                    pass
+
             else:
                 st.error("Failed to generate analysis results. Please check your prompt or API settings.")
         else:
