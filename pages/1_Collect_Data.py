@@ -49,7 +49,10 @@ def call_collect_data_from_x(username, search_key_word, max_post_num, access_cod
         logging.info(f"sending request...")
         response = requests.post(api_endpoint, json=data, headers=headers)
         response.raise_for_status()  # 抛出 HTTPError 异常（如果发生）
-        return response.status_code, response.text
+        if response.status_code == 200:
+            return response.status_code, response.text
+        else:
+            raise Exception(f"calling API failed: {response.text}")
     except requests.exceptions.RequestException as e:
         logging.error(f'Error calling API: {e}')
         return None, str(e)
@@ -120,13 +123,10 @@ st.session_state.max_post_num = st.selectbox(
 st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
-collect_button = st.button(label="Start Collecting")
-if collect_button:
+
+if st.button(label="Start Collecting"):
     # (todo: claude)Initialize progress elements
-    # progress_bar = st.progress(0)
-    # status_text = st.empty()
     try:
-        # 使用 st.spinner 显示加载中的图标
         task_num = 0
         with st.spinner("Collecting..."):
             for alive_username in ['Zacks89757']:
