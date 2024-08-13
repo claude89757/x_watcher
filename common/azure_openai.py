@@ -100,7 +100,8 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
                 results.append(chunk)
 
         except pd.errors.ParserError as e:
-            st.error(f"Error parsing CSV data: {e}")
+            st.error(f"Error parsing CSV data: {e}\n{csv_content}")
+
             continue
 
         # 每次处理完一批后更新进度条和状态信息

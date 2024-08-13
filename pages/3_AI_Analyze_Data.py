@@ -121,9 +121,9 @@ if analyze_button:
                 # 定义新的输出目录
                 output_file = os.path.join(dst_dir, f"{st.session_state.selected_file}")
                 # 保存分析结果
-                logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                logger.info(result_df.head(10))
-                logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                # logger.info(result_df.head(10))
+                # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                 result_df.to_csv(output_file, index=False)
 
                 # 显示结果output_file
