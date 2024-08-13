@@ -124,6 +124,7 @@ if not filtered_data.empty:
 
 # 登录相关的逻辑
 if result_df:
+    st.markdown("------")
     st.subheader("Twitter Account Login")
     twitter_username = st.text_input("Twitter Username")
     email = st.text_input("Email")
