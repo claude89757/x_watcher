@@ -7,6 +7,7 @@
 @Software: PyCharm
 """
 import traceback
+import csv
 
 import pandas as pd
 import requests
@@ -47,9 +48,11 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
                        f"with the following structure:" \
                        f"\n1. Original data with all columns intact." \
                        f"\n2. A new column named 'Analysis Explanation' " \
-                       f"with short and simple insights or explanations for each row based on the data." \
+                       f"with insights or explanations for each row based on the data. " \
+                       f"Each explanation should be enclosed in double quotes and limited to 20 characters." \
                        f"\n3. A new column named 'Classification Tag' with a category or tag indicating " \
-                       f"the potential interest level of each row in product XYZ." \
+                       f"the potential interest level of each row in product XYZ. " \
+                       f"This tag should also be enclosed in double quotes." \
                        f"\n\nData:\n{batch_csv}"
 
         payload = {
@@ -97,16 +100,14 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
 
         # Handle potential parsing errors
         try:
-            csv_rows = csv_content.splitlines()
-            reader = pd.read_csv(StringIO("\n".join(csv_rows)), sep=",", iterator=True)
-
-            for chunk in reader:
-                results.append(chunk)
-
-        except pd.errors.ParserError as e:
-            st.error(f"Error parsing CSV data: {e}\n{csv_content}")
-
-            continue
+            csv_reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"')
+            for row in csv_reader:
+                if len(row) == 4:
+                    results.append(row)
+                else:
+                    st.warning(f"Skipping row with unexpected number of fields: {row}")
+        except csv.Error as e:
+            st.error(f"Error parsing CSV: {e}")
 
         # 每次处理完一批后更新进度条和状态信息
         progress_percentage = (i + batch_size) / len(data)
@@ -151,7 +152,7 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
                        f"The output should be in CSV format with the following structure:" \
                        f"\n1. Original data with all columns intact." \
                        f"\n2. A new column named 'Promotional SMS' with a personalized promotional message " \
-                       f"for each user." \
+                       f"for each user. Each message should be enclosed in double quotes." \
                        f"\n\nData:\n{batch_csv}"
 
         payload = {
@@ -199,16 +200,14 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
 
         # Handle potential parsing errors
         try:
-            csv_rows = csv_content.splitlines()
-            reader = pd.read_csv(StringIO("\n".join(csv_rows)), sep=",", iterator=True)
-
-            for chunk in reader:
-                results.append(chunk)
-
-        except pd.errors.ParserError as e:
-            st.error(f"Error parsing CSV data: {e}\n{csv_content}")
-
-            continue
+            csv_reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"')
+            for row in csv_reader:
+                if len(row) == 4:
+                    results.append(row)
+                else:
+                    st.warning(f"Skipping row with unexpected number of fields: {row}")
+        except csv.Error as e:
+            st.error(f"Error parsing CSV: {e}")
 
         # 每次处理完一批后更新进度条和状态信息
         progress_percentage = (i + batch_size) / len(user_data)
