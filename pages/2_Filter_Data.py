@@ -89,7 +89,7 @@ if files:
         st.error("No selected file.")
 else:
     st.warning("No processed data, return to filter data...")
-    time.sleep(3)
+    time.sleep(1)
     st.switch_page("pages/2_Filter_Data.py")
 
 

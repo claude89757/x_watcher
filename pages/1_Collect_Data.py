@@ -214,7 +214,7 @@ if downloaded_files or load_button:
     # Next
     if st.button(label="Next: Filter Data", type='primary'):
         st.success("Ready to filter data...")
-        time.sleep(3)
+        time.sleep(1)
         st.switch_page("pages/2_Filter_Data.py")
     else:
         pass
