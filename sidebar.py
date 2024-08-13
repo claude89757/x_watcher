@@ -9,6 +9,7 @@
 import streamlit as st
 import os
 
+
 def cache_file_counts():
     # This function should set the file counts in st.session_state
     # For example:
@@ -17,10 +18,11 @@ def cache_file_counts():
     st.session_state.analyzed_data_file_count = count_files(f"./data/{st.session_state.access_code}/analyzed/")
     st.session_state.msg_data_file_count = count_files(f"./data/{st.session_state.access_code}/msg/")
 
+
 def count_files(folder_path):
     # This function should return the number of files in the given folder
-    import os
     return len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
+
 
 def clear_folder(folder_path):
     # This function should clear all files in the given folder
@@ -35,6 +37,7 @@ def clear_folder(folder_path):
                 shutil.rmtree(file_path)
         except Exception as e:
             print(f'Failed to delete {file_path}. Reason: {e}')
+
 
 def sidebar():
     # Cache file counts
@@ -57,4 +60,5 @@ def sidebar():
             with col2:
                 if st.button("Clear", key=f"clear_{key}"):
                     clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
-                    st.session_state[f'{key}_data_file_count'] = count_files(f"./data/{st.session_state.access_code}/{folder}/")
+                    st.session_state[f'{key}_data_file_count'] = \
+                        count_files(f"./data/{st.session_state.access_code}/{folder}/")

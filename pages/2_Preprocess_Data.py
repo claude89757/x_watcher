@@ -100,8 +100,8 @@ else:
 
 
 # Button to confirm the file
-if st.button("Preprocess data "):
-    with st.spinner('Preprocessing data...'):
+if st.button("Preprocess Data"):
+    with st.spinner('Preprocessing...'):
         # 获取源文件路径
         src_file_path = os.path.join(src_dir, st.session_state.selected_file)
         dst_file_path = os.path.join(dst_dir, st.session_state.selected_file)

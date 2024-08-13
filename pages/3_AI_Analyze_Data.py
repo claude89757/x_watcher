@@ -68,7 +68,7 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 st.title("Step 3: AI Analyze Data")
-st.markdown("Sending data to a large model for analysis, where the model will process "
+st.markdown("Sending data to a LLM model for analysis, where the model will process "
             "and generate insights based on the provided data.")
 
 src_dir = f"./data/{st.session_state.access_code}/processed/"
@@ -106,13 +106,13 @@ selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
 
 batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
 
-analyze_button = st.button("Start Analysis" if not st.session_state.get('analysis_run', False)
+analyze_button = st.button("Analysis Data" if not st.session_state.get('analysis_run', False)
                            else "Reanalyze")
 
 # 在分析之后
 if analyze_button:
     st.session_state.analysis_run = True
-    with st.spinner('Analyzing data...'):
+    with st.spinner('Analyzing...'):
         data = pd.read_csv(selected_file_path)
         st.write("Data loaded successfully. Starting analysis...")
 

@@ -110,7 +110,8 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # TODO(claude): 从redis中读取服务的状态
 
 st.title("Step 1: Collect Data")
-st.markdown("""Collecting data from X, which may take some time to complete.""")
+st.markdown("Collecting comment data from popular posts found through keyword searches on X, "
+            "which may take some time to complete.")
 
 st.session_state.search_keyword = st.text_input(label="Search Keyword", value=st.session_state.search_keyword)
 st.session_state.max_post_num = st.selectbox(
@@ -124,7 +125,7 @@ st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
 
-if st.button(label="Start Collecting"):
+if st.button(label="Collect Data"):
     # (todo: claude)Initialize progress elements
     try:
         task_num = 0

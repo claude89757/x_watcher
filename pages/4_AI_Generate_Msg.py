@@ -68,7 +68,8 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 st.title("Step 4: AI Generate Msg")
-st.markdown("Automate the sending of personalized promotional messages based on AI analysis results")
+st.markdown("A personalized promotional message generated for specific customers based on AI classification results, "
+            "aimed at enhancing marketing effectiveness and user engagement.")
 
 cur_dir = f"./data/{st.session_state.access_code}/analyzed/"
 files = [f for f in os.listdir(cur_dir) if os.path.isfile(os.path.join(cur_dir, f))]
