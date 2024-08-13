@@ -96,7 +96,7 @@ if st.session_state.selected_file:
 else:
     st.warning("No processed data, return to filter data...")
     time.sleep(3)
-    st.switch_page("pages/2_Filter_Data.py")
+    st.switch_page("pages/2_Preprocess_Data.py")
 
 prompt = st.text_area("Enter your prompt for analysis:",
                       value="Analyze the data and identify potential customers interested in purchasing product XYZ")

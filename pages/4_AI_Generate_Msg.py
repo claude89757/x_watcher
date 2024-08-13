@@ -87,7 +87,7 @@ if st.session_state.selected_file:
 else:
     st.warning("No processed data, return to filter data...")
     time.sleep(3)
-    st.switch_page("pages/2_Filter_Data.py")
+    st.switch_page("pages/2_Preprocess_Data.py")
 
 
 # 默认选择最后一个字段进行过滤

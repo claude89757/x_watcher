@@ -94,16 +94,14 @@ if files:
     else:
         st.error("No selected file.")
 else:
-    st.warning("No processed data, return to filter data...")
+    st.warning("No raw data, return to collect data...")
     time.sleep(1)
-    st.switch_page("pages/2_Filter_Data.py")
+    st.switch_page("pages/1_Collect_Data.py")
 
 
-col1, col2 = st.columns(2)
-
-with col1:
-    # Button to confirm the file
-    if st.button("Confirm File "):
+# Button to confirm the file
+if st.button("Preprocess data "):
+    with st.spinner('Preprocessing data...'):
         # 获取源文件路径
         src_file_path = os.path.join(src_dir, st.session_state.selected_file)
         dst_file_path = os.path.join(dst_dir, st.session_state.selected_file)
@@ -145,16 +143,13 @@ with col1:
         # 将处理后的数据保存到目标文件夹中
         df.to_csv(dst_file_path, index=False)
 
-with col2:
-    # Button to process Dat
-    if st.button("Process Dat "):
-        st.warning("Coming soon...")
+        st.success("Preprocess Data successfully.")
 
 
 # Next
 if st.session_state.processed_data_file_count:
     if st.button(label="Next: AI Analyze Data", type='primary'):
-        st.success(f"Confirmed data successfully, entering next step...")
+        st.success(f"Process data successfully, entering next step...")
         st.balloons()
         time.sleep(3)
         st.switch_page("pages/3_AI_Analyze_Data.py")

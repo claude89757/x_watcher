@@ -231,6 +231,6 @@ if st.session_state.raw_data_file_count:
         st.success("Ready to filter data...")
         st.balloons()
         time.sleep(3)
-        st.switch_page("pages/2_Filter_Data.py")
+        st.switch_page("pages/2_Preprocess_Data.py")
     else:
         pass
