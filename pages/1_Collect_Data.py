@@ -158,42 +158,35 @@ if st.session_state.search_keyword:
 # 显示COS已存在的文件列表
 if st.session_state.matching_files:
     st.session_state.selected_file = st.selectbox("Select a file to load", st.session_state.matching_files)
-
-# 选择加载到本地的文件
-if st.session_state.selected_file and st.session_state.matching_files:
-    st.query_params.selected_file = st.session_state.selected_file
-    load_button = st.button("Load file")
-    if load_button and st.session_state.matching_files:
-        st.empty()
-        local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", st.session_state.selected_file)
-        # 检查本地是否已有文件
-        if not os.path.exists(local_file_path):
+    # 选择加载到本地的文件
+    if st.session_state.selected_file:
+        st.query_params.selected_file = st.session_state.selected_file
+        load_button = st.button("Load file")
+        if st.button("Load file"):
+            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", st.session_state.selected_file)
+            # 检查本地是否已有文件
+            if not os.path.exists(local_file_path):
+                try:
+                    download_file(object_key=f"{st.session_state.access_code}/{st.session_state.selected_file}",
+                                  local_file_path=local_file_path)
+                    st.success("File downloaded from COS.")
+                except Exception as e:
+                    st.error(f"Error loading file from COS: {e}")
             try:
-                download_file(object_key=f"{st.session_state.access_code}/{st.session_state.selected_file}",
-                              local_file_path=local_file_path)
-                st.success("File downloaded from COS.")
+                st.success(f"{st.session_state.selected_file} is loaded")
+                st.rerun()
             except Exception as e:
-                st.error(f"Error loading file from COS: {e}")
-        try:
-            st.success(f"{st.session_state.selected_file} is loaded")
-            # data = pd.read_csv(local_file_path)
-            # 展示数据
-            # if data is not None:
-            #     st.dataframe(data)
-            # else:
-            #     st.write("No data to display.")
-        except Exception as e:
-            st.error(f"Error loading data from local file: {e}")
+                st.error(f"Error loading data from local file: {e}")
+        else:
+            pass
     else:
-        st.warning(f"Please collect more data first")
-else:
-    load_button = None
+        pass
 
 
 # 获取已下载文件的列表
 local_files_dir = f"./data/{st.session_state.access_code}/raw/"
 downloaded_files = os.listdir(local_files_dir)
-if downloaded_files or load_button:
+if downloaded_files:
     st.header("Loaded collected files")
     file_info_list = []
     for file in downloaded_files:
