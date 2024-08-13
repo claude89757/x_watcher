@@ -184,7 +184,7 @@ if st.session_state.matching_files:
                 file_info_list = []
                 for file in downloaded_files:
                     file_path = os.path.join(local_files_dir, file)
-                    file_size = os.path.getsize(file_path) / 1024  # 转换为KB
+                    file_size = round(os.path.getsize(file_path) / 1024, 2)  # 转换为KB
                     file_mtime = os.path.getmtime(file_path)
                     formatted_mtime = datetime.datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d %H:%M:%S')
                     # 计算文件行数
