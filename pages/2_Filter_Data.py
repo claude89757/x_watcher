@@ -21,6 +21,9 @@ from common.cos import download_file
 logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
 
 
+st.set_page_config(page_title="Filter Data", page_icon="🤖", layout="wide")
+
+
 if st.session_state.get('access_code') and st.session_state.get('access_code') in CONFIG['access_code_list']:
     # session中有缓存
     st.query_params.access_code = st.session_state.access_code
