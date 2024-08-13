@@ -135,6 +135,7 @@ with col1:
 
         # 提示成功信息并跳转到下一页面
         st.success(f"Confirmed data successfully, entering next step...")
+        st.balloons()
         time.sleep(3)
         st.switch_page("pages/3_AI_Analyze_Data.py")
 
