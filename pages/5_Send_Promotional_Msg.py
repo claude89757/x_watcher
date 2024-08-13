@@ -108,7 +108,10 @@ st.markdown("------")
 st.subheader("X Account Verify")
 username = st.text_input("Twitter Username", value=st.session_state.username)
 email = st.text_input("Email", value=st.session_state.email)
-password = st.text_input("Password", type="password", value=st.session_state.password)
+if st.session_state.password:
+    password = st.text_input("Password", type="password", value=st.session_state.password)
+else:
+    password = st.text_input("Password", type="password")
 
 if st.button("Verify Login Status"):
     with st.spinner('Verifying Login Status...'):
@@ -133,6 +136,13 @@ if st.session_state.login_status == "online":
             # 初始化进度条
             progress_bar = st.progress(0)
             results = []
+            success_count = 0
+            failure_count = 0
+
+            # 显示成功和失败计数
+            success_placeholder = st.empty()
+            failure_placeholder = st.empty()
+
             # 发送推广私信
             for index, row in data_df.iterrows():
                 user_id = row[0]
@@ -146,8 +156,20 @@ if st.session_state.login_status == "online":
                     'Status': 'Success' if code == 200 else 'Failure',
                     'Details': text
                 })
-                # 更新进度条
+
+                # 更新成功和失败计数
+                if code == 200:
+                    success_count += 1
+                else:
+                    failure_count += 1
+
+                # 更新进度条和计数显示
                 progress_bar.progress((index + 1) / send_msg_num)
+                success_placeholder.markdown(f"<span style='color: green;'>Success: {success_count}</span>",
+                                             unsafe_allow_html=True)
+                failure_placeholder.markdown(f"<span style='color: red;'>Failure: {failure_count}</span>",
+                                             unsafe_allow_html=True)
+
                 time.sleep(random.uniform(1, 10))
 
                 if len(results) >= send_msg_num:

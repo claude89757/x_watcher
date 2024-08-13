@@ -689,4 +689,4 @@ if __name__ == '__main__':
     email = CONFIG['x_collector_account_infos'][username]['email']
     password = CONFIG['x_collector_account_infos'][username]['password']
     watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, headless=False)
-    watcher.send_msg_to_user("https://x.com/justinsuntron", "are you ok?")
+    watcher.send_msg_to_user("https://x.com/ADrewD", "are you ok?")
