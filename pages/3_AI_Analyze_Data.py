@@ -214,7 +214,7 @@ if analyze_button:
 
             if not result_df.empty:
                 # 定义新的输出目录
-                output_file = os.path.join(dst_dir, f"res_{st.session_state.selected_file}")
+                output_file = os.path.join(dst_dir, f"{st.session_state.selected_file}")
                 # 保存分析结果
                 result_df.to_csv(output_file, index=False)
 
