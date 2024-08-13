@@ -8,6 +8,7 @@
 """
 import time
 import os
+import re
 import pickle
 import random
 import datetime
@@ -182,7 +183,7 @@ class TwitterWatcher:
         else:
             logging.info("需人工介入")
             self.driver.save_screenshot('screenshot.png')
-            time.sleep(99999999)
+            raise Exception("auto login failed!")
 
         self.save_cookies()
         logging.info(f"login successfully")
@@ -558,7 +559,8 @@ class TwitterWatcher:
                     pass
 
             current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-            filename = f"{self.search_key_word}_{current_time}_{len(data_list)}_{self.username}.csv"
+            modified_keyword = re.sub(r'\s+', '_', self.search_key_word)
+            filename = f"{modified_keyword}_{current_time}_{len(data_list)}_{self.username}.csv"
             process_and_upload_csv_to_cos(data_list, f"./{filename}", f"{access_code}/{filename}")
         finally:
             self.teardown_driver()
