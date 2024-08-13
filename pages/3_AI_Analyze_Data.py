@@ -64,9 +64,9 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
             "max_tokens": max_tokens
         }
 
-        print("input==============================================")
-        print(batch_prompt)
-        print("input==============================================")
+        logger.info("input==============================================")
+        logger.info(batch_prompt)
+        logger.info("input==============================================")
 
         url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
               f"api-version=2024-02-15-preview"
@@ -87,9 +87,9 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
             csv_content = response_content
 
         # Debugging: Print the CSV content to verify format
-        print("output==============================================")
-        print(csv_content)
-        print("output==============================================")
+        logger.info("output==============================================")
+        logger.info(csv_content)
+        logger.info("output==============================================")
         raise Exception("test")
 
         # Handle potential parsing errors
