@@ -93,6 +93,6 @@ if access_granted:
     if st.sidebar.button(label="Log out", type="primary"):
         st.query_params.clear()
         st.session_state.clear()
-        st.switch_page("Home.py")
+        st.rerun()
 else:
     pass
