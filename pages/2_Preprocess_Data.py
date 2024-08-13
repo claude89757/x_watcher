@@ -16,6 +16,8 @@ import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
 from sidebar import sidebar
+from sidebar import cache_file_counts
+
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -144,6 +146,9 @@ if st.button("Preprocess Data"):
         df.to_csv(dst_file_path, index=False)
 
         st.success("Preprocess Data successfully.")
+
+        # 更新文件计数
+        cache_file_counts()
 
 
 # Next

@@ -62,3 +62,8 @@ def sidebar():
                     clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
                     st.session_state[f'{key}_data_file_count'] = \
                         count_files(f"./data/{st.session_state.access_code}/{folder}/")
+
+        # Add refresh button for file counts
+        if st.button("Refresh"):
+            cache_file_counts()
+            st.rerun()

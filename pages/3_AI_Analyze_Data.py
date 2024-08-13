@@ -18,6 +18,7 @@ from common.config import CONFIG
 from common.log_config import setup_logger
 from common.azure_openai import send_text_to_gpt
 from sidebar import sidebar
+from sidebar import cache_file_counts
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -132,6 +133,7 @@ if analyze_button:
                 st.success(f"Analysis complete! Results saved to {output_file}.")
                 st.dataframe(result_df.head(500), use_container_width=True, height=400)
 
+                cache_file_counts
             else:
                 st.error("Failed to generate analysis results. Please check your prompt or API settings.")
         else:

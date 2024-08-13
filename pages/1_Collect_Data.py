@@ -21,6 +21,7 @@ from common.cos import list_latest_files
 from common.cos import download_file
 from common.log_config import setup_logger
 from sidebar import sidebar
+from sidebar import cache_file_counts
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -218,6 +219,9 @@ if st.session_state.matching_files:
                 st.dataframe(file_info_df)
 
                 file_loaded = True
+
+                # 更新文件计数
+                cache_file_counts()
             else:
                 st.error("No files loaded yet.")
         else:
