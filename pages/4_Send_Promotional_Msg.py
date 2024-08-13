@@ -134,7 +134,7 @@ if st.session_state.result_df is not None:
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
 
-    if st.button("Login"):
+    if st.button("Verify Login Status"):
         # 模拟登录验证
         if twitter_username and email and password:
             st.success("Login successful!")
