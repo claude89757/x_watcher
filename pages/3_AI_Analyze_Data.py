@@ -27,6 +27,7 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
     :param batch_size: 每次发送的数据行数，默认1000行。
     :return: 包含分析结果的DataFrame。
     """
+    model = ""
     results = []
     max_tokens = 2000  # 假设每行输入和输出都很长
 
@@ -41,10 +42,15 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
         batch = data.iloc[i:i + batch_size]
         batch_csv = batch.to_csv(index=False)
 
-        batch_prompt = f"{system_prompt}\n\nAnalyze the following data and provide the output in CSV format with the following structure:\n\
-1. Original data with all columns intact.\n\
-2. A new column named 'Analysis Explanation' with insights or explanations for each row based on the data.\n\
-3. A new column named 'Classification Tag' with a category or tag indicating the potential interest level of each row in product XYZ.\n\nData:\n{batch_csv}"
+        batch_prompt = f"{system_prompt}\n\n" \
+                       f"Analyze the following data and provide the output in CSV format " \
+                       f"with the following structure:" \
+                       f"\n1. Original data with all columns intact." \
+                       f"\n2. A new column named 'Analysis Explanation' " \
+                       f"with insights or explanations for each row based on the data." \
+                       f"\n3. A new column named 'Classification Tag' with a category or tag indicating " \
+                       f"the potential interest level of each row in product XYZ." \
+                       f"\n\nData:\n{batch_csv}"
 
         payload = {
             "messages": [
@@ -55,13 +61,14 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
             "max_tokens": max_tokens
         }
 
-        response = requests.post(
-            "https://chatgpt3.openai.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-15-preview",
-            headers={
-                "Content-Type": "application/json",
-                "api-key": CONFIG.get("azure_open_api_key"),
-            },
-            json=payload
+        url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
+              f"api-version=2024-02-15-preview"
+        response = requests.post(url,
+                                 headers={
+                                     "Content-Type": "application/json",
+                                     "api-key": CONFIG.get("azure_open_api_key"),
+                                 },
+                                 json=payload
         )
         response.raise_for_status()
 
