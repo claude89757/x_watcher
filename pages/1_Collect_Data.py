@@ -193,8 +193,13 @@ if st.session_state.matching_files:
                         "Last Modified": formatted_mtime
                     })
 
-                # 创建 DataFrame 并展示
+                # 创建 DataFrame
                 file_info_df = pd.DataFrame(file_info_list)
+                # 将 "Last Modified" 列转换为 datetime 类型
+                file_info_df['Last Modified'] = pd.to_datetime(file_info_df['Last Modified'])
+                # 按 "Last Modified" 列进行排序
+                file_info_df = file_info_df.sort_values(by='Last Modified', ascending=False)
+                # 展示 DataFrame
                 st.dataframe(file_info_df)
 
                 # Next
