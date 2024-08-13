@@ -198,11 +198,11 @@ else:
 prompt = st.text_area("Enter your prompt for analysis:",
                       value="Analyze the data and identify potential customers interested in purchasing product XYZ")
 
+# 选择模型
+selected_model = st.selectbox("LLM Model:",  ["gpt-4o-mini", "gpt-4o"])
+
 # 根据是否已经运行分析来确定按钮标签
 analyze_button = st.button("Start Analysis" if not st.session_state.analysis_run else "Reanalyze", type="primary")
-
-# 选择模型
-selected_model = st.selectbox("Select a model for analysis:",  ["gpt-4o-mini", "gpt-4o"])
 
 # 在分析之后
 if analyze_button:
