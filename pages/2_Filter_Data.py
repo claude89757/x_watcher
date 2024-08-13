@@ -124,6 +124,18 @@ with col1:
         # 过滤掉'reply_content'列中非字符串类型的数据
         df = df[df['reply_content'].apply(lambda x: isinstance(x, str))]
 
+        # 删除连续空格和首尾空格
+        df['reply_content'] = df['reply_content'].str.replace(r'\s+', ' ', regex=True).str.strip()
+
+        # 过滤掉 'reply_content' 列中非字符串类型的数据
+        df = df[df['reply_content'].apply(lambda x: isinstance(x, str))]
+
+        # 去除特殊字符，保留字母数字和基本标点符号
+        df['reply_content'] = df['reply_content'].apply(lambda x: re.sub(r'[^a-zA-Z0-9\s.,!?]', '', x))
+
+        # 统一大小写
+        df['reply_content'] = df['reply_content'].str.lower()
+
         # 去重逻辑：根据'reply_user_id'去重，保留'reply_content'最长的记录
         df = df.loc[df.groupby('reply_user_id')['reply_content'].apply(lambda x: x.str.len().idxmax())]
 
