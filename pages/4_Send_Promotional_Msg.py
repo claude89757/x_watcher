@@ -15,8 +15,6 @@ from common.config import CONFIG
 from common.log_config import setup_logger
 from sidebar import sidebar
 
-sidebar()
-
 # Configure logger
 logger = setup_logger(__name__)
 
@@ -36,6 +34,7 @@ if "analysis_run" not in st.session_state:
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
+    sidebar()
 else:
     st.warning("Access not Granted!")
     time.sleep(3)

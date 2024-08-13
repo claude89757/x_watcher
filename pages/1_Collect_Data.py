@@ -25,8 +25,6 @@ from sidebar import sidebar
 # Configure logger
 logger = setup_logger(__name__)
 
-sidebar()
-
 
 def call_collect_data_from_x(username, search_key_word, max_post_num, access_code):
     """
@@ -77,6 +75,7 @@ if "matching_files" not in st.session_state:
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
+    sidebar()
 else:
     st.warning("Access not Granted!")
     time.sleep(3)
