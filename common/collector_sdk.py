@@ -53,7 +53,7 @@ def send_promotional_msg(username, email, password, to_user_link, msg):
     :return: 返回 API 响应的状态和内容
     """
     promoter_url = CONFIG['promoter_urls'][0]
-    api_endpoint = f'http://{promoter_url}/check_login_status'  # 在这里定义 API 端点 URL
+    api_endpoint = f'http://{promoter_url}/send_msg_to_user'  # 在这里定义 API 端点 URL
     headers = {'Content-Type': 'application/json'}
     data = {
         'username': username,
