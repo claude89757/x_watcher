@@ -37,4 +37,4 @@ def sidebar():
     st.sidebar.header("File Statistics")
 
     for folder_name, count in st.session_state.file_counts.items():
-        st.sidebar.write(f"{folder_name} File: {count}")
+        st.sidebar.write(f"📁 {folder_name}: {count} files")
