@@ -80,13 +80,6 @@ if st.session_state.selected_file:
     try:
         # 获取文件信息
         data = pd.read_csv(selected_file_path)
-        file_size = os.path.getsize(selected_file_path)  # 文件大小（字节）
-        file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(selected_file_path))  # 文件修改时间
-
-        if data is not None:
-            st.dataframe(data.head(100), use_container_width=True, height=400)
-        else:
-            st.write("No data to display.")
     except Exception as e:
         st.error(f"Error loading data from local file: {e}")
 else:
@@ -95,8 +88,8 @@ else:
     st.switch_page("pages/2_Filter_Data.py")
 
 
-# 选择过滤字段
-filter_column = st.selectbox("Select a column to filter by:", data.columns)
+# 默认选择最后一个字段进行过滤
+filter_column = data.columns[-1]
 
 # 获取唯一值并选择过滤条件
 unique_values = data[filter_column].unique()
@@ -111,39 +104,42 @@ st.dataframe(filtered_data)
 
 
 if not filtered_data.empty:
+    # 输入示例的提示词
+    system_prompt = st.text_input("Enter the prompt for generating promotional SMS:",
+                                  "You are a marketing assistant. Your task is to generate personalized promotional SMS messages for promoting product XYZ.")
 
     # 选择模型
     model = st.selectbox("Select a model:", ["gpt-4o-mini", "gpt-4o"])
 
-    # 初始化 session state 中的 generated_data 变量
-    if "generated_data" not in st.session_state:
-        st.session_state.generated_data = False
+    # 初始化 session state 中的 result_df 变量
+    if "result_df" not in st.session_state:
+        st.session_state.result_df = None
 
     # 生成推广短信按钮
-    generate_button_text = "Generate Promotional SMS" if not st.session_state.generated_data else "Regenerate Promotional SMS"
-    if st.button(generate_button_text):
-        system_prompt = "You are a marketing assistant. Your task is to generate personalized promotional SMS messages."
+    if st.button("Generate Promotional SMS"):
         result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=1)
-        st.session_state.generated_data = True
+        # 将生成的推广短信插入到 DataFrame 的第一列
+        result_df.insert(0, 'Promotional SMS', result_df.pop('Promotional SMS'))
         st.session_state.result_df = result_df
 
     # 预览推广短信
-    if st.session_state.generated_data:
+    if st.session_state.result_df is not None:
         st.subheader("Generated Promotional SMS")
         st.dataframe(st.session_state.result_df)
 
-        # 输入推特账号、邮箱、密码
-        st.subheader("Twitter Account Login")
-        twitter_username = st.text_input("Twitter Username")
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
+# 登录相关的逻辑
+if st.session_state.result_df is not None:
+    st.subheader("Twitter Account Login")
+    twitter_username = st.text_input("Twitter Username")
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
 
-        if st.button("Login"):
-            # 模拟登录验证
-            if twitter_username and email and password:
-                st.success("Login successful!")
-                if st.button("Send Promotional Messages"):
-                    # 模拟发送推广私信
-                    st.success("Promotional messages sent successfully!")
-            else:
-                st.error("Please enter all login details.")
+    if st.button("Login"):
+        # 模拟登录验证
+        if twitter_username and email and password:
+            st.success("Login successful!")
+            if st.button("Send Promotional Messages"):
+                # 模拟发送推广私信
+                st.success("Promotional messages sent successfully!")
+        else:
+            st.error("Please enter all login details.")
