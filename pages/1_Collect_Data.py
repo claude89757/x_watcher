@@ -138,7 +138,6 @@ if st.button(label="Start Collecting"):
         # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
         # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
         st.success("Data collection complete!")
-        st.rerun()
     except Exception as e:
         # Log the error
         logging.error(f"Error occurred during data collection: {e}")
