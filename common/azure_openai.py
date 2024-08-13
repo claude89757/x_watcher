@@ -165,7 +165,6 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
                        f"\n2. A new column named 'Promotional SMS' with a personalized promotional message " \
                        f"for each user. Each message should be enclosed in double quotes." \
                        f"\n\nData:\n{batch_csv}"
-
         payload = {
             "messages": [
                 {"role": "system", "content": batch_prompt}

@@ -114,9 +114,11 @@ if not filtered_data.empty:
     # 选择模型
     model = st.selectbox("Select a model:", ["gpt-4o-mini", "gpt-4o"])
 
+    batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
+
     # 生成推广短信按钮
     if st.button("Generate Promotional Msg"):
-        result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=1)
+        result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=batch_size)
         st.query_params.analysis_run = True
         if not result_df.empty:
             dst_dir = f"./data/{st.session_state.access_code}/msg/"
