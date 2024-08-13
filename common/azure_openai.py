@@ -99,11 +99,13 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
         logger.info("output==============================================")
 
         # Handle potential parsing errors
+        csv_rows = []
         try:
             csv_reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"')
             for row in csv_reader:
                 if len(row) == 4:
                     results.append(row)
+                    csv_rows.append(row)
                 else:
                     st.warning(f"Skipping row with unexpected number of fields: {row}")
         except csv.Error as e:
@@ -113,7 +115,14 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
         progress_percentage = (i + batch_size) / len(data)
         progress_bar.progress(min(progress_percentage, 1.0))
         status_text.text(
-            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, received {len(csv_rows) - 1} rows.")
+            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, received {len(csv_rows)} rows.")
+
+        if csv_rows:
+            # 将 CSV 行转换为 DataFrame 并显示
+            df = pd.DataFrame(csv_rows[1:], columns=csv_rows[0])  # 使用第一行作为列名
+            status_text.write(df)
+        else:
+            status_text.warning("no data..")
 
     result_df = pd.concat(results, ignore_index=True)
 
@@ -199,11 +208,13 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
         logger.info("output==============================================")
 
         # Handle potential parsing errors
+        csv_rows = []
         try:
             csv_reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"')
             for row in csv_reader:
-                if len(row) == 4:
+                if len(row) == 5:
                     results.append(row)
+                    csv_rows.append(row)
                 else:
                     st.warning(f"Skipping row with unexpected number of fields: {row}")
         except csv.Error as e:
@@ -213,7 +224,14 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
         progress_percentage = (i + batch_size) / len(user_data)
         progress_bar.progress(min(progress_percentage, 1.0))
         status_text.text(
-            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, received {len(csv_rows) - 1} rows.")
+            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, received {len(csv_rows)} rows.")
+
+        if csv_rows:
+            # 将 CSV 行转换为 DataFrame 并显示
+            df = pd.DataFrame(csv_rows[1:], columns=csv_rows[0])  # 使用第一行作为列名
+            status_text.write(df)
+        else:
+            status_text.warning("no data..")
 
     result_df = pd.concat(results, ignore_index=True)
 
