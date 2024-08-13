@@ -186,6 +186,8 @@ if st.session_state.selected_file:
                 #     st.write("No data to display.")
             except Exception as e:
                 st.error(f"Error loading data from local file: {e}")
+        else:
+            st.warning(f"Please collect more data first")
 else:
     pass
 
