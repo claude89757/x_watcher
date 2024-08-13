@@ -42,9 +42,6 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# Configure Streamlit pages and state
-st.set_page_config(page_title="(Demo)X_AI_Marketing", page_icon="🤖")
-
 # Render Streamlit pages
 st.title("Demo: X AI Marketing")
 
