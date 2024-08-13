@@ -197,7 +197,7 @@ prompt = st.text_area("Enter your prompt for analysis:",
                       value="Analyze the data and identify potential customers interested in purchasing product XYZ")
 
 
-col1, col2 = st.columns(2)  # 你可以根据需要调整列宽比例
+col1, col2 = st.columns([3, 1])  # 这里 [3, 1] 的比例可以根据需要调整
 
 with col1:
     selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
