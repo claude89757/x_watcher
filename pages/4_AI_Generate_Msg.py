@@ -135,8 +135,9 @@ if not filtered_data.empty:
             st.error("Failed to generate analysis results. Please check your prompt or API settings.")
 
 # Next
-if st.button(label="Next: Send Promotional Msg", type='primary'):
-    st.success("Ready to Send Promotional Msg...")
-    st.balloons()
-    time.sleep(3)
-    st.switch_page("pages/4_AI_Generate_Msg.py")
+if st.session_state.msg_data_file_count:
+    if st.button(label="Next: Send Promotional Msg", type='primary'):
+        st.success("Ready to Send Promotional Msg...")
+        st.balloons()
+        time.sleep(3)
+        st.switch_page("pages/4_AI_Generate_Msg.py")

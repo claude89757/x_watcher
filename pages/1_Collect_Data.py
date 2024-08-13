@@ -226,7 +226,7 @@ if st.session_state.matching_files:
 
 
 # Next
-if st.session_state.selected_file:
+if st.session_state.raw_data_file_count:
     if st.button(label="Next: Filter Data", type='primary'):
         st.success("Ready to filter data...")
         st.balloons()

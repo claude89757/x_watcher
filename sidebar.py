@@ -12,22 +12,19 @@ import os
 
 def count_files(folder_path):
     try:
-        return len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
+        files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+        return len(files)
     except FileNotFoundError:
         return 0
 
 
 def cache_file_counts():
     # Ensure that we only calculate the counts once per session
-    if 'file_counts' not in st.session_state:
-        folders = {
-            "Raw Data": f"./data/{st.session_state.access_code}/raw/",
-            "Processed Data": f"./data/{st.session_state.access_code}/processed/",
-            "Analyzed Data": f"./data/{st.session_state.access_code}/analyzed/",
-            "Msg Data": f"./data/{st.session_state.access_code}/msg/",
-        }
-        st.session_state.file_counts = {folder_name: count_files(folder_path)
-                                        for folder_name, folder_path in folders.items()}
+    if 'raw_data_file_count' not in st.session_state:
+        st.session_state.raw_data_file_count = count_files(f"./data/{st.session_state.access_code}/raw/")
+        st.session_state.processed_data_file_count = count_files(f"./data/{st.session_state.access_code}/processed/")
+        st.session_state.analyzed_data_file_count = count_files(f"./data/{st.session_state.access_code}/analyzed/")
+        st.session_state.msg_data_file_count = count_files(f"./data/{st.session_state.access_code}/msg/")
 
 
 def sidebar():
@@ -37,5 +34,8 @@ def sidebar():
     # Create a component in the sidebar to display file counts
     st.sidebar.subheader("File Statistics")
 
-    for folder_name, count in st.session_state.file_counts.items():
-        st.sidebar.caption(f"{folder_name} File: {count}")
+    # Display counts from session state
+    st.sidebar.caption(f"Raw Data Files: {st.session_state.raw_data_file_count}")
+    st.sidebar.caption(f"Processed Data Files: {st.session_state.processed_data_file_count}")
+    st.sidebar.caption(f"Analyzed Data Files: {st.session_state.analyzed_data_file_count}")
+    st.sidebar.caption(f"Msg Data Files: {st.session_state.msg_data_file_count}")
