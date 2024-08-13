@@ -20,7 +20,7 @@ from common.log_config import setup_logger
 logger = setup_logger(__name__)
 
 
-def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_size: int = 10) -> pd.DataFrame:
+def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_size: int = 50) -> pd.DataFrame:
     """
     发送数据到GPT模型，获取分析结果。
     :param system_prompt: 系统级指令，用于提供分析上下文。
