@@ -83,13 +83,10 @@ if files:
             file_size = os.path.getsize(local_file_path)  # 文件大小（字节）
             file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(local_file_path))  # 文件修改时间
 
-            # 显示文件信息
-            st.write(f"File Size: {file_size / 1024:.2f} KB")  # 转换为 KB
-            st.write(f"Number of Rows: {data.shape[0]}")
-            st.write(f"Last Modified Time: {file_mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
-
             if data is not None:
-                st.dataframe(data.head(500))
+                st.write("Data Summary:")
+                st.write(data.describe())
+                st.dataframe(data.head(500), use_container_width=True, height=400)
             else:
                 st.write("No data to display.")
         except Exception as e:
