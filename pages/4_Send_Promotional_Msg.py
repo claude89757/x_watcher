@@ -105,7 +105,6 @@ st.subheader("Filtered Data")
 st.dataframe(filtered_data)
 
 
-result_df = None
 if not filtered_data.empty:
     # 输入示例的提示词
     system_prompt = st.text_input("Enter the prompt for generating promotional SMS:",
@@ -123,45 +122,45 @@ if not filtered_data.empty:
         st.subheader("Generated Promotional SMS")
         st.dataframe(result_df)
 
-# 登录相关的逻辑
-if not result_df.empty:
-    st.markdown("------")
-    st.subheader("Twitter Account Login")
-    username = st.text_input("Twitter Username")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
+        # 登录相关的逻辑
+        if not result_df.empty:
+            st.markdown("------")
+            st.subheader("Twitter Account Login")
+            username = st.text_input("Twitter Username")
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
 
-    if st.button("Verify Login Status"):
-        return_code, msg = check_x_login_status(username, email, password)
-        # 登录验证
-        if return_code == 200:
-            st.success("Verify Login Status successful!")
-            if st.button("Send Promotional Messages"):
-                # 初始化进度条
-                progress_bar = st.progress(0)
-                results = []
-                # 发送推广私信
-                for index, row in result_df.iterrows():
-                    user_id = row[0]
-                    message = row[-1]
-                    user_link = f"https://x.com/{user_id}"
-                    code, text = send_promotional_msg(username, email, password, user_link, message)
-                    results.append({
-                        'User ID': user_id,
-                        'Message': message,
-                        'Status': 'Success' if code == 200 else 'Failure',
-                        'Details': text
-                    })
-                    # 更新进度条
-                    progress_bar.progress((index + 1) / len(result_df))
-                    time.sleep(random.uniform(1, 10))
+            if st.button("Verify Login Status"):
+                return_code, msg = check_x_login_status(username, email, password)
+                # 登录验证
+                if return_code == 200:
+                    st.success("Verify Login Status successful!")
+                    if st.button("Send Promotional Messages"):
+                        # 初始化进度条
+                        progress_bar = st.progress(0)
+                        results = []
+                        # 发送推广私信
+                        for index, row in result_df.iterrows():
+                            user_id = row[0]
+                            message = row[-1]
+                            user_link = f"https://x.com/{user_id}"
+                            code, text = send_promotional_msg(username, email, password, user_link, message)
+                            results.append({
+                                'User ID': user_id,
+                                'Message': message,
+                                'Status': 'Success' if code == 200 else 'Failure',
+                                'Details': text
+                            })
+                            # 更新进度条
+                            progress_bar.progress((index + 1) / len(result_df))
+                            time.sleep(random.uniform(1, 10))
 
-                # 转换结果为 DataFrame
-                results_df = pd.DataFrame(results)
+                        # 转换结果为 DataFrame
+                        results_df = pd.DataFrame(results)
 
-                # 显示结果
-                st.success("All promotional messages processed!")
-                st.subheader("Results")
-                st.table(results_df)
-        else:
-            st.error("Please enter all login details.")
+                        # 显示结果
+                        st.success("All promotional messages processed!")
+                        st.subheader("Results")
+                        st.table(results_df)
+                else:
+                    st.error("Please enter all login details.")
