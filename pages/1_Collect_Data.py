@@ -158,6 +158,7 @@ if st.button(label="Start Collecting"):
             st.error(f"Error retrieving files from COS: {e}")
 
 # 显示COS已存在的文件列表
+file_loaded = False
 if st.session_state.matching_files:
     st.session_state.selected_file = st.selectbox("Select a file to load", st.session_state.matching_files)
     # 选择加载到本地的文件
@@ -215,16 +216,21 @@ if st.session_state.matching_files:
                 # 展示 DataFrame
                 st.dataframe(file_info_df)
 
-                # Next
-                if st.button(label="Next: Filter Data", type='primary'):
-                    st.success("Ready to filter data...")
-                    time.sleep(1)
-                    st.switch_page("pages/2_Filter_Data.py")
-                else:
-                    pass
+                file_loaded = True
             else:
                 st.error("No files loaded yet.")
         else:
             pass
+    else:
+        pass
+
+
+# Next
+if st.session_state.selected_file:
+    if st.button(label="Next: Filter Data", type='primary'):
+        st.success("Ready to filter data...")
+        st.balloons()
+        time.sleep(3)
+        st.switch_page("pages/2_Filter_Data.py")
     else:
         pass
