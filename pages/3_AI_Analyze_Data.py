@@ -107,6 +107,9 @@ selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
 analyze_button = st.button("Start Analysis" if not st.session_state.get('analysis_run', False)
                            else "Reanalyze", type="primary")
 
+# 批处理大小选择
+batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
+
 # 在分析之后
 if analyze_button:
     st.session_state.analysis_run = True
@@ -115,7 +118,7 @@ if analyze_button:
         st.write("Data loaded successfully. Starting analysis...")
 
         if prompt:
-            result_df = send_text_to_gpt(selected_model, prompt, data)
+            result_df = send_text_to_gpt(selected_model, prompt, data, batch_size=batch_size)
 
             if not result_df.empty:
                 # 定义新的输出目录
