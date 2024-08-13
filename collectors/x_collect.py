@@ -621,21 +621,22 @@ class TwitterWatcher:
             raise Exception(f"login failed: {self.driver.current_url}")
 
         # 进入推特用户主页
+        logging.info(f"loading {to_user_url}")
         self.driver.get(to_user_url)
         # Wait for the page to load completely
         WebDriverWait(self.driver, self.timeout).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, "article"))
         )
-        print(f"{to_user_url} Page loaded successfully.")
+        logging.info(f"{to_user_url} Page loaded successfully.")
 
         # 显式等待私信按钮出现
         wait = WebDriverWait(self.driver, self.timeout)
         dm_button = wait.until(
             EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
         dm_button.click()
-        print("send msg button loaded")
+        logging.info("send msg button loaded")
 
-        print("sending msg...")
+        logging.info("sending msg...")
         dm_input = wait.until(
             EC.presence_of_element_located((By.XPATH, '//div[@data-testid="dmComposerTextInput"]')))
         time.sleep(random.uniform(0, 3))

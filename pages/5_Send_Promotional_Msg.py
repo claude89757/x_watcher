@@ -107,8 +107,8 @@ else:
 st.markdown("------")
 st.subheader("X Account Verify")
 username = st.text_input("Twitter Username", value=st.session_state.username)
-email = st.text_input("Email", value=st.session_state.username)
-password = st.text_input("Password", type="password", value=st.session_state.username)
+email = st.text_input("Email", value=st.session_state.email)
+password = st.text_input("Password", type="password", value=st.session_state.password)
 
 if st.button("Verify Login Status"):
     with st.spinner('Verifying Login Status...'):
@@ -129,33 +129,34 @@ if st.button("Verify Login Status"):
 
 if st.session_state.login_status == "online":
     if st.button("Send Promotional Messages", type='primary'):
-        # 初始化进度条
-        progress_bar = st.progress(0)
-        results = []
-        # 发送推广私信
-        for index, row in data_df.iterrows():
-            user_id = row[0]
-            message = row[-1]
-            user_link = f"https://x.com/{user_id}"
-            code, text = send_promotional_msg(username, email, password, user_link, message)
-            results.append({
-                'User ID': user_id,
-                'Message': message,
-                'Status': 'Success' if code == 200 else 'Failure',
-                'Details': text
-            })
-            # 更新进度条
-            progress_bar.progress((index + 1) / send_msg_num)
-            time.sleep(random.uniform(1, 10))
+        with st.spinner('Send Promotional Msg...'):
+            # 初始化进度条
+            progress_bar = st.progress(0)
+            results = []
+            # 发送推广私信
+            for index, row in data_df.iterrows():
+                user_id = row[0]
+                message = row[-1]
+                user_link = f"https://x.com/{user_id}"
+                code, text = send_promotional_msg(username, email, password, user_link, message)
+                results.append({
+                    'User ID': user_id,
+                    'Message': message,
+                    'Status': 'Success' if code == 200 else 'Failure',
+                    'Details': text
+                })
+                # 更新进度条
+                progress_bar.progress((index + 1) / send_msg_num)
+                time.sleep(random.uniform(1, 10))
 
-            if len(results) >= send_msg_num:
-                # 达到上限
-                break
+                if len(results) >= send_msg_num:
+                    # 达到上限
+                    break
 
-        # 转换结果为 DataFrame
-        results_df = pd.DataFrame(results)
+            # 转换结果为 DataFrame
+            results_df = pd.DataFrame(results)
 
-        # 显示结果
-        st.success("All promotional messages processed!")
-        st.subheader("Results")
-        st.table(results_df)
+            # 显示结果
+            st.success("All promotional messages processed!")
+            st.subheader("Results")
+            st.table(results_df)
