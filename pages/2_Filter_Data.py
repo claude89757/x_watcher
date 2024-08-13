@@ -24,8 +24,6 @@ st.set_page_config(page_title="Filter Data", page_icon="🤖", layout="wide")
 # Initialize session state
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
-if "search_keyword" not in st.session_state:
-    st.session_state.search_keyword = st.query_params.get("search_keyword")
 if "selected_file" not in st.session_state:
     st.session_state.selected_file = st.query_params.get("selected_file")
 
@@ -67,6 +65,8 @@ src_dir = f"./data/{st.session_state.access_code}/raw/"
 dst_dir = f"./data/{st.session_state.access_code}/processed/"
 
 files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
+# 从最新到最旧排序
+files.sort(key=lambda f: os.path.getmtime(os.path.join(src_dir, f)))
 if files:
     st.session_state.selected_file = st.selectbox("Select a file to analyze:", files)
     selected_file_path = os.path.join(src_dir, st.session_state.selected_file)
