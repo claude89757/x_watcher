@@ -139,6 +139,7 @@ if st.session_state.login_status == "online":
                 message = row[-1]
                 user_link = f"https://x.com/{user_id}"
                 code, text = send_promotional_msg(username, email, password, user_link, message)
+                logger.warning(f"sending {user_id} {email} {len(password)} {user_id} {message}")
                 results.append({
                     'User ID': user_id,
                     'Message': message,
