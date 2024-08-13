@@ -133,7 +133,8 @@ if analyze_button:
                 # Next
                 if st.button(label="Next: Send Promotional Msg", type='primary'):
                     st.success("Ready to Send Promotional Msg...")
-                    time.sleep(1)
+                    st.balloons()
+                    time.sleep(3)
                     st.switch_page("pages/4_Send_Promotional_Msg.py")
                 else:
                     pass
