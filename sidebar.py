@@ -44,24 +44,36 @@ def sidebar():
     # Create a component in the sidebar to display file counts
     st.sidebar.subheader("File Statistics")
 
-    # Define a function to create a row with file count and clear button
-    def create_row(label, count, key, folder_path):
-        st.sidebar.markdown(
-            f"""
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span>{label}: {count}</span>
-                <button onclick="window.location.href='/?clear={key}'" style="background-color: #f0f0f0; border: none; padding: 5px 10px; cursor: pointer;">Clear</button>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        if st.experimental_get_query_params().get('clear') == [key]:
-            clear_folder(folder_path)
-            st.experimental_set_query_params()  # Clear the query params
-            st.experimental_rerun()  # Rerun the app to update the counts
+    # Display counts and add buttons in a horizontal layout
+    with st.sidebar:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption(f"Raw Data Files: {st.session_state.raw_data_file_count}")
+        with col2:
+            if st.button("Clear", key="clear_raw"):
+                clear_folder(f"./data/{st.session_state.access_code}/raw/")
+                st.session_state.raw_data_file_count = count_files(f"./data/{st.session_state.access_code}/raw/")
 
-    # Create rows for each file type
-    create_row("Raw Data Files", st.session_state.raw_data_file_count, "raw", f"./data/{st.session_state.access_code}/raw/")
-    create_row("Processed Data Files", st.session_state.processed_data_file_count, "processed", f"./data/{st.session_state.access_code}/processed/")
-    create_row("Analyzed Data Files", st.session_state.analyzed_data_file_count, "analyzed", f"./data/{st.session_state.access_code}/analyzed/")
-    create_row("Msg Data Files", st.session_state.msg_data_file_count, "msg", f"./data/{st.session_state.access_code}/msg/")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption(f"Processed Data Files: {st.session_state.processed_data_file_count}")
+        with col2:
+            if st.button("Clear", key="clear_processed"):
+                clear_folder(f"./data/{st.session_state.access_code}/processed/")
+                st.session_state.processed_data_file_count = count_files(f"./data/{st.session_state.access_code}/processed/")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption(f"Analyzed Data Files: {st.session_state.analyzed_data_file_count}")
+        with col2:
+            if st.button("Clear", key="clear_analyzed"):
+                clear_folder(f"./data/{st.session_state.access_code}/analyzed/")
+                st.session_state.analyzed_data_file_count = count_files(f"./data/{st.session_state.access_code}/analyzed/")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.caption(f"Msg Data Files: {st.session_state.msg_data_file_count}")
+        with col2:
+            if st.button("Clear", key="clear_msg"):
+                clear_folder(f"./data/{st.session_state.access_code}/msg/")
+                st.session_state.msg_data_file_count = count_files(f"./data/{st.session_state.access_code}/msg/")
