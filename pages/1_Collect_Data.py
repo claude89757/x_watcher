@@ -62,8 +62,6 @@ else:
     st.warning("Access not Granted!")
     st.switch_page("Home.py", )
 
-# Configure Streamlit pages and state
-st.set_page_config(page_title="(Demo)X_AI_Marketing", page_icon="🤖")
 
 # 从URL读取缓存数据
 if "max_post_num" not in st.session_state:
