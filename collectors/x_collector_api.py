@@ -123,7 +123,7 @@ async def send_msg_to_user():
         to_user_link = data.get('to_user_link')
         msg = data.get('msg')
         if not username or not email or not password or not to_user_link or not msg:
-            return 'Missing input username or email or password or to_user_link or msg', 500
+            return 'Missing input username or email or password or to_user_link or msg', 499
 
         try:
             watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
