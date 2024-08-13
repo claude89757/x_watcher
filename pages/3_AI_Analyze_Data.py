@@ -168,7 +168,7 @@ if st.session_state.selected_file and st.session_state.selected_file in files:
     default_index = files.index(st.session_state.selected_file)
 else:
     default_index = 0  # 如果默认文件不在列表中，选择第一个文件
-st.session_state.selected_file = st.selectbox("Select a file to analyze:", index=default_index)
+st.session_state.selected_file = st.selectbox("Select a file to analyze:", files, index=default_index)
 selected_file_path = None
 if st.session_state.selected_file:
     selected_file_path = os.path.join(src_dir, st.session_state.selected_file)
