@@ -146,7 +146,7 @@ if st.button(label="Start Collecting"):
         st.error(f"An error occurred: {e}")
 
 # 加载COS已存在的文件列表
-if st.session_state.search_keyword and not st.session_state.matching_files:
+if st.session_state.search_keyword:
     try:
         # 从 COS 中获取文件列表
         modified_keyword = re.sub(r'\s+', '_', st.session_state.search_keyword)
