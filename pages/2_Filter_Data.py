@@ -134,6 +134,11 @@ with col1:
         # 将处理后的数据保存到目标文件夹中
         df.to_csv(dst_file_path, index=False)
 
+        # 提示成功信息并跳转到下一页面
+        st.success(f"Confirmed data successfully, entering next step...")
+        time.sleep(3)
+        st.switch_page("pages/3_AI_Analyze_Data.py")
+
 with col2:
     # Button to process Dat
     if st.button("Process Dat "):

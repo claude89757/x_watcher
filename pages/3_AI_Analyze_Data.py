@@ -9,6 +9,7 @@
 
 import os
 import time
+import datetime
 
 import pandas as pd
 import requests
@@ -167,8 +168,24 @@ selected_file_path = None
 if selected_file:
     selected_file_path = os.path.join(src_dir, selected_file)
     st.subheader(f"File Data Preview: {selected_file}")
-    data = pd.read_csv(selected_file_path)
-    st.write(data)
+    # 检查本地是否已有文件
+    try:
+        # 获取文件信息
+        data = pd.read_csv(selected_file_path)
+        file_size = os.path.getsize(selected_file_path)  # 文件大小（字节）
+        file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(selected_file_path))  # 文件修改时间
+
+        # 显示文件信息
+        st.write(f"File Size: {file_size / 1024:.2f} KB")  # 转换为 KB
+        st.write(f"Number of Rows: {data.shape[0]}")
+        st.write(f"Last Modified Time: {file_mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        if data is not None:
+            st.dataframe(data.head(500))
+        else:
+            st.write("No data to display.")
+    except Exception as e:
+        st.error(f"Error loading data from local file: {e}")
 else:
     st.warning("No processed data, return to filter data...")
     time.sleep(3)
