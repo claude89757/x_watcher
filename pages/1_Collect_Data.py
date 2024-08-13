@@ -165,7 +165,7 @@ if st.session_state.matching_files:
 if st.session_state.selected_file:
     with col2:
         st.query_params.selected_file = st.session_state.selected_file
-        if st.button("Load file"):
+        if st.button("Load file") and st.session_state.matching_files:
             local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", st.session_state.selected_file)
             # 检查本地是否已有文件
             if not os.path.exists(local_file_path):
@@ -176,12 +176,14 @@ if st.session_state.selected_file:
                 except Exception as e:
                     st.error(f"Error loading file from COS: {e}")
             try:
-                data = pd.read_csv(local_file_path)
+                st.empty()
+                st.success(f"{st.session_state.selected_file} is loaded")
+                # data = pd.read_csv(local_file_path)
                 # 展示数据
-                if data is not None:
-                    st.dataframe(data)
-                else:
-                    st.write("No data to display.")
+                # if data is not None:
+                #     st.dataframe(data)
+                # else:
+                #     st.write("No data to display.")
             except Exception as e:
                 st.error(f"Error loading data from local file: {e}")
 else:
