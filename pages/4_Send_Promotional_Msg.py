@@ -95,11 +95,22 @@ else:
     st.switch_page("pages/2_Filter_Data.py")
 
 
-# 增加多选组件
-selected_rows = st.multiselect("Select rows to generate promotional SMS:", data.index)
+# 选择过滤字段
+filter_column = st.selectbox("Select a column to filter by:", data.columns)
 
-if selected_rows:
-    selected_data = data.loc[selected_rows, ["reply_user_id", "reply_content"]]
+# 获取唯一值并选择过滤条件
+unique_values = data[filter_column].unique()
+selected_value = st.selectbox(f"Select a value from {filter_column} to filter:", unique_values)
+
+# 过滤数据
+filtered_data = data[data[filter_column] == selected_value]
+
+# 显示过滤后的数据
+st.subheader("Filtered Data")
+st.dataframe(filtered_data)
+
+
+if not filtered_data.empty:
 
     # 选择模型
     model = st.selectbox("Select a model:", ["gpt-4o-mini", "gpt-4o"])
@@ -112,7 +123,7 @@ if selected_rows:
     generate_button_text = "Generate Promotional SMS" if not st.session_state.generated_data else "Regenerate Promotional SMS"
     if st.button(generate_button_text):
         system_prompt = "You are a marketing assistant. Your task is to generate personalized promotional SMS messages."
-        result_df = generate_promotional_sms(model, system_prompt, selected_data, batch_size=1)
+        result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=1)
         st.session_state.generated_data = True
         st.session_state.result_df = result_df
 
