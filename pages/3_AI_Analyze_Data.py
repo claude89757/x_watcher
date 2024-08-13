@@ -107,7 +107,7 @@ selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
 batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
 
 analyze_button = st.button("Start Analysis" if not st.session_state.get('analysis_run', False)
-                           else "Reanalyze", type="primary")
+                           else "Reanalyze")
 
 # 在分析之后
 if analyze_button:
