@@ -102,17 +102,14 @@ prompt = st.text_area("Enter your prompt for analysis:",
                       value="Analyze the data and identify potential customers interested in purchasing product XYZ")
 
 
-col1, col2 = st.columns([3, 1])  # 这里 [3, 1] 的比例可以根据需要调整
+selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
 
-with col1:
-    selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
-
-with col2:
-    analyze_button = st.button("Start Analysis" if not st.session_state.get('analysis_run', False)
-                               else "Reanalyze", type="primary")
+analyze_button = st.button("Start Analysis" if not st.session_state.get('analysis_run', False)
+                           else "Reanalyze", type="primary")
 
 # 在分析之后
 if analyze_button:
+    st.session_state.analysis_run = True
     with st.spinner('Analyzing data...'):
         data = pd.read_csv(selected_file_path)
         st.write("Data loaded successfully. Starting analysis...")
