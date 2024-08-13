@@ -160,7 +160,7 @@ if st.session_state.search_keyword:
 if st.session_state.matching_files:
     st.session_state.selected_file = st.selectbox("Select a file to load", st.session_state.matching_files)
 
-# 确定是否预览选择的数据
+# 选择加载到本地的文件
 if st.session_state.selected_file and st.session_state.matching_files:
     st.query_params.selected_file = st.session_state.selected_file
     load_button = st.button("Load file")
