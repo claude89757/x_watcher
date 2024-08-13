@@ -130,7 +130,7 @@ if analyze_button:
                 result_df.to_csv(output_file, index=False)
 
                 # 显示结果output_file
-                st.success(f"Analysis complete! Results saved to {}.")
+                st.success(f"Analysis complete! Results saved to {output_file}.")
                 st.write("## Analysis Results")
                 st.write(result_df.describe())
                 st.dataframe(result_df.head(500), use_container_width=True, height=400)
