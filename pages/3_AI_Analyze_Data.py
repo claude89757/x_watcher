@@ -121,7 +121,7 @@ st.set_page_config(page_title="Analyze Data", page_icon="🤖", layout="wide")
 #     st.warning("Access not Granted!")
 #     st.switch_page("Home.py", )
 
-# 初始化session state
+# init session state
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
 if "search_keyword" not in st.session_state:
@@ -131,7 +131,8 @@ if "matching_files" not in st.session_state:
 if "analysis_run" not in st.session_state:
     st.session_state.analysis_run = False
 
-if st.session_state.access_code:
+# check access
+if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
 else:
     st.warning("Access not Granted!")

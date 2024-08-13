@@ -23,22 +23,21 @@ logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, for
 
 st.set_page_config(page_title="Filter Data", page_icon="🤖", layout="wide")
 
-
-if st.session_state.get('access_code') and st.session_state.get('access_code') in CONFIG['access_code_list']:
-    # session中有缓存
-    st.query_params.access_code = st.session_state.access_code
-elif st.query_params.get('access_code') and st.query_params.get('access_code') in CONFIG['access_code_list']:
-    # URL中有缓存
-    st.session_state.access_code = st.query_params.access_code
-else:
-    st.warning("Access not Granted!")
-    st.switch_page("Home.py", )
-
 # Initialize session state
+if 'access_code' not in st.session_state:
+    st.session_state.access_code = st.query_params.get('access_code')
 if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword")
 if "selected_file" not in st.session_state:
     st.session_state.selected_file = st.query_params.get("selected_file")
+
+# check access
+if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
+    st.query_params.access_code = st.session_state.access_code
+else:
+    st.warning("Access not Granted!")
+    time.sleep(3)
+    st.switch_page("Home.py", )
 
 # Force responsive layout for columns also on mobile
 st.write(
