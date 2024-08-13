@@ -63,6 +63,7 @@ else:
             st.session_state.access_code = code
             st.success("Access Granted!")
             logger.info(f"{code} login successfully.")
+            st.balloons()
             time.sleep(1)
             st.switch_page("pages/1_Collect_Data.py", )
         else:
