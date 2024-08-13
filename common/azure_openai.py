@@ -66,16 +66,20 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
 
         url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
               f"api-version=2024-02-15-preview"
-        response = requests.post(url,
-                                 headers={
-                                     "Content-Type": "application/json",
-                                     "api-key": CONFIG.get("azure_open_api_key"),
-                                 },
-                                 json=payload
-        )
-        response.raise_for_status()
-
-        response_content = response.json()['choices'][0]['message']['content']
+        try:
+            response = requests.post(url,
+                                     headers={
+                                         "Content-Type": "application/json",
+                                         "api-key": CONFIG.get("azure_open_api_key"),
+                                     },
+                                     json=payload
+            )
+            response.raise_for_status()
+            logger.info(f"response: {response.json()}")
+            response_content = response.json()['choices'][0]['message']['content']
+        except Exception as error:
+            st.error(f"{i // batch_size + 1}/{total_batches}: {error}")
+            continue
 
         if "```csv" in response_content:
             csv_content = response_content.split("```csv")[1].split("```")[0].strip()
