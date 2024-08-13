@@ -33,8 +33,8 @@ if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword")
 if "matching_files" not in st.session_state:
     st.session_state.matching_files = ""
-if "analysis_run" not in st.session_state:
-    st.session_state.analysis_run = False
+if "login_status" not in st.session_state:
+    st.session_state.login_status = st.query_params.get("login_status", "")
 
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
@@ -104,40 +104,45 @@ email = st.text_input("Email")
 password = st.text_input("Password", type="password")
 
 if st.button("Verify Login Status"):
-    return_code, msg = check_x_login_status(username, email, password)
+    with st.spinner('Analyzing data...'):
+        return_code, msg = check_x_login_status(username, email, password)
     # 登录验证
     if return_code == 200:
         st.success("Verify Login Status successful!")
-        if st.button("Send Promotional Messages"):
-            # 初始化进度条
-            progress_bar = st.progress(0)
-            results = []
-            # 发送推广私信
-            for index, row in data_df.iterrows():
-                user_id = row[0]
-                message = row[-1]
-                user_link = f"https://x.com/{user_id}"
-                code, text = send_promotional_msg(username, email, password, user_link, message)
-                results.append({
-                    'User ID': user_id,
-                    'Message': message,
-                    'Status': 'Success' if code == 200 else 'Failure',
-                    'Details': text
-                })
-                # 更新进度条
-                progress_bar.progress((index + 1) / len(data_df))
-                time.sleep(random.uniform(1, 10))
-
-                if len(results) >= send_msg_num:
-                    # 达到上限
-                    break
-
-            # 转换结果为 DataFrame
-            results_df = pd.DataFrame(results)
-
-            # 显示结果
-            st.success("All promotional messages processed!")
-            st.subheader("Results")
-            st.table(results_df)
+        st.session_state.login_status = "online"
+        st.query_params.login_status = "online"
     else:
-        st.error("Please enter all login details.")
+        st.warning("Verify Login Status failed.")
+
+if st.session_state.login_status == "online":
+    if st.button("Send Promotional Messages"):
+        # 初始化进度条
+        progress_bar = st.progress(0)
+        results = []
+        # 发送推广私信
+        for index, row in data_df.iterrows():
+            user_id = row[0]
+            message = row[-1]
+            user_link = f"https://x.com/{user_id}"
+            code, text = send_promotional_msg(username, email, password, user_link, message)
+            results.append({
+                'User ID': user_id,
+                'Message': message,
+                'Status': 'Success' if code == 200 else 'Failure',
+                'Details': text
+            })
+            # 更新进度条
+            progress_bar.progress((index + 1) / len(data_df))
+            time.sleep(random.uniform(1, 10))
+
+            if len(results) >= send_msg_num:
+                # 达到上限
+                break
+
+        # 转换结果为 DataFrame
+        results_df = pd.DataFrame(results)
+
+        # 显示结果
+        st.success("All promotional messages processed!")
+        st.subheader("Results")
+        st.table(results_df)
