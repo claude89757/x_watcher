@@ -6,6 +6,7 @@
 @File    : azure_openai.py
 @Software: PyCharm
 """
+import traceback
 
 import pandas as pd
 import requests
@@ -78,7 +79,10 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
             logger.info(f"response: {response.json()}")
             response_content = response.json()['choices'][0]['message']['content']
         except Exception as error:
-            st.error(f"{i // batch_size + 1}/{total_batches}: {error}")
+            # Log the full traceback and error details
+            error_message = traceback.format_exc()
+            st.error(f"Batch{i // batch_size + 1}/{total_batches} failed: {error_message}")
+            logger.error(f"Exception details: {error_message}")
             continue
 
         if "```csv" in response_content:
