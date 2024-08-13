@@ -34,7 +34,7 @@ def sidebar():
     cache_file_counts()
 
     # Create a component in the sidebar to display file counts
-    st.sidebar.header("File Statistics")
+    st.sidebar.subheader("File Statistics")
 
     for folder_name, count in st.session_state.file_counts.items():
-        st.sidebar.write(f"📁 {folder_name}: {count} files")
+        st.sidebar.caption(f"{folder_name} File: {count}")
