@@ -35,6 +35,13 @@ if "matching_files" not in st.session_state:
     st.session_state.matching_files = ""
 if "login_status" not in st.session_state:
     st.session_state.login_status = st.query_params.get("login_status", "")
+if "username" not in st.session_state:
+    st.session_state.username = st.query_params.get("username", "")
+if "email" not in st.session_state:
+    st.session_state.email = st.query_params.get("email", "")
+if "password" not in st.session_state:
+    st.session_state.password = ""
+
 
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
@@ -99,9 +106,9 @@ else:
 
 st.markdown("------")
 st.subheader("X Account Verify")
-username = st.text_input("Twitter Username")
-email = st.text_input("Email")
-password = st.text_input("Password", type="password")
+username = st.text_input("Twitter Username", value=st.session_state.username)
+email = st.text_input("Email", value=st.session_state.username)
+password = st.text_input("Password", type="password", value=st.session_state.username)
 
 if st.button("Verify Login Status"):
     with st.spinner('Analyzing data...'):
@@ -113,6 +120,12 @@ if st.button("Verify Login Status"):
         st.query_params.login_status = "online"
     else:
         st.warning("Verify Login Status failed.")
+    # 缓存
+    st.session_state.username = username
+    st.session_state.email = email
+    st.session_state.password = password
+    st.query_params.username = username
+    st.query_params.email = email
 
 if st.session_state.login_status == "online":
     if st.button("Send Promotional Messages"):
