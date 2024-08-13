@@ -9,7 +9,7 @@
 import os
 import time
 import datetime
-import shutil
+import re
 import pandas as pd
 import streamlit as st
 
@@ -107,12 +107,32 @@ col1, col2 = st.columns(2)
 with col1:
     # Button to confirm the file
     if st.button("Confirm File ", type="primary"):
+        # 获取源文件路径
         src_file_path = os.path.join(src_dir, st.session_state.selected_file)
         dst_file_path = os.path.join(dst_dir, st.session_state.selected_file)
-        shutil.move(src_file_path, dst_file_path)
-        st.success(f"Confirmed date successfully, entering step...")
-        time.sleep(3)
-        st.switch_page("pages/3_AI_Analyze_Data.py")
+
+        # 读取CSV文件
+        df = pd.read_csv(src_file_path)
+
+        # 定义正则表达式来提取用户名
+        def extract_user_id(link):
+            match = re.search(r"https://x\.com/([^/]+)/status/", link)
+            if match:
+                return match.group(1)
+            return None
+
+
+        # 添加新列 'reply_user_id'
+        df['reply_user_id'] = df['reply_user_link'].apply(extract_user_id)
+
+        # 去重逻辑：根据'reply_user_id'去重，保留'reply_content'最长的记录
+        df = df.loc[df.groupby('reply_user_id')['reply_content'].apply(lambda x: x.str.len().idxmax())]
+
+        # 只保留'reply_user_id'和'reply_content'字段
+        df = df[['reply_user_id', 'reply_content']]
+
+        # 将处理后的数据保存到目标文件夹中
+        df.to_csv(dst_file_path, index=False)
 
 with col2:
     # Button to process Dat
