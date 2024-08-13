@@ -111,7 +111,7 @@ email = st.text_input("Email", value=st.session_state.username)
 password = st.text_input("Password", type="password", value=st.session_state.username)
 
 if st.button("Verify Login Status"):
-    with st.spinner('Analyzing data...'):
+    with st.spinner('Verifying Login Status...'):
         return_code, msg = check_x_login_status(username, email, password)
     # 登录验证
     if return_code == 200:
@@ -128,7 +128,7 @@ if st.button("Verify Login Status"):
     st.query_params.email = email
 
 if st.session_state.login_status == "online":
-    if st.button("Send Promotional Messages"):
+    if st.button("Send Promotional Messages", type='primary'):
         # 初始化进度条
         progress_bar = st.progress(0)
         results = []
