@@ -85,7 +85,7 @@ if files:
 
             if data is not None:
                 st.write("Data info:")
-                st.write(data.info())
+                st.write(data.info)
                 st.dataframe(data.head(500), use_container_width=True, height=400)
             else:
                 st.write("No data to display.")

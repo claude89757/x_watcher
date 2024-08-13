@@ -129,7 +129,7 @@ if analyze_button:
                 # 显示结果output_file
                 st.success(f"Analysis complete! Results saved to {output_file}.")
                 st.write("## Analysis Data info:")
-                st.write(result_df.info())
+                st.write(result_df.info)
                 st.dataframe(result_df.head(500), use_container_width=True, height=400)
             else:
                 st.error("Failed to generate analysis results. Please check your prompt or API settings.")
