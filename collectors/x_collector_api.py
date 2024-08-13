@@ -39,6 +39,19 @@ async def async_collect_data_from_x(username, email, password, search_key_word, 
     return "Collected data"
 
 
+async def async_check_login_status(username, email, password):
+    """
+    验证登录情况
+    :param username:
+    :param email:
+    :param password:
+    :return:
+    """
+    logging.info("start collecting data.")
+    watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, "cat")
+    return watcher.check_login_status()
+
+
 @app.route('/collect_data_from_x', methods=['POST'])
 async def webhook():
     if request.method == 'POST':
@@ -66,6 +79,56 @@ async def webhook():
                 return 'Success', 200
             else:
                 return 'Missing username\'s info', 500
+        except Exception as e:
+            app.logger.error(f'Internal Server Error: {e}')
+            return 'Internal Server Error', 500
+    else:
+        app.logger.warning('Received non-POST request on /webhook')
+        return 'Invalid request', 400
+
+
+@app.route('/check_login_status', methods=['POST'])
+async def webhook():
+    if request.method == 'POST':
+        app.logger.info('Received POST request on /collect_data_from_x ')
+        data = await request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        if not username or not email or not password:
+            return 'Missing input username or email or password', 500
+
+        try:
+            watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, "cat")
+            if watcher.check_login_status():
+                return 'Success', 200
+            else:
+                return 'Unauthorized', 401
+        except Exception as e:
+            app.logger.error(f'Internal Server Error: {e}')
+            return 'Internal Server Error', 500
+    else:
+        app.logger.warning('Received non-POST request on /webhook')
+        return 'Invalid request', 400
+
+
+@app.route('/send_msg_to_user', methods=['POST'])
+async def webhook():
+    if request.method == 'POST':
+        app.logger.info('Received POST request on /collect_data_from_x ')
+        data = await request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        to_user_link = data.get('to_user_link')
+        msg = data.get('msg')
+        if not username or not email or not password or not to_user_link or not msg:
+            return 'Missing input username or email or password or to_user_link or msg', 500
+
+        try:
+            watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
+            watcher.send_msg_to_user(to_user_link, msg)
+            return 'Success', 200
         except Exception as e:
             app.logger.error(f'Internal Server Error: {e}')
             return 'Internal Server Error', 500

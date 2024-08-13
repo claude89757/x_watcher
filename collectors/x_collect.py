@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class TwitterWatcher:
-    def __init__(self, driver_path, username, email, password, search_key_word, timeout=10, headless: bool = True,
+    def __init__(self, driver_path, username, email, password, search_key_word='cat', timeout=10, headless: bool = True,
                  force_re_login: bool = False):
         self.driver_path = driver_path
         self.username = username
@@ -439,32 +439,45 @@ class TwitterWatcher:
         """
         try:
             self.setup_driver()
-            # 检查是否存在 cookies 文件
-            if os.path.exists(self.cookies_file) and not self.force_re_login:
-                try:
-                    self.driver.get('https://twitter.com/home')
-                    self.load_cookies()
-                    self.driver.refresh()
-                except Exception as error:
-                    logging.info(error)
-                    logging.info("Cookies are invalid, clearing cookies and re-login.")
-                    self.driver.delete_all_cookies()
+            for index in range(3):
+                # 检查是否存在 cookies 文件
+                if os.path.exists(self.cookies_file) and not self.force_re_login:
+                    try:
+                        self.driver.get('https://twitter.com/home')
+                        self.load_cookies()
+                        self.driver.refresh()
+                        time.sleep(3)
+                    except Exception as error:
+                        logging.info(error)
+                        logging.info("Cookies are invalid, clearing cookies and re-login.")
+                        self.driver.delete_all_cookies()
+                        self.login()
+                else:
                     self.login()
+                # 混淆: 随机等待时间
+                time.sleep(random.uniform(1, 3))
+
+                # 再次检查是否需要登录
+                if "home" in self.driver.current_url:
+                    break
+                else:
+                    # 再试一次
+                    logging.warning(f"{index} time login failed, try again...")
+
+            # 检查是否登录成功
+            if "home" in self.driver.current_url:
+                logging.info("login successfully")
+                return True
             else:
-                self.login()
-            time.sleep(10)
-            logging.info("Waiting for the home pages to load...")
-            logging.info(self.driver.current_url)
-            WebDriverWait(self.driver, self.interaction_timeout).until(
-                EC.url_to_be('https://x.com/home')
-            )
-            logging.info("success")
-            self.teardown_driver()
-            return "Available"
+                # 再试一次
+                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+                self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
+                return False
         except Exception as error:
-            logging.info(error)
-            self.teardown_driver()
-            return "Unavailable"
+            logger.error(f"login failed: {error}")
+            current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+            self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
+            return False
 
     def run(self, max_post_num: int, access_code: str):
         """
@@ -565,6 +578,77 @@ class TwitterWatcher:
         finally:
             self.teardown_driver()
 
+    def send_msg_to_user(self, to_user_url: str, msg: str):
+        """
+        发生私信
+        :param to_user_url:
+        :param msg:
+        :return:
+        """
+        self.setup_driver()
+        for index in range(3):
+            # 检查是否存在 cookies 文件
+            if os.path.exists(self.cookies_file) and not self.force_re_login:
+                try:
+                    self.driver.get('https://twitter.com/home')
+                    self.load_cookies()
+                    self.driver.refresh()
+                    time.sleep(3)
+                except Exception as error:
+                    logging.info(error)
+                    logging.info("Cookies are invalid, clearing cookies and re-login.")
+                    self.driver.delete_all_cookies()
+                    self.login()
+            else:
+                self.login()
+            # 混淆: 随机等待时间
+            time.sleep(random.uniform(1, 3))
+
+            # 再次检查是否需要登录
+            if "home" in self.driver.current_url:
+                break
+            else:
+                # 再试一次
+                logging.warning(f"{index} time login failed, try again...")
+
+        # 检查是否登录成功
+        if "home" in self.driver.current_url:
+            logging.info("login successfully")
+        else:
+            # 再试一次
+            current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+            self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
+            raise Exception(f"login failed: {self.driver.current_url}")
+
+        # 进入推特用户主页
+        self.driver.get(to_user_url)
+        # Wait for the page to load completely
+        WebDriverWait(self.driver, self.timeout).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, "article"))
+        )
+        print(f"{to_user_url} Page loaded successfully.")
+
+        # 显式等待私信按钮出现
+        wait = WebDriverWait(self.driver, self.timeout)
+        dm_button = wait.until(
+            EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
+        dm_button.click()
+        print("send msg button loaded")
+
+        print("sending msg...")
+        dm_input = wait.until(
+            EC.presence_of_element_located((By.XPATH, '//div[@data-testid="dmComposerTextInput"]')))
+        time.sleep(random.uniform(0, 3))
+        dm_input.click()
+        logger.error(f"click input button.")
+        time.sleep(random.uniform(0, 3))
+        dm_input.send_keys(msg)
+        logger.error(f"input msg.")
+        time.sleep(random.uniform(0, 3))
+        logger.error(f"enter to send.")
+        dm_input.send_keys(Keys.RETURN)
+        self.teardown_driver()
+
 
 CHROME_DRIVER = '/usr/local/bin/chromedriver'
 
@@ -603,4 +687,5 @@ if __name__ == '__main__':
     username = "Zacks89757"
     email = CONFIG['x_collector_account_infos'][username]['email']
     password = CONFIG['x_collector_account_infos'][username]['password']
-    collect_data_from_x(username, email, password, 'python', max_post_num=2, access_code='zacks')
+    watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, headless=False)
+    watcher.send_msg_to_user("https://x.com/justinsuntron", "are you ok?")

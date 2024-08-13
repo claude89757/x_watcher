@@ -8,7 +8,7 @@
 """
 import os
 import time
-import datetime
+import random
 
 import pandas as pd
 import streamlit as st
@@ -16,6 +16,8 @@ import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
 from common.azure_openai import generate_promotional_sms
+from common.collector_sdk import check_x_login_status
+from common.collector_sdk import send_promotional_msg
 from sidebar import sidebar
 
 # Configure logger
@@ -121,21 +123,45 @@ if not filtered_data.empty:
         st.subheader("Generated Promotional SMS")
         st.dataframe(result_df)
 
-
 # 登录相关的逻辑
 if result_df:
     st.markdown("------")
     st.subheader("Twitter Account Login")
-    twitter_username = st.text_input("Twitter Username")
+    username = st.text_input("Twitter Username")
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
 
     if st.button("Verify Login Status"):
-        # 模拟登录验证
-        if twitter_username and email and password:
-            st.success("Login successful!")
+        return_code, msg = check_x_login_status(username, email, password)
+        # 登录验证
+        if return_code == 200:
+            st.success("Verify Login Status successful!")
             if st.button("Send Promotional Messages"):
-                # 模拟发送推广私信
-                st.success("Promotional messages sent successfully!")
+                # 初始化进度条
+                progress_bar = st.progress(0)
+                results = []
+                # 发送推广私信
+                for index, row in result_df.iterrows():
+                    user_id = row[0]
+                    message = row[-1]
+                    user_link = f"https://x.com/{user_id}"
+                    code, text = send_promotional_msg(username, email, password, user_link, message)
+                    results.append({
+                        'User ID': user_id,
+                        'Message': message,
+                        'Status': 'Success' if code == 200 else 'Failure',
+                        'Details': text
+                    })
+                    # 更新进度条
+                    progress_bar.progress((index + 1) / len(result_df))
+                    time.sleep(random.uniform(1, 10))
+
+                # 转换结果为 DataFrame
+                results_df = pd.DataFrame(results)
+
+                # 显示结果
+                st.success("All promotional messages processed!")
+                st.subheader("Results")
+                st.table(results_df)
         else:
             st.error("Please enter all login details.")
