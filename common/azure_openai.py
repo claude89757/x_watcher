@@ -29,7 +29,7 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
     :return: 包含分析结果的DataFrame。
     """
     results = []
-    max_tokens = 1000  # 假设每行输入和输出都很长
+    max_tokens = 2000  # 假设每行输入和输出都很长
 
     # 初始化 Streamlit 进度条和文本显示
     progress_bar = st.progress(0)
