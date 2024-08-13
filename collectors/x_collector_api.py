@@ -7,7 +7,6 @@
 @Software: PyCharm
 """
 
-import asyncio
 import logging
 
 from quart import Quart
@@ -60,6 +59,7 @@ async def webhook():
                 password = collector_username_infos[username]['password']
 
                 # 异步调用数据收集函数
+                app.logger.info('running...')
                 await async_collect_data_from_x(username=username, email=email, password=password,
                                                 search_key_word=search_key_word, max_post_num=max_post_num,
                                                 access_code=access_code)
