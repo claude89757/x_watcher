@@ -64,7 +64,7 @@ else:
             st.success("Access Granted!")
             logger.info(f"{code} login successfully.")
             st.balloons()
-            time.sleep(1)
+            time.sleep(3)
             st.switch_page("pages/1_Collect_Data.py", )
         else:
             st.error("Incorrect Code. Please try again.")
