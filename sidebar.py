@@ -23,7 +23,8 @@ def cache_file_counts():
         folders = {
             "Raw Data": f"./data/{st.session_state.access_code}/raw/",
             "Processed Data": f"./data/{st.session_state.access_code}/processed/",
-            "Analyzed Data": f"./data/{st.session_state.access_code}/analyzed/"
+            "Analyzed Data": f"./data/{st.session_state.access_code}/analyzed/",
+            "Msg Data": f"./data/{st.session_state.access_code}/msg/",
         }
         st.session_state.file_counts = {folder_name: count_files(folder_path)
                                         for folder_name, folder_path in folders.items()}
