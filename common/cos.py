@@ -13,7 +13,7 @@ import logging
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
 
-from config import CONFIG
+from common.config import CONFIG
 
 
 def upload_file(local_file_path, object_key):

@@ -15,9 +15,13 @@ import datetime
 import pandas as pd
 import streamlit as st
 
-from config import CONFIG
+from common.config import CONFIG
 from common.cos import list_latest_files
 from common.cos import download_file
+from common.log_config import setup_logger
+
+# Configure logger
+logger = setup_logger(__name__)
 
 
 def call_collect_data_from_x(username, search_key_word, max_post_num, access_code):
@@ -49,12 +53,8 @@ def call_collect_data_from_x(username, search_key_word, max_post_num, access_cod
         return None, str(e)
 
 
-# Configure logger
-logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
-
 # Configure Streamlit pages and state
 st.set_page_config(page_title="Collect Data", page_icon="🤖", layout="wide")
-
 
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
@@ -77,7 +77,6 @@ else:
     st.warning("Access not Granted!")
     time.sleep(3)
     st.switch_page("Home.py", )
-
 
 # Force responsive layout for columns also on mobile
 st.write(
@@ -107,7 +106,6 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 st.title("Step 1: Collect Data")
 st.markdown("""Collecting data from X, which may take some time to complete.""")
 
-
 st.session_state.search_keyword = st.text_input(label="Search Keyword", value=st.session_state.search_keyword)
 st.session_state.max_post_num = st.selectbox(
     label="Max Post Number",
@@ -118,7 +116,6 @@ st.session_state.max_post_num = st.selectbox(
 # 将用户输入的数据保存到 URL 参数
 st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
-
 
 # 创建两个并排的列
 col1, col2 = st.columns(2)
@@ -190,7 +187,6 @@ if selected_file and download_button:
 else:
     pass
 
-
 # 展示已下载文件列表的逻辑
 st.header("Downloaded Files")
 
@@ -226,5 +222,3 @@ if os.path.exists(downloaded_files_dir):
         st.write("No files downloaded yet.")
 else:
     st.write("No files downloaded yet.")
-
-

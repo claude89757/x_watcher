@@ -6,16 +6,16 @@
 @File    : 3_AI_Analyze_Data.py
 @Software: PyCharm
 """
-import logging
+
 import time
 
 import streamlit as st
 
-from config import CONFIG
+from common.config import CONFIG
+from common.log_config import setup_logger
 
 # Configure logger
-logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
-
+logger = setup_logger(__name__)
 
 st.set_page_config(page_title="Promotional Msg", page_icon="🤖", layout="wide")
 

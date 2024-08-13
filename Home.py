@@ -6,16 +6,15 @@
 @File    : Home.py
 @Software: PyCharm
 """
-
-import logging
 import time
 import os
 
 import streamlit as st
-from config import CONFIG
+from common.config import CONFIG
+from common.log_config import setup_logger
 
 # Configure logger
-logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
+logger = setup_logger(__name__)
 
 # Configure Streamlit pages and state
 st.set_page_config(page_title="(Demo)X_AI_Marketing", page_icon="🤖", layout="wide")
@@ -69,6 +68,7 @@ else:
             st.error("Incorrect Code. Please try again.")
 
 if access_granted:
+
     st.success("Access Granted!")
     st.markdown("-----")
     st.page_link("pages/1_Collect_Data.py", label="Collect Data", icon="1️⃣", use_container_width=True)
@@ -84,6 +84,7 @@ if access_granted:
         if not os.path.exists(path):
             os.makedirs(path)
             st.write(f"Created directory: {path}")
+            logger.info(f"Created directory: {path}")
         else:
             # st.write(f"Directory already exists: {path}")
             pass

@@ -3,6 +3,7 @@
 /venv
 /runs
 /tracker_stubs
+/logs
 *.pt
 *.pth
 *.cache

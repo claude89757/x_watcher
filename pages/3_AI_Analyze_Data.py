@@ -8,7 +8,6 @@
 """
 
 import os
-import logging
 import time
 
 import pandas as pd
@@ -16,7 +15,11 @@ import requests
 import streamlit as st
 from io import StringIO
 
-from config import CONFIG
+from common.config import CONFIG
+from common.log_config import setup_logger
+
+# Configure logger
+logger = setup_logger(__name__)
 
 
 def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1000) -> pd.DataFrame:
@@ -108,18 +111,9 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
 
     return result_df
 
-# 配置日志记录器
-logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
 
+# set page config
 st.set_page_config(page_title="Analyze Data", page_icon="🤖", layout="wide")
-
-# if st.session_state.get('access_code') and st.session_state.get('access_code') in CONFIG['access_code_list']:
-#     st.query_params.access_code = st.session_state.access_code
-# elif st.query_params.get('access_code') and st.query_params.get('access_code') in CONFIG['access_code_list']:
-#     st.session_state.access_code = st.query_params.access_code
-# else:
-#     st.warning("Access not Granted!")
-#     st.switch_page("Home.py", )
 
 # init session state
 if 'access_code' not in st.session_state:

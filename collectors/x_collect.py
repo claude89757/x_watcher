@@ -597,7 +597,7 @@ def check_service_status(username: str, email: str, password: str):
 
 # Test
 if __name__ == '__main__':
-    from config import CONFIG
+    from common.config import CONFIG
     username = "Zacks89757"
     email = CONFIG['x_collector_account_infos'][username]['email']
     password = CONFIG['x_collector_account_infos'][username]['password']

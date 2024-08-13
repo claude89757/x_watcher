@@ -12,7 +12,7 @@ import logging
 from quart import Quart
 from quart import request
 
-from config import CONFIG
+from common.config import CONFIG
 from x_collect import TwitterWatcher
 
 # 配置日志

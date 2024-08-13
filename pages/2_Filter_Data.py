@@ -7,20 +7,18 @@
 @Software: PyCharm
 """
 import os
-import logging
 import time
 import shutil
 import pandas as pd
 import streamlit as st
-from config import CONFIG
 
-from common.cos import list_latest_files
-from common.cos import download_file
+from common.config import CONFIG
+from common.log_config import setup_logger
 
 # Configure logger
-logging.basicConfig(format="\n%(asctime)s\n%(message)s", level=logging.INFO, force=True)
+logger = setup_logger(__name__)
 
-
+# set page config
 st.set_page_config(page_title="Filter Data", page_icon="🤖", layout="wide")
 
 # Initialize session state

@@ -7,7 +7,7 @@ def load_config():
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     # 配置文件路径
-    config_file_path = os.path.join(current_dir, 'config.json')
+    config_file_path = os.path.join(current_dir, '../config.json')
 
     # 读取配置文件
     with open(config_file_path, 'r') as config_file:
