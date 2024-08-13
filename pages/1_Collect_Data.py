@@ -161,7 +161,6 @@ if st.session_state.matching_files:
     # 选择加载到本地的文件
     if st.session_state.selected_file:
         st.query_params.selected_file = st.session_state.selected_file
-        load_button = st.button("Load file")
         if st.button("Load file"):
             local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", st.session_state.selected_file)
             # 检查本地是否已有文件
