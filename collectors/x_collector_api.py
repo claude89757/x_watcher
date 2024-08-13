@@ -6,7 +6,7 @@
 @File    : x_collector_api.py
 @Software: PyCharm
 """
-
+import traceback
 import logging
 
 from quart import Quart
@@ -130,10 +130,12 @@ async def send_msg_to_user():
             watcher.send_msg_to_user(to_user_link, msg)
             return 'Success', 200
         except Exception as e:
-            app.logger.error(f'Internal Server Error: {e}')
+            error_message = traceback.format_exc()
+            print(error_message)
+            app.logger.info(f'Internal Server Error: {e}')
             return 'Internal Server Error', 500
     else:
-        app.logger.warning('Received non-POST request on /webhook')
+        print('Received non-POST request on /webhook')
         return 'Invalid request', 400
 
 
