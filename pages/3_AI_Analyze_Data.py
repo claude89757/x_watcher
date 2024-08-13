@@ -17,6 +17,9 @@ import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
 from common.azure_openai import send_text_to_gpt
+from sidebar import sidebar
+
+sidebar()
 
 # Configure logger
 logger = setup_logger(__name__)

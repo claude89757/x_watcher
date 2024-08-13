@@ -13,6 +13,9 @@ import streamlit as st
 
 from common.config import CONFIG
 from common.log_config import setup_logger
+from sidebar import sidebar
+
+sidebar()
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -64,45 +67,3 @@ st.title("Step 4: Send Promotional Msg")
 st.markdown("Automate the sending of personalized promotional messages based on AI analysis results")
 
 st.error("Coming soon...")
-
-
-def get_file_list(directory):
-    """Returns a list of all files in the directory"""
-    try:
-        files = os.listdir(directory)
-        files = [f for f in files if os.path.isfile(os.path.join(directory, f))]
-        return files
-    except FileNotFoundError:
-        return []
-
-
-def count_files(directory):
-    """Returns the number of files in the directory"""
-    return len(get_file_list(directory))
-
-
-# Create a component in the sidebar to display file counts
-st.sidebar.header("File Statistics")
-
-folders = {
-    "Raw Data": f"./data/{st.session_state.access_code}/raw/",
-    "Processed Data": f"./data/{st.session_state.access_code}/processed/",
-    "Analyzed Data": f"./data/{st.session_state.access_code}/analyzed/"
-}
-
-for folder_name, folder_path in folders.items():
-    count = count_files(folder_path)
-    st.sidebar.write(f"{folder_name} File Count: {count}")
-
-# Create an expander in the sidebar to display the file list
-selected_folder = st.sidebar.selectbox("Select a Folder", list(folders.keys()))
-selected_folder_path = folders[selected_folder]
-
-with st.sidebar.expander(f"View {selected_folder} File List", expanded=True):
-    file_list = get_file_list(selected_folder_path)
-    if file_list:
-        st.sidebar.write("File List:")
-        for file in file_list:
-            st.sidebar.write(file)
-    else:
-        st.sidebar.write("Directory is empty or does not exist")

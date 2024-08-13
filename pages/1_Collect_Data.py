@@ -20,9 +20,12 @@ from common.config import CONFIG
 from common.cos import list_latest_files
 from common.cos import download_file
 from common.log_config import setup_logger
+from sidebar import sidebar
 
 # Configure logger
 logger = setup_logger(__name__)
+
+sidebar()
 
 
 def call_collect_data_from_x(username, search_key_word, max_post_num, access_code):
@@ -226,5 +229,3 @@ if st.session_state.matching_files:
             pass
     else:
         pass
-
-
