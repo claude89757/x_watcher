@@ -31,7 +31,7 @@ def send_text_to_gpt(system_prompt: str, data: pd.DataFrame, batch_size: int = 1
     :param batch_size: 每次发送的数据行数，默认1000行。
     :return: 包含分析结果的DataFrame。
     """
-    model = ""
+    model = "gpt-4o-mini"
     results = []
     max_tokens = 2000  # 假设每行输入和输出都很长
 
