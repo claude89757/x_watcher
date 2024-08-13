@@ -145,7 +145,7 @@ if st.session_state.login_status == "online":
                 'Details': text
             })
             # 更新进度条
-            progress_bar.progress((index + 1) / len(data_df))
+            progress_bar.progress((index + 1) / send_msg_num)
             time.sleep(random.uniform(1, 10))
 
             if len(results) >= send_msg_num:
