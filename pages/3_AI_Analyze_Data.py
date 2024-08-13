@@ -86,8 +86,8 @@ if st.session_state.selected_file:
         file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(selected_file_path))  # 文件修改时间
 
         if data is not None:
-            st.write("Data Summary:")
-            st.write(data.describe())
+            st.write("Data info:")
+            st.write(data.info())
             st.dataframe(data.head(500), use_container_width=True, height=400)
         else:
             st.write("No data to display.")
@@ -128,8 +128,8 @@ if analyze_button:
 
                 # 显示结果output_file
                 st.success(f"Analysis complete! Results saved to {output_file}.")
-                st.write("## Analysis Results")
-                st.write(result_df.describe())
+                st.write("## Analysis Data info:")
+                st.write(result_df.info())
                 st.dataframe(result_df.head(500), use_container_width=True, height=400)
             else:
                 st.error("Failed to generate analysis results. Please check your prompt or API settings.")
