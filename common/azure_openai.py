@@ -121,3 +121,105 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
     status_text.text("Processing completed!")
 
     return result_df
+
+
+def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataFrame, batch_size: int = 100) -> pd.DataFrame:
+    """
+    使用大模型根据用户和评论信息生成推广短信。
+    :param model: 使用的GPT模型名称。
+    :param system_prompt: 系统级指令，用于提供分析上下文。
+    :param user_data: 包含用户和评论信息的DataFrame。
+    :param batch_size: 每次发送的数据行数，默认100行。
+    :return: 包含推广短信的DataFrame。
+    """
+    results = []
+    max_tokens = 2000  # 假设每行输入和输出都很长
+
+    # 初始化 Streamlit 进度条和文本显示
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    # 计算总批次数量
+    total_batches = len(user_data) // batch_size + (1 if len(user_data) % batch_size != 0 else 0)
+
+    for i in range(0, len(user_data), batch_size):
+        batch = user_data.iloc[i:i + batch_size]
+        batch_csv = batch.to_csv(index=False)
+
+        batch_prompt = f"{system_prompt}\n\n" \
+                       f"Generate a promotional SMS for each user based on their information and comments. " \
+                       f"The output should be in CSV format with the following structure:" \
+                       f"\n1. Original data with all columns intact." \
+                       f"\n2. A new column named 'Promotional SMS' with a personalized promotional message " \
+                       f"for each user." \
+                       f"\n\nData:\n{batch_csv}"
+
+        payload = {
+            "messages": [
+                {"role": "system", "content": batch_prompt}
+            ],
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "max_tokens": max_tokens
+        }
+
+        logger.info("input==============================================")
+        logger.info(batch_prompt)
+        logger.info("input==============================================")
+
+        url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
+              f"api-version=2024-02-15-preview"
+        try:
+            response = requests.post(url,
+                                     headers={
+                                         "Content-Type": "application/json",
+                                         "api-key": CONFIG.get("azure_open_api_key"),
+                                     },
+                                     json=payload
+            )
+            response.raise_for_status()
+            logger.info(f"response: {response.json()}")
+            response_content = response.json()['choices'][0]['message']['content']
+        except Exception as error:
+            # Log the full traceback and error details
+            error_message = traceback.format_exc()
+            st.error(f"Batch {i // batch_size + 1}/{total_batches} failed: {error_message}")
+            logger.error(f"Exception details: {error_message}")
+            continue
+
+        if "```csv" in response_content:
+            csv_content = response_content.split("```csv")[1].split("```")[0].strip()
+        else:
+            csv_content = response_content
+
+        # Debugging: Print the CSV content to verify format
+        logger.info("output==============================================")
+        logger.info(csv_content)
+        logger.info("output==============================================")
+
+        # Handle potential parsing errors
+        try:
+            csv_rows = csv_content.splitlines()
+            reader = pd.read_csv(StringIO("\n".join(csv_rows)), sep=",", iterator=True)
+
+            for chunk in reader:
+                results.append(chunk)
+
+        except pd.errors.ParserError as e:
+            st.error(f"Error parsing CSV data: {e}\n{csv_content}")
+
+            continue
+
+        # 每次处理完一批后更新进度条和状态信息
+        progress_percentage = (i + batch_size) / len(user_data)
+        progress_bar.progress(min(progress_percentage, 1.0))
+        status_text.text(
+            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, received {len(csv_rows) - 1} rows.")
+
+    result_df = pd.concat(results, ignore_index=True)
+
+    # 处理完成后，清除状态信息
+    progress_bar.empty()
+    status_text.text("Processing completed!")
+
+    return result_df
