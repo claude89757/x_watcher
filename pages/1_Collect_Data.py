@@ -187,10 +187,15 @@ if st.session_state.matching_files:
                     file_size = os.path.getsize(file_path)
                     file_mtime = os.path.getmtime(file_path)
                     formatted_mtime = datetime.datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    # 计算文件行数
+                    with open(file_path, 'r') as f:
+                        file_lines = sum(1 for line in f)
+                        
                     file_info_list.append({
                         "File Name": file,
                         "Size (bytes)": file_size,
-                        "Last Modified": formatted_mtime
+                        "Last Modified": formatted_mtime,
+                        "Line Count": file_lines
                     })
 
                 # 创建 DataFrame
