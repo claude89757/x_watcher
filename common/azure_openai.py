@@ -114,17 +114,27 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
         # 每次处理完一批后更新进度条和状态信息
         progress_percentage = (i + batch_size) / len(data)
         progress_bar.progress(min(progress_percentage, 1.0))
-        status_text.text(
-            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, received {len(csv_rows)} rows.")
+        # 构建状态信息字符串
+        status_message = (
+            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, "
+            f"received {len(csv_rows)} rows."
+        )
 
         if csv_rows:
             # 将 CSV 行转换为 DataFrame 并显示
             df = pd.DataFrame(csv_rows[1:], columns=csv_rows[0])  # 使用第一行作为列名
-            status_text.write(df)
+            status_message += "\nData:\n" + df.to_string()  # 将 DataFrame 转换为字符串并附加到消息中
         else:
-            status_text.warning("no data..")
+            status_message += "\nNo data."
 
-    result_df = pd.concat(results, ignore_index=True)
+        # 更新 Streamlit 状态文本
+        status_text.text(status_message)
+
+    # 合并所有 DataFrame
+    if results:
+        result_df = pd.concat(pd.DataFrame(results[1:], columns=results[0]), ignore_index=True)
+    else:
+        result_df = pd.DataFrame()
 
     # 处理完成后，清除状态信息
     progress_bar.empty()
@@ -223,17 +233,27 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
         # 每次处理完一批后更新进度条和状态信息
         progress_percentage = (i + batch_size) / len(user_data)
         progress_bar.progress(min(progress_percentage, 1.0))
-        status_text.text(
-            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, received {len(csv_rows)} rows.")
+        # 构建状态信息字符串
+        status_message = (
+            f"Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, "
+            f"received {len(csv_rows)} rows."
+        )
 
         if csv_rows:
             # 将 CSV 行转换为 DataFrame 并显示
             df = pd.DataFrame(csv_rows[1:], columns=csv_rows[0])  # 使用第一行作为列名
-            status_text.write(df)
+            status_message += "\nData:\n" + df.to_string()  # 将 DataFrame 转换为字符串并附加到消息中
         else:
-            status_text.warning("no data..")
+            status_message += "\nNo data."
 
-    result_df = pd.concat(results, ignore_index=True)
+        # 更新 Streamlit 状态文本
+        status_text.text(status_message)
+
+    # 合并所有 DataFrame
+    if results:
+        result_df = pd.concat(pd.DataFrame(results[1:], columns=results[0]), ignore_index=True)
+    else:
+        result_df = pd.DataFrame()
 
     # 处理完成后，清除状态信息
     progress_bar.empty()
