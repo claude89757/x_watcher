@@ -118,23 +118,24 @@ if not filtered_data.empty:
 
     # 生成推广短信按钮
     if st.button("Generate Promotional Msg"):
-        result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=batch_size)
-        st.query_params.analysis_run = True
-        if not result_df.empty:
-            dst_dir = f"./data/{st.session_state.access_code}/msg/"
-            output_file = os.path.join(dst_dir, f"{st.session_state.selected_file}")
-            # 保存分析结果
-            # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            # logger.info(result_df.head(10))
-            # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            result_df.to_csv(output_file, index=False)
+        with st.spinner('Generating Msg...'):
+            result_df = generate_promotional_sms(model, system_prompt, filtered_data, batch_size=batch_size)
+            st.query_params.analysis_run = True
+            if not result_df.empty:
+                dst_dir = f"./data/{st.session_state.access_code}/msg/"
+                output_file = os.path.join(dst_dir, f"{st.session_state.selected_file}")
+                # 保存分析结果
+                # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                # logger.info(result_df.head(10))
+                # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                result_df.to_csv(output_file, index=False)
 
-            # 显示结果output_file
-            st.success(f"Analysis complete! Results saved to {output_file}.")
-            st.dataframe(result_df.head(500), use_container_width=True, height=400)
+                # 显示结果output_file
+                st.success(f"Analysis complete! Results saved to {output_file}.")
+                st.dataframe(result_df.head(500), use_container_width=True, height=400)
 
-        else:
-            st.error("Failed to generate analysis results. Please check your prompt or API settings.")
+            else:
+                st.error("Failed to generate analysis results. Please check your prompt or API settings.")
 
 # Next
 if st.session_state.msg_data_file_count:
