@@ -66,7 +66,7 @@ dst_dir = f"./data/{st.session_state.access_code}/processed/"
 
 files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]
 # 从最新到最旧排序
-files.sort(key=lambda f: os.path.getmtime(os.path.join(src_dir, f)))
+files.sort(key=lambda f: os.path.getmtime(os.path.join(src_dir, f)), reverse=True)
 if files:
     st.session_state.selected_file = st.selectbox("Select a file to analyze:", files)
     selected_file_path = os.path.join(src_dir, st.session_state.selected_file)
