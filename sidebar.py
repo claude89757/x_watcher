@@ -9,33 +9,32 @@
 import streamlit as st
 import os
 
+def cache_file_counts():
+    # This function should set the file counts in st.session_state
+    # For example:
+    st.session_state.raw_data_file_count = count_files(f"./data/{st.session_state.access_code}/raw/")
+    st.session_state.processed_data_file_count = count_files(f"./data/{st.session_state.access_code}/processed/")
+    st.session_state.analyzed_data_file_count = count_files(f"./data/{st.session_state.access_code}/analyzed/")
+    st.session_state.msg_data_file_count = count_files(f"./data/{st.session_state.access_code}/msg/")
 
 def count_files(folder_path):
-    try:
-        files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-        return len(files)
-    except FileNotFoundError:
-        return 0
-
-
-def cache_file_counts():
-    # Ensure that we only calculate the counts once per session
-    if 'raw_data_file_count' not in st.session_state:
-        st.session_state.raw_data_file_count = count_files(f"./data/{st.session_state.access_code}/raw/")
-        st.session_state.processed_data_file_count = count_files(f"./data/{st.session_state.access_code}/processed/")
-        st.session_state.analyzed_data_file_count = count_files(f"./data/{st.session_state.access_code}/analyzed/")
-        st.session_state.msg_data_file_count = count_files(f"./data/{st.session_state.access_code}/msg/")
-
+    # This function should return the number of files in the given folder
+    import os
+    return len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
 
 def clear_folder(folder_path):
-    try:
-        for f in os.listdir(folder_path):
-            file_path = os.path.join(folder_path, f)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-    except FileNotFoundError:
-        pass
-
+    # This function should clear all files in the given folder
+    import os
+    import shutil
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print(f'Failed to delete {file_path}. Reason: {e}')
 
 def sidebar():
     # Cache file counts
@@ -46,34 +45,16 @@ def sidebar():
 
     # Display counts and add buttons in a horizontal layout
     with st.sidebar:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.caption(f"Raw Data Files: {st.session_state.raw_data_file_count}")
-        with col2:
-            if st.button("Clear", key="clear_raw"):
-                clear_folder(f"./data/{st.session_state.access_code}/raw/")
-                st.session_state.raw_data_file_count = count_files(f"./data/{st.session_state.access_code}/raw/")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.caption(f"Processed Data Files: {st.session_state.processed_data_file_count}")
-        with col2:
-            if st.button("Clear", key="clear_processed"):
-                clear_folder(f"./data/{st.session_state.access_code}/processed/")
-                st.session_state.processed_data_file_count = count_files(f"./data/{st.session_state.access_code}/processed/")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.caption(f"Analyzed Data Files: {st.session_state.analyzed_data_file_count}")
-        with col2:
-            if st.button("Clear", key="clear_analyzed"):
-                clear_folder(f"./data/{st.session_state.access_code}/analyzed/")
-                st.session_state.analyzed_data_file_count = count_files(f"./data/{st.session_state.access_code}/analyzed/")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.caption(f"Msg Data Files: {st.session_state.msg_data_file_count}")
-        with col2:
-            if st.button("Clear", key="clear_msg"):
-                clear_folder(f"./data/{st.session_state.access_code}/msg/")
-                st.session_state.msg_data_file_count = count_files(f"./data/{st.session_state.access_code}/msg/")
+        for label, key, folder in [
+            ("Raw Data Files", "raw", "raw"),
+            ("Processed Data Files", "processed", "processed"),
+            ("Analyzed Data Files", "analyzed", "analyzed"),
+            ("Msg Data Files", "msg", "msg")
+        ]:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.caption(f"{label}: {st.session_state[f'{key}_data_file_count']}")
+            with col2:
+                if st.button("Clear", key=f"clear_{key}"):
+                    clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
+                    st.session_state[f'{key}_data_file_count'] = count_files(f"./data/{st.session_state.access_code}/{folder}/")
