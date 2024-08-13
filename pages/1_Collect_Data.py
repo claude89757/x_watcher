@@ -119,7 +119,6 @@ st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
 
-
 if st.button(label="Start Collecting"):
     # (todo: claude)Initialize progress elements
     # progress_bar = st.progress(0)
@@ -162,7 +161,7 @@ if st.session_state.matching_files:
     st.session_state.selected_file = st.selectbox("Select a file to load", st.session_state.matching_files)
 
 # 确定是否预览选择的数据
-if st.session_state.selected_file:
+if st.session_state.selected_file and st.session_state.matching_files:
     st.query_params.selected_file = st.session_state.selected_file
     load_button = st.button("Load file")
     if load_button and st.session_state.matching_files:
