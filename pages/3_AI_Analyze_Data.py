@@ -180,9 +180,7 @@ if st.session_state.selected_file:
         file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(selected_file_path))  # 文件修改时间
 
         # 显示文件信息
-        st.write(f"File Size: {file_size / 1024:.2f} KB")  # 转换为 KB
-        st.write(f"Number of Rows: {data.shape[0]}")
-        st.write(f"Last Modified Time: {file_mod_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        st.write(f"Data num: {data.shape[0]}")
 
         if data is not None:
             st.dataframe(data.head(500))
