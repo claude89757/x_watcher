@@ -86,8 +86,6 @@ if st.session_state.selected_file:
         file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(selected_file_path))  # 文件修改时间
 
         if data is not None:
-            st.write("Data info:")
-            st.write(data.info())
             st.dataframe(data.head(500), use_container_width=True, height=400)
         else:
             st.write("No data to display.")
