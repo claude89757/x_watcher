@@ -119,6 +119,8 @@ if st.button("Collect More User Details"):
         user_details = []
 
         # 分批查询用户信息
+        # 创建进度条
+        progress_bar = st.progress(0)
         batch_size = 5  # 每批查询的用户数量
         for i in range(0, total_users, batch_size):
             batch_user_ids = user_ids[i:i + batch_size]
@@ -127,8 +129,9 @@ if st.button("Collect More User Details"):
             user_details.extend(details)
 
             # 更新进度条
-            st.progress((i + batch_size) / total_users)
+            progress_bar.progress((i + batch_size) / total_users if (i + batch_size) < total_users else 1.0)
         st.success("User details collected successfully!")
+        st.write(user_details)
         # 将 details 补充到读取的本地文件中
         details_df = pd.DataFrame(user_details)
         merged_data = pd.merge(data, details_df, on="user_id", how="left")
