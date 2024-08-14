@@ -139,7 +139,8 @@ if st.button("Collect More User Details"):
         # 保存合并后的数据到原文件
         merged_data.to_csv(selected_file_path, index=False)
         st.success(f"Merged data saved to {selected_file_path}")
-
+        time.sleep(3)
+        st.rerun()
 
 if not filtered_data.empty:
     # 输入示例的提示词
