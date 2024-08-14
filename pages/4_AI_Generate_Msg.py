@@ -93,17 +93,15 @@ else:
 # 选择要过滤的列
 filter_columns = st.multiselect("Select columns to filter by:", data.columns)
 
-# 选择要过滤的列
-filter_columns = st.multiselect("Select columns to filter by:", data.columns)
-
-# 动态生成过滤器
+# 初始化过滤器
 filters = {}
 for column in filter_columns:
-    with st.expander(f"Filter by {column}"):
-        unique_values = data[column].unique()
-        selected_values = st.multiselect(f"Select values from {column} to filter:", unique_values)
-        if selected_values:
-            filters[column] = selected_values
+    # 显示过滤器
+    st.subheader(f"Filter by {column}")
+    unique_values = data[column].unique()
+    selected_values = st.multiselect(f"Select values from {column} to filter:", unique_values)
+    if selected_values:
+        filters[column] = selected_values
 
 # 过滤数据
 filtered_data = data.copy()
