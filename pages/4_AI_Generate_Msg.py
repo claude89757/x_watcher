@@ -134,7 +134,7 @@ if st.button("Collect More User Details"):
         st.write(user_details)
         # 将 details 补充到读取的本地文件中
         details_df = pd.DataFrame(user_details)
-        merged_data = pd.merge(data, details_df, on="user_id", how="left")
+        merged_data = pd.merge(data, details_df, on="reply_user_id", how="left")
 
         # 保存合并后的数据到原文件
         merged_data.to_csv(selected_file_path, index=False)
