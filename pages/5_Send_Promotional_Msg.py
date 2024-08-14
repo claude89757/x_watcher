@@ -81,17 +81,34 @@ cur_dir = f"./data/{st.session_state.access_code}/msg/"
 files = [f for f in os.listdir(cur_dir) if os.path.isfile(os.path.join(cur_dir, f))]
 files.sort(key=lambda f: os.path.getmtime(os.path.join(cur_dir, f)), reverse=True)
 st.session_state.selected_file = st.selectbox("Select a file:", files)
+
 selected_file_path = None
 if st.session_state.selected_file:
     selected_file_path = os.path.join(cur_dir, st.session_state.selected_file)
     st.subheader(f"File Data Preview: {st.session_state.selected_file}")
-    # 检查本地是否已有文件
+    # Read and display data
     try:
-        # 获取文件信息
         data = pd.read_csv(selected_file_path)
-        # Display the first and last column
         data_df = data.iloc[:, [0, -1]]
         st.dataframe(data_df)
+
+        # Add text input to edit the first column
+        edit_column = st.text_area("Edit the first column data:",
+                                   value="\n".join(data_df.iloc[:, 0].astype(str).tolist()))
+
+        # Convert edited data back to dataframe
+        edited_data = edit_column.split('\n')
+        if len(edited_data) == len(data_df):
+            data_df.iloc[:, 0] = edited_data
+            st.dataframe(data_df)
+
+            # Button to save changes
+            if st.button("Save Changes"):
+                try:
+                    data_df.to_csv(selected_file_path, index=False)
+                    st.success("File saved successfully.")
+                except Exception as e:
+                    st.error(f"Error saving file: {e}")
 
         # Add selection box for the number of private messages
         send_msg_num = st.number_input("Select the number of messages to send", min_value=1, max_value=len(data_df),
@@ -103,6 +120,7 @@ else:
     st.warning("No processed data, return to AI Generate Msg...")
     time.sleep(3)
     st.switch_page("pages/4_AI_Generate_Msg.py")
+
 
 st.markdown("------")
 st.subheader("X Account Verify")
