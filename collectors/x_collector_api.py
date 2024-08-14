@@ -6,6 +6,7 @@
 @File    : x_collector_api.py
 @Software: PyCharm
 """
+import json
 import traceback
 import logging
 
@@ -54,6 +55,7 @@ async def async_check_login_status(username, email, password):
 
 @app.route('/collect_data_from_x', methods=['POST'])
 async def collect_data_from_x():
+    # 使用爬虫号
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_data_from_x ')
         data = await request.get_json()
@@ -114,6 +116,7 @@ async def check_login_status():
 
 @app.route('/send_msg_to_user', methods=['POST'])
 async def send_msg_to_user():
+    # 使用非爬虫号
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_data_from_x ')
         data = await request.get_json()
@@ -128,8 +131,40 @@ async def send_msg_to_user():
 
         try:
             watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
-            watcher.send_msg_to_user(to_user_link, msg)
-            return 'Success', 200
+            return_msg = watcher.send_msg_to_user(to_user_link, msg)
+            return return_msg, 200
+        except Exception as e:
+            error_message = traceback.format_exc()
+            print(error_message)
+            app.logger.info(f'Internal Server Error: {e}')
+            return 'Internal Server Error', 500
+    else:
+        print('Received non-POST request on /webhook')
+        return 'Invalid request', 400
+
+
+@app.route('/collect_user_link_detail', methods=['POST'])
+async def collect_user_link_detail():
+    # 使用爬虫号
+    if request.method == 'POST':
+        app.logger.info('Received POST request on /collect_data_from_x ')
+        data = await request.get_json()
+        username = data.get('username')
+        to_user_link_list = data.get('to_user_link_list')
+        if not username or not to_user_link_list:
+            app.logger.error(f'Missing input username or email or password or to_user_link or msg')
+            return 'Missing input username or email or password or to_user_link or msg', 499
+        try:
+            collector_username_infos = CONFIG['x_collector_account_infos']
+            if collector_username_infos.get(username):
+                email = collector_username_infos[username]['email']
+                password = collector_username_infos[username]['password']
+                watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
+                data = watcher.collect_user_link_detail(to_user_link_list)
+                data_str = json.dumps(data)
+                return data_str, 200
+            else:
+                return 'Missing username\'s info', 401
         except Exception as e:
             error_message = traceback.format_exc()
             print(error_message)

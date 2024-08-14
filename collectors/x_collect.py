@@ -13,6 +13,7 @@ import pickle
 import random
 import datetime
 import logging
+import traceback
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -578,79 +579,259 @@ class TwitterWatcher:
         finally:
             self.teardown_driver()
 
+    def collect_user_link_detail(self, to_user_url_list: list):
+        """
+        收集x用户的首页数据
+        :param to_user_url_list:
+        :return:
+        """
+        data = {}
+        self.setup_driver()
+        try:
+            for index in range(3):
+                # 检查是否存在 cookies 文件
+                if os.path.exists(self.cookies_file) and not self.force_re_login:
+                    try:
+                        self.driver.get('https://twitter.com/home')
+                        self.load_cookies()
+                        self.driver.refresh()
+                        time.sleep(3)
+                    except Exception as error:
+                        logging.info(error)
+                        logging.info("Cookies are invalid, clearing cookies and re-login.")
+                        self.driver.delete_all_cookies()
+                        self.login()
+                else:
+                    self.login()
+                # 混淆: 随机等待时间
+                time.sleep(random.uniform(1, 3))
+
+                # 再次检查是否需要登录
+                if "home" in self.driver.current_url:
+                    break
+                else:
+                    # 再试一次
+                    logging.warning(f"{index} time login failed, try again...")
+
+            # 检查是否登录成功
+            if "home" in self.driver.current_url:
+                logging.info("login successfully")
+            else:
+                # 再试一次
+                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+                self.driver.save_screenshot(f"./saved_screenshots/login_failed_page_{current_time}.png")
+                return False, "Login failed"
+
+            for to_user_url in to_user_url_list:
+                # 进入推特用户主页
+                try:
+                    logging.info(f"loading {to_user_url}")
+                    self.driver.get(to_user_url)
+                    WebDriverWait(self.driver, self.timeout).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, "article"))
+                    )
+                    logging.info(f"{to_user_url} Page loaded successfully.")
+                    page_loaded = "yes"
+                except Exception as error:
+                    self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                    error_message = traceback.format_exc()
+                    logger.error(error)
+                    logger.error(error_message)
+                    page_loaded = "no"
+
+                # 显式等待私信按钮出现
+                try:
+                    wait = WebDriverWait(self.driver, self.timeout)
+                    dm_button = wait.until(
+                        EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
+                    dm_button.click()
+                    time.sleep(random.uniform(0, 3))
+                    logging.info("send msg button loaded")
+                    enable_dm = "yes"
+                except Exception as error:
+                    self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                    error_message = traceback.format_exc()
+                    logger.error(error)
+                    logger.error(error_message)
+                    enable_dm = "no"
+
+                # 获取用户加入推特的时间
+                try:
+                    join_date_element = self.driver.find_element(By.XPATH, './/span[@data-testid="UserJoinDate"]')
+                    user_join_date = join_date_element.text
+                    logger.info("User Join Date:", user_join_date)
+                except:
+                    user_join_date = ""
+
+                # Location
+                try:
+                    location_element = self.driver.find_element(By.XPATH, './/span[@data-testid="UserLocation"]')
+                    user_location = location_element.text
+                    logger.info("User Location:", user_location)
+                except:
+                    user_location = ""
+
+                # 获取用户推特简介
+                try:
+                    description_element = self.driver.find_element(By.XPATH, './/div[@data-testid="UserDescription"]')
+                    user_description = description_element.text
+                    logger.info("User Description:", user_description)
+                except:
+                    user_description = ""
+
+                # 获取关注数量
+                try:
+                    following_element = self.driver.find_element(By.XPATH,
+                                                                 './/a[contains(@href, "/following")]//span[1]')
+                    following_count = following_element.text
+                    logger.info("Following Count:", following_count)
+                except:
+                    following_count = ""
+
+                # 获取粉丝数量
+                try:
+                    followers_element = self.driver.find_element(By.XPATH,
+                                                                 './/a[contains(@href, "/followers")]//span[1]')
+                    followers_count = followers_element.text
+                    logger.info("Followers Count:", followers_count)
+                except:
+                    followers_count = ""
+
+                data[to_user_url] = {
+                    "page_loaded": page_loaded,
+                    "enable_dm": enable_dm,
+                    "user_join_date": user_join_date,
+                    "user_location": user_location,
+                    "user_description": user_description,
+                    "following_count": following_count,
+                    "followers_count": followers_count,
+                }
+
+                # 反爬虫检测机制：随机关注用户
+                try:
+                    # 随机决定是否关注用户
+                    if random.random() < 0.1:  # 10% 的概率
+                        # 等待关注按钮可点击
+                        follow_button = WebDriverWait(self.driver, 3).until(
+                            EC.element_to_be_clickable((By.XPATH, f'//button[@aria-label="Follow @{user_id}"]'))
+                        )
+
+                        # 点击关注按钮
+                        follow_button.click()
+                        logger.info("Follow button clicked.")
+                    else:
+                        logger.info("Decided not to follow the user this time.")
+                except Exception as e:
+                    logger.warning("Error:", e)
+                time.sleep(random.uniform(0, 1))
+            return data
+        finally:
+            self.teardown_driver()
+
     def send_msg_to_user(self, to_user_url: str, msg: str):
         """
-        发生私信
+        发送私信
         :param to_user_url:
         :param msg:
         :return:
         """
         self.setup_driver()
-        for index in range(3):
-            # 检查是否存在 cookies 文件
-            if os.path.exists(self.cookies_file) and not self.force_re_login:
-                try:
-                    self.driver.get('https://twitter.com/home')
-                    self.load_cookies()
-                    self.driver.refresh()
-                    time.sleep(3)
-                except Exception as error:
-                    logging.info(error)
-                    logging.info("Cookies are invalid, clearing cookies and re-login.")
-                    self.driver.delete_all_cookies()
+        try:
+            for index in range(3):
+                # 检查是否存在 cookies 文件
+                if os.path.exists(self.cookies_file) and not self.force_re_login:
+                    try:
+                        self.driver.get('https://twitter.com/home')
+                        self.load_cookies()
+                        self.driver.refresh()
+                        time.sleep(3)
+                    except Exception as error:
+                        logging.info(error)
+                        logging.info("Cookies are invalid, clearing cookies and re-login.")
+                        self.driver.delete_all_cookies()
+                        self.login()
+                else:
                     self.login()
-            else:
-                self.login()
-            # 混淆: 随机等待时间
-            time.sleep(random.uniform(1, 3))
+                # 混淆: 随机等待时间
+                time.sleep(random.uniform(1, 3))
 
-            # 再次检查是否需要登录
+                # 再次检查是否需要登录
+                if "home" in self.driver.current_url:
+                    break
+                else:
+                    # 再试一次
+                    logging.warning(f"{index} time login failed, try again...")
+
+            # 检查是否登录成功
             if "home" in self.driver.current_url:
-                break
+                logging.info("login successfully")
             else:
                 # 再试一次
-                logging.warning(f"{index} time login failed, try again...")
+                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+                self.driver.save_screenshot(f"./saved_screenshots/login_failed_page_{current_time}.png")
+                return False, "Login failed"
 
-        # 检查是否登录成功
-        if "home" in self.driver.current_url:
-            logging.info("login successfully")
-        else:
-            # 再试一次
-            current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-            self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
-            raise Exception(f"login failed: {self.driver.current_url}")
+            # 进入推特用户主页
+            try:
+                logging.info(f"loading {to_user_url}")
+                self.driver.get(to_user_url)
+                WebDriverWait(self.driver, self.timeout).until(
+                    EC.visibility_of_element_located((By.CSS_SELECTOR, "article"))
+                )
+                logging.info(f"{to_user_url} Page loaded successfully.")
+            except Exception as error:
+                self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                error_message = traceback.format_exc()
+                logger.error(error)
+                logger.error(error_message)
+                return False, "load user link failed"
 
-        # 进入推特用户主页
-        logging.info(f"loading {to_user_url}")
-        self.driver.get(to_user_url)
-        # Wait for the page to load completely
-        WebDriverWait(self.driver, self.timeout).until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "article"))
-        )
-        logging.info(f"{to_user_url} Page loaded successfully.")
+            # 显式等待私信按钮出现
+            try:
+                wait = WebDriverWait(self.driver, self.timeout)
+                dm_button = wait.until(
+                    EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
+                dm_button.click()
+                time.sleep(random.uniform(0, 3))
+                logging.info("send msg button loaded")
+            except Exception as error:
+                self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                error_message = traceback.format_exc()
+                logger.error(error)
+                logger.error(error_message)
+                return False, "No found DM button"
 
-        # 显式等待私信按钮出现
-        wait = WebDriverWait(self.driver, self.timeout)
-        dm_button = wait.until(
-            EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
-        dm_button.click()
-        logging.info("send msg button loaded")
-
-        logging.info("sending msg...")
-        time.sleep(3)
-        self.driver.save_screenshot(f"{to_user_url.split('/')[-1]}_find_input.png")
-        dm_input = wait.until(
-            EC.presence_of_element_located((By.XPATH, '//div[@data-testid="dmComposerTextInput"]')))
-        time.sleep(random.uniform(0, 3))
-        dm_input.click()
-        logger.error(f"click input button.")
-        time.sleep(random.uniform(0, 3))
-        dm_input.send_keys(msg)
-        logger.error(f"input msg.")
-        time.sleep(random.uniform(0, 3))
-        logger.error(f"enter to send.")
-        dm_input.send_keys(Keys.RETURN)
-        self.teardown_driver()
+            # 输入消息
+            try:
+                logging.info("sending msg...")
+                dm_input = wait.until(
+                    EC.presence_of_element_located((By.XPATH, '//div[@data-testid="dmComposerTextInput"]')))
+                time.sleep(random.uniform(0, 3))
+                dm_input.click()
+                logger.info(f"click input button.")
+            except Exception as error:
+                self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                error_message = traceback.format_exc()
+                logger.error(error)
+                logger.error(error_message)
+                return False, "No found DM input"
+            try:
+                time.sleep(random.uniform(0, 3))
+                dm_input.send_keys(msg)
+                logger.info(f"input msg.")
+                time.sleep(random.uniform(0, 3))
+                logger.info(f"enter to send.")
+                dm_input.send_keys(Keys.RETURN)
+                time.sleep(random.uniform(0, 3))
+                return True, "Success"
+            except Exception as error:
+                self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                error_message = traceback.format_exc()
+                logger.error(error)
+                logger.error(error_message)
+                return False, "Send DM error"
+        finally:
+            self.teardown_driver()
 
 
 CHROME_DRIVER = '/usr/local/bin/chromedriver'
