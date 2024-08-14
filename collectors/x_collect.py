@@ -69,6 +69,8 @@ class TwitterWatcher:
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
+
+
     def teardown_driver(self):
         if self.driver:
             self.driver.quit()

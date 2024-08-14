@@ -125,8 +125,11 @@ if st.button("Collect More User Details"):
         for i in range(0, total_users, batch_size):
             batch_user_ids = user_ids[i:i + batch_size]
             # 调用 collect_user_link_details 函数
-            details = collect_user_link_details("Zacks89757", batch_user_ids)
-            user_details.extend(details)
+            status_code, details = collect_user_link_details("Zacks89757", batch_user_ids)
+            if status_code == 200:
+                user_details.extend(details)
+            else:
+                pass
 
             # 更新进度条
             progress_bar.progress((i + batch_size) / total_users if (i + batch_size) < total_users else 1.0)
