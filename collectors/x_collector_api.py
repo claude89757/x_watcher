@@ -92,7 +92,7 @@ async def collect_data_from_x():
 @app.route('/check_login_status', methods=['POST'])
 async def check_login_status():
     if request.method == 'POST':
-        app.logger.info('Received POST request on /collect_data_from_x ')
+        app.logger.info('Received POST request on /check_login_status ')
         data = await request.get_json()
         username = data.get('username')
         email = data.get('email')
@@ -118,7 +118,7 @@ async def check_login_status():
 async def send_msg_to_user():
     # 使用非爬虫号
     if request.method == 'POST':
-        app.logger.info('Received POST request on /collect_data_from_x ')
+        app.logger.info('Received POST request on /send_msg_to_user ')
         data = await request.get_json()
         username = data.get('username')
         email = data.get('email')
@@ -147,7 +147,7 @@ async def send_msg_to_user():
 async def collect_user_link_detail():
     # 使用爬虫号
     if request.method == 'POST':
-        app.logger.info('Received POST request on /collect_data_from_x ')
+        app.logger.info('Received POST request on /collect_user_link_detail ')
         data = await request.get_json()
         username = data.get('username')
         user_id_list = data.get('user_id_list')

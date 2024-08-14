@@ -635,9 +635,7 @@ class TwitterWatcher:
                     page_loaded = "yes"
                 except Exception as error:
                     self.driver.save_screenshot(f"./saved_screenshots/{user_id}_error.png")
-                    error_message = traceback.format_exc()
                     logger.error(error)
-                    logger.error(error_message)
                     page_loaded = "no"
 
                 # 显式等待私信按钮出现
@@ -650,10 +648,7 @@ class TwitterWatcher:
                     logging.info("send msg button loaded")
                     enable_dm = "yes"
                 except Exception as error:
-                    self.driver.save_screenshot(f"./saved_screenshots/{user_id}_error.png")
-                    error_message = traceback.format_exc()
                     logger.error(error)
-                    logger.error(error_message)
                     enable_dm = "no"
 
                 # 获取用户加入推特的时间
