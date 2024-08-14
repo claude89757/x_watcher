@@ -85,17 +85,16 @@ st.session_state.selected_file = st.selectbox("Select a file:", files)
 selected_file_path = None
 if st.session_state.selected_file:
     selected_file_path = os.path.join(cur_dir, st.session_state.selected_file)
-    st.subheader(f"File Data Preview: {st.session_state.selected_file}")
+    st.subheader(f"Promotional Msg Preview: {st.session_state.selected_file}")
 
     # Read and display data
     try:
         data = pd.read_csv(selected_file_path)
         data_df = data.iloc[:, [0, -1]]
-        st.dataframe(data_df)
 
         # Add text area to edit the last column
         last_col_data = "\n".join(data_df.iloc[:, -1].astype(str).tolist())
-        edited_last_col = st.text_area("Edit the last column data:", value=last_col_data, height=300)
+        edited_last_col = st.text_area("Edit Promotional Msg:", value=last_col_data, height=300)
 
         # Convert edited data back to dataframe
         edited_data = edited_last_col.split('\n')
