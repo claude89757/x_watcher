@@ -86,20 +86,21 @@ selected_file_path = None
 if st.session_state.selected_file:
     selected_file_path = os.path.join(cur_dir, st.session_state.selected_file)
     st.subheader(f"File Data Preview: {st.session_state.selected_file}")
+
     # Read and display data
     try:
         data = pd.read_csv(selected_file_path)
         data_df = data.iloc[:, [0, -1]]
         st.dataframe(data_df)
 
-        # Add text input to edit the first column
-        edit_column = st.text_area("Edit the first column data:",
-                                   value="\n".join(data_df.iloc[:, 0].astype(str).tolist()))
+        # Add text area to edit the last column
+        last_col_data = "\n".join(data_df.iloc[:, -1].astype(str).tolist())
+        edited_last_col = st.text_area("Edit the last column data:", value=last_col_data, height=300)
 
         # Convert edited data back to dataframe
-        edited_data = edit_column.split('\n')
+        edited_data = edited_last_col.split('\n')
         if len(edited_data) == len(data_df):
-            data_df.iloc[:, 0] = edited_data
+            data_df.iloc[:, -1] = edited_data
             st.dataframe(data_df)
 
             # Button to save changes
@@ -120,7 +121,7 @@ else:
     st.warning("No processed data, return to AI Generate Msg...")
     time.sleep(3)
     st.switch_page("pages/4_AI_Generate_Msg.py")
-
+    
 
 st.markdown("------")
 st.subheader("X Account Verify")
