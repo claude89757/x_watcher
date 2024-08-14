@@ -637,6 +637,8 @@ class TwitterWatcher:
         logging.info("send msg button loaded")
 
         logging.info("sending msg...")
+        time.sleep(3)
+        self.driver.save_screenshot(f"{to_user_url.split('/')[-1]}_find_input.png")
         dm_input = wait.until(
             EC.presence_of_element_located((By.XPATH, '//div[@data-testid="dmComposerTextInput"]')))
         time.sleep(random.uniform(0, 3))
