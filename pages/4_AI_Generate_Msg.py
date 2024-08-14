@@ -95,11 +95,14 @@ filter_columns = st.multiselect("Select columns to filter by:", data.columns)
 
 # 动态生成过滤器
 filters = {}
+filter_containers = {}
 for column in filter_columns:
-    unique_values = data[column].unique()
-    selected_values = st.multiselect(f"Select values from {column} to filter:", unique_values)
-    if selected_values:
-        filters[column] = selected_values
+    with st.expander(f"Filter by {column}"):
+        unique_values = data[column].unique()
+        selected_values = st.multiselect(f"Select values from {column} to filter:", unique_values)
+        if selected_values:
+            filters[column] = selected_values
+    filter_containers[column] = st.empty()
 
 # 过滤数据
 filtered_data = data.copy()
@@ -114,6 +117,10 @@ st.dataframe(filtered_data)
 # 获取更多的用户信息
 if st.button("Collect More User Details"):
     with st.spinner("Collecting More User Details..."):
+        # 隐藏筛选选项
+        for container in filter_containers.values():
+            container.empty()
+
         user_ids = data.iloc[:, 0].tolist()  # 假设第一列是 user_id
         total_users = len(user_ids)
         user_details = []
