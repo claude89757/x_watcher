@@ -161,7 +161,7 @@ async def collect_user_link_detail():
                 password = collector_username_infos[username]['password']
                 watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
                 data = watcher.collect_user_link_detail(user_id_list)
-                data_str = json.dumps({"data": {data}})
+                data_str = json.dumps({"data": data})
                 return data_str, 200
             else:
                 return 'Missing username\'s info', 401
