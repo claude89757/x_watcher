@@ -579,10 +579,10 @@ class TwitterWatcher:
         finally:
             self.teardown_driver()
 
-    def collect_user_link_detail(self, to_user_url_list: list):
+    def collect_user_link_detail(self, user_id_list: list):
         """
         收集x用户的首页数据
-        :param to_user_url_list:
+        :param user_id_list:
         :return:
         """
         data = {}
@@ -622,8 +622,9 @@ class TwitterWatcher:
                 self.driver.save_screenshot(f"./saved_screenshots/login_failed_page_{current_time}.png")
                 return False, "Login failed"
 
-            for to_user_url in to_user_url_list:
+            for user_id in user_id_list:
                 # 进入推特用户主页
+                to_user_url = f"https://x.com/{user_id}"
                 try:
                     logging.info(f"loading {to_user_url}")
                     self.driver.get(to_user_url)
@@ -633,7 +634,7 @@ class TwitterWatcher:
                     logging.info(f"{to_user_url} Page loaded successfully.")
                     page_loaded = "yes"
                 except Exception as error:
-                    self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                    self.driver.save_screenshot(f"./saved_screenshots/{user_id}_error.png")
                     error_message = traceback.format_exc()
                     logger.error(error)
                     logger.error(error_message)
@@ -649,7 +650,7 @@ class TwitterWatcher:
                     logging.info("send msg button loaded")
                     enable_dm = "yes"
                 except Exception as error:
-                    self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
+                    self.driver.save_screenshot(f"./saved_screenshots/{user_id}_error.png")
                     error_message = traceback.format_exc()
                     logger.error(error)
                     logger.error(error_message)
@@ -697,7 +698,7 @@ class TwitterWatcher:
                 except:
                     followers_count = ""
 
-                data[to_user_url] = {
+                data[user_id] = {
                     "page_loaded": page_loaded,
                     "enable_dm": enable_dm,
                     "user_join_date": user_join_date,

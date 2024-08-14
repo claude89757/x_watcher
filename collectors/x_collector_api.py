@@ -150,8 +150,8 @@ async def collect_user_link_detail():
         app.logger.info('Received POST request on /collect_data_from_x ')
         data = await request.get_json()
         username = data.get('username')
-        to_user_link_list = data.get('to_user_link_list')
-        if not username or not to_user_link_list:
+        user_id_list = data.get('user_id_list')
+        if not username or not user_id_list:
             app.logger.error(f'Missing input username or email or password or to_user_link or msg')
             return 'Missing input username or email or password or to_user_link or msg', 499
         try:
@@ -160,7 +160,7 @@ async def collect_user_link_detail():
                 email = collector_username_infos[username]['email']
                 password = collector_username_infos[username]['password']
                 watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
-                data = watcher.collect_user_link_detail(to_user_link_list)
+                data = watcher.collect_user_link_detail(user_id_list)
                 data_str = json.dumps(data)
                 return data_str, 200
             else:

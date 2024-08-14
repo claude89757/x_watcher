@@ -10,8 +10,67 @@
 import logging
 import requests
 
-
 from common.config import CONFIG
+
+
+def call_collect_data_from_x(username, search_key_word, max_post_num, access_code):
+    """
+    调用 /collect_data_from_x API 接口
+
+    :param username: 用户名
+    :param search_key_word: 搜索关键字
+    :param max_post_num: 最大帖子数
+    :param access_code: 访问代码
+    :return: 返回 API 响应的状态和内容
+    """
+    collector_url = CONFIG['collector_urls'][0]
+    api_endpoint = f'http://{collector_url}/collect_data_from_x'  # 在这里定义 API 端点 URL
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        'username': username,
+        'search_key_word': search_key_word,
+        'max_post_num': max_post_num,
+        'access_code': access_code
+    }
+    try:
+        logging.info(f"sending request...")
+        response = requests.post(api_endpoint, json=data, headers=headers)
+        response.raise_for_status()  # 抛出 HTTPError 异常（如果发生）
+        if response.status_code == 200:
+            return response.status_code, response.text
+        else:
+            raise Exception(f"calling API failed: {response.text}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f'Error calling API: {e}')
+        return None, str(e)
+
+
+def collect_user_link_details(username, user_id_list):
+    """
+    调用 /collect_data_from_x API 接口
+
+    :param username: 用户名
+    :param user_id_list:
+    :return: 返回 API 响应的状态和内容
+    """
+    collector_url = CONFIG['collector_urls'][0]
+    api_endpoint = f'http://{collector_url}/collect_data_from_x'  # 在这里定义 API 端点 URL
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        'username': username,
+        'user_id_list': user_id_list,
+    }
+    try:
+        logging.info(f"sending request...")
+        response = requests.post(api_endpoint, json=data, headers=headers)
+        response.raise_for_status()  # 抛出 HTTPError 异常（如果发生）
+        if response.status_code == 200:
+            return response.status_code, response.json()
+        else:
+            raise Exception(f"calling API failed: {response.text}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f'Error calling API: {e}')
+        return None, str(e)
 
 
 def check_x_login_status(username, email, password):

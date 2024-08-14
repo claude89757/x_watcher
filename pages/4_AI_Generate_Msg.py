@@ -15,6 +15,7 @@ import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
 from common.azure_openai import generate_promotional_sms
+from common.collector_sdk import collect_user_link_details
 from sidebar import sidebar
 from sidebar import cache_file_counts
 
@@ -89,20 +90,52 @@ else:
     time.sleep(3)
     st.switch_page("pages/2_Preprocess_Data.py")
 
+# 选择要过滤的列
+filter_columns = st.multiselect("Select columns to filter by:", data.columns)
 
-# 默认选择最后一个字段进行过滤
-filter_column = data.columns[-1]
-
-# 获取唯一值并选择过滤条件
-unique_values = data[filter_column].unique()
-selected_value = st.selectbox(f"Select a value from {filter_column} to filter:", unique_values)
+# 动态生成过滤器
+filters = {}
+for column in filter_columns:
+    unique_values = data[column].unique()
+    selected_values = st.multiselect(f"Select values from {column} to filter:", unique_values)
+    if selected_values:
+        filters[column] = selected_values
 
 # 过滤数据
-filtered_data = data[data[filter_column] == selected_value]
+filtered_data = data.copy()
+for column, selected_values in filters.items():
+    filtered_data = filtered_data[filtered_data[column].isin(selected_values)]
 
 # 显示过滤后的数据
 st.subheader("Filtered Data")
 st.dataframe(filtered_data)
+
+
+# 获取更多的用户信息
+if st.button("Collect More User Details"):
+    with st.spinner("Collecting More User Details..."):
+        user_ids = data.iloc[:, 0].tolist()  # 假设第一列是 user_id
+        total_users = len(user_ids)
+        user_details = []
+
+        # 分批查询用户信息
+        batch_size = 5  # 每批查询的用户数量
+        for i in range(0, total_users, batch_size):
+            batch_user_ids = user_ids[i:i + batch_size]
+            # 调用 collect_user_link_details 函数
+            details = collect_user_link_details("Zacks89757", batch_user_ids)
+            user_details.extend(details)
+
+            # 更新进度条
+            st.progress((i + batch_size) / total_users)
+        st.success("User details collected successfully!")
+        # 将 details 补充到读取的本地文件中
+        details_df = pd.DataFrame(user_details)
+        merged_data = pd.merge(data, details_df, on="user_id", how="left")
+
+        # 保存合并后的数据到原文件
+        merged_data.to_csv(selected_file_path, index=False)
+        st.success(f"Merged data saved to {selected_file_path}")
 
 
 if not filtered_data.empty:

@@ -20,44 +20,12 @@ from common.config import CONFIG
 from common.cos import list_latest_files
 from common.cos import download_file
 from common.log_config import setup_logger
+from common.collector_sdk import call_collect_data_from_x
 from sidebar import sidebar
 from sidebar import cache_file_counts
 
 # Configure logger
 logger = setup_logger(__name__)
-
-
-def call_collect_data_from_x(username, search_key_word, max_post_num, access_code):
-    """
-    调用 /collect_data_from_x API 接口
-
-    :param username: 用户名
-    :param search_key_word: 搜索关键字
-    :param max_post_num: 最大帖子数
-    :param access_code: 访问代码
-    :return: 返回 API 响应的状态和内容
-    """
-    collector_url = CONFIG['collector_urls'][0]
-    api_endpoint = f'http://{collector_url}/collect_data_from_x'  # 在这里定义 API 端点 URL
-    headers = {'Content-Type': 'application/json'}
-    data = {
-        'username': username,
-        'search_key_word': search_key_word,
-        'max_post_num': max_post_num,
-        'access_code': access_code
-    }
-    try:
-        logging.info(f"sending request...")
-        response = requests.post(api_endpoint, json=data, headers=headers)
-        response.raise_for_status()  # 抛出 HTTPError 异常（如果发生）
-        if response.status_code == 200:
-            return response.status_code, response.text
-        else:
-            raise Exception(f"calling API failed: {response.text}")
-    except requests.exceptions.RequestException as e:
-        logging.error(f'Error calling API: {e}')
-        return None, str(e)
-
 
 # Configure Streamlit pages and state
 st.set_page_config(page_title="Collect Data", page_icon="🤖", layout="wide")
