@@ -641,11 +641,7 @@ class TwitterWatcher:
                 # 显式等待私信按钮出现
                 try:
                     wait = WebDriverWait(self.driver, self.timeout)
-                    dm_button = wait.until(
-                        EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
-                    dm_button.click()
-                    time.sleep(random.uniform(0, 3))
-                    logging.info("send msg button loaded")
+                    wait.until(EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
                     enable_dm = "yes"
                 except Exception as error:
                     logger.error(error)
@@ -706,7 +702,7 @@ class TwitterWatcher:
                 # 反爬虫检测机制：随机关注用户
                 try:
                     # 随机决定是否关注用户
-                    if random.random() < 0.1:  # 10% 的概率
+                    if random.random() < 0.2:  # 10% 的概率
                         # 等待关注按钮可点击
                         follow_button = WebDriverWait(self.driver, 3).until(
                             EC.element_to_be_clickable((By.XPATH, f'//button[@aria-label="Follow @{user_id}"]'))
