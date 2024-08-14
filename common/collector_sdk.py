@@ -54,7 +54,7 @@ def collect_user_link_details(username, user_id_list):
     :return: 返回 API 响应的状态和内容
     """
     collector_url = CONFIG['collector_urls'][0]
-    api_endpoint = f'http://{collector_url}/collect_data_from_x'  # 在这里定义 API 端点 URL
+    api_endpoint = f'http://{collector_url}/collect_user_link_detail'  # 在这里定义 API 端点 URL
     headers = {'Content-Type': 'application/json'}
     data = {
         'username': username,
