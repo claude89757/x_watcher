@@ -65,7 +65,7 @@ def collect_user_link_details(username, user_id_list):
         response = requests.post(api_endpoint, json=data, headers=headers)
         response.raise_for_status()  # 抛出 HTTPError 异常（如果发生）
         if response.status_code == 200:
-            return response.status_code, response.json()
+            return response.status_code, response.json()['data']
         else:
             raise Exception(f"calling API failed: {response.text}")
     except requests.exceptions.RequestException as e:

@@ -585,7 +585,7 @@ class TwitterWatcher:
         :param user_id_list:
         :return:
         """
-        data = {}
+        data = []
         self.setup_driver()
         try:
             for index in range(3):
@@ -635,61 +635,49 @@ class TwitterWatcher:
                     page_loaded = "yes"
                 except Exception as error:
                     self.driver.save_screenshot(f"./saved_screenshots/{user_id}_error.png")
-                    logger.error(error)
                     page_loaded = "no"
 
                 # 显式等待私信按钮出现
                 try:
-                    wait = WebDriverWait(self.driver, self.timeout)
-                    wait.until(EC.element_to_be_clickable((By.XPATH, '//button[@data-testid="sendDMFromProfile"]')))
+                    self.driver.find_element(By.XPATH, '//button[@data-testid="sendDMFromProfile"]')
                     enable_dm = "yes"
-                except Exception as error:
-                    logger.error(error)
+                except:
                     enable_dm = "no"
 
                 # 获取用户加入推特的时间
                 try:
-                    join_date_element = self.driver.find_element(By.XPATH, './/span[@data-testid="UserJoinDate"]')
-                    user_join_date = join_date_element.text
-                    logger.info("User Join Date:", user_join_date)
+                    user_join_date = self.driver.find_element(By.XPATH, './/span[@data-testid="UserJoinDate"]').text
                 except:
                     user_join_date = ""
 
                 # Location
                 try:
-                    location_element = self.driver.find_element(By.XPATH, './/span[@data-testid="UserLocation"]')
-                    user_location = location_element.text
-                    logger.info("User Location:", user_location)
+                    user_location = self.driver.find_element(By.XPATH, './/span[@data-testid="UserLocation"]').text
                 except:
                     user_location = ""
 
                 # 获取用户推特简介
                 try:
-                    description_element = self.driver.find_element(By.XPATH, './/div[@data-testid="UserDescription"]')
-                    user_description = description_element.text
-                    logger.info("User Description:", user_description)
+                    user_description = self.driver.find_element(By.XPATH, './/div[@data-testid="UserDescription"]').text
                 except:
                     user_description = ""
 
                 # 获取关注数量
                 try:
-                    following_element = self.driver.find_element(By.XPATH,
-                                                                 './/a[contains(@href, "/following")]//span[1]')
-                    following_count = following_element.text
-                    logger.info("Following Count:", following_count)
+                    following_count = self.driver.find_element(By.XPATH,
+                                                               './/a[contains(@href, "/following")]//span[1]').text
                 except:
                     following_count = ""
 
                 # 获取粉丝数量
                 try:
-                    followers_element = self.driver.find_element(By.XPATH,
-                                                                 './/a[contains(@href, "/followers")]//span[1]')
-                    followers_count = followers_element.text
-                    logger.info("Followers Count:", followers_count)
+                    followers_count = self.driver\
+                        .find_element(By.XPATH, './/a[contains(@href, "/verified_followers")]//span[1]').text
                 except:
                     followers_count = ""
 
-                data[user_id] = {
+                data.append({
+                    "reply_user_id": user_id,
                     "page_loaded": page_loaded,
                     "enable_dm": enable_dm,
                     "user_join_date": user_join_date,
@@ -697,17 +685,15 @@ class TwitterWatcher:
                     "user_description": user_description,
                     "following_count": following_count,
                     "followers_count": followers_count,
-                }
+                })
 
                 # 反爬虫检测机制：随机关注用户
                 try:
                     # 随机决定是否关注用户
                     if random.random() < 0.2:  # 10% 的概率
                         # 等待关注按钮可点击
-                        follow_button = WebDriverWait(self.driver, 3).until(
-                            EC.element_to_be_clickable((By.XPATH, f'//button[@aria-label="Follow @{user_id}"]'))
-                        )
-
+                        follow_button = self.driver.find_elements(By.XPATH,
+                                                                  f'//button[@aria-label="Follow @{user_id}"]')
                         # 点击关注按钮
                         follow_button.click()
                         logger.info("Follow button clicked.")
