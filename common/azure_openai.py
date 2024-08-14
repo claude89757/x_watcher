@@ -213,7 +213,7 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
         try:
             csv_reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"')
             for row in csv_reader:
-                if len(row) == 5:
+                if len(row) == 4:
                     results.append(row)
                     csv_rows.append(row)
                 else:

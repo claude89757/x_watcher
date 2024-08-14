@@ -121,7 +121,7 @@ else:
     st.warning("No processed data, return to AI Generate Msg...")
     time.sleep(3)
     st.switch_page("pages/4_AI_Generate_Msg.py")
-    
+
 
 st.markdown("------")
 st.subheader("X Account Verify")
