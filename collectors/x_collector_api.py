@@ -6,12 +6,16 @@
 @File    : x_collector_api.py
 @Software: PyCharm
 """
+import os
 import json
 import traceback
 import logging
+import datetime
+import aiofiles
 
 from quart import Quart
 from quart import request
+from quart import jsonify
 
 from common.config import CONFIG
 from x_collect import TwitterWatcher
@@ -33,11 +37,27 @@ async def async_collect_data_from_x(username, email, password, search_key_word, 
     :param access_code:
     :return:
     """
-    logging.info("start collecting data.")
-    watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, search_key_word)
-    watcher.run(max_post_num, access_code)
-    logging.info("done collecting data.")
-    return "Collected data"
+    task_file_path = f"/root/{access_code}_{username}_{search_key_word}_task"
+
+    try:
+        # 创建文件并写入 "RUNNING" 和当前时间
+        with open(task_file_path, 'w') as task_file:
+            task_file.write(f"RUNNING at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # 数据收集
+        logging.info("start collecting data.")
+        watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, search_key_word)
+        watcher.run(max_post_num, access_code)
+        logging.info("done collecting data.")
+
+        # 数据收集完成后将文件内容改为 "SUCCESS" 和当前时间
+        with open(task_file_path, 'w') as task_file:
+            task_file.write(f"SUCCESS at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    except Exception as e:
+        # 如果发生异常，将文件内容改为 "FAILED" 和当前时间
+        with open(task_file_path, 'w') as task_file:
+            task_file.write(f"FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {e}")
 
 
 async def async_check_login_status(username, email, password):
@@ -51,6 +71,32 @@ async def async_check_login_status(username, email, password):
     logging.info("start collecting data.")
     watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, "cat")
     return watcher.check_login_status()
+
+
+@app.route('/query_status', methods=['GET'])
+async def query_status():
+    access_code = request.args.get('access_code')
+
+    if not access_code:
+        return 'Missing query parameter: access_code', 400
+
+    task_files_dir = "/root"
+    task_files = [f for f in os.listdir(task_files_dir) if f.startswith(access_code) and f.endswith('_task')]
+
+    if not task_files:
+        return 'No task files found for the given access_code', 404
+
+    statuses = {}
+    for task_file in task_files:
+        task_file_path = os.path.join(task_files_dir, task_file)
+        try:
+            async with aiofiles.open(task_file_path, 'r') as file:
+                statuses[task_file] = await file.read()
+        except Exception as e:
+            app.logger.error(f'Error reading task file {task_file}: {e}')
+            statuses[task_file] = 'Error reading file'
+
+    return jsonify(statuses), 200
 
 
 @app.route('/collect_data_from_x', methods=['POST'])

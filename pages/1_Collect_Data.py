@@ -19,6 +19,7 @@ from common.cos import list_latest_files
 from common.cos import download_file
 from common.log_config import setup_logger
 from common.collector_sdk import call_collect_data_from_x
+from common.collector_sdk import query_status
 from sidebar import sidebar
 from sidebar import cache_file_counts
 
@@ -81,28 +82,69 @@ st.session_state.max_post_num = st.selectbox(
     index=[1, 3, 5, 10, 20, 50].index(st.session_state.max_post_num)
 )
 
+# 检查当前用户是否有任务在运行中，如果有任务运行中，不运行触发
+# 显示转圈圈图标表示检查任务状态
+with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
+    tasks = query_status(st.session_state.access_code)
 
-if st.button(label="Collect Data"):
-    # (todo: claude)Initialize progress elements
-    try:
-        task_num = 0
-        with st.spinner("Collecting..."):
-            # todo: 这里要增加并发任务的逻辑
-            for alive_username in ['Zacks89757']:
-                call_collect_data_from_x(
-                    alive_username,
-                    st.session_state.search_keyword,
-                    st.session_state.max_post_num,
-                    st.session_state.access_code,
-                )
-                task_num += 1
-            # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-            # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
-            st.success("Data collection complete!")
-    except Exception as e:
-        # Log the error
-        st.error(f"An error occurred: {e}")
+running_task = ""
+if tasks:
+    st.write('History Collect Tasks:')
+    for task_name, status in tasks.items():
+        if 'RUNNING' in status:
+            st.write(f'任务: {task_name}, 状态: {status}  - 🔄')  # 运行中任务显示转圈圈图标
+            running_task = f"{task_name} {status}"
+        elif 'SUCCESS' in status:
+            st.write(f'任务: {task_name}, 状态: {status}  - ✅')  # 成功任务显示对勾图标
+        elif 'FAILED' in status:
+            st.write(f'任务: {task_name}, 状态: {status}  - ❌')  # 失败任务显示叉图标
+        else:
+            st.write(f'任务: {task_name}, 状态: {status}')
+else:
+    pass
 
+if not running_task:
+    if st.button(label="Collect Data"):
+        # (todo: claude)Initialize progress elements
+        try:
+            task_num = 0
+            with st.spinner("Collecting..."):
+                # todo: 这里要增加并发任务的逻辑
+                for alive_username in ['Zacks89757']:
+                    call_collect_data_from_x(
+                        alive_username,
+                        st.session_state.search_keyword,
+                        st.session_state.max_post_num,
+                        st.session_state.access_code,
+                    )
+                    task_num += 1
+                # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
+                # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
+                st.success("Data collection complete!")
+        except Exception as e:
+            # Log the error
+            st.error(f"An error occurred: {e}")
+else:
+    with st.spinner(running_task):
+        while True:
+            try:
+                tasks = query_status(st.session_state.access_code)
+            except Exception as error:
+                st.error(f"query_status: {error}")
+                break
+            running_task_list = []
+            if tasks:
+                for task_name, status in tasks.items():
+                    if 'RUNNING' in status:
+                        running_task_list.append(task_name)
+            else:
+                pass
+            if not running_task_list:
+                break
+            else:
+                # 这里一直等待任务结束
+                time.sleep(5)
+                continue
 
 if st.session_state.search_keyword:
     try:

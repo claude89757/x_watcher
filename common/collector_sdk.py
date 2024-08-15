@@ -13,6 +13,32 @@ import requests
 from common.config import CONFIG
 
 
+def query_status(access_code):
+    """
+    调用 /query_status API 接口
+
+    :param access_code: 访问码
+    :return: 返回 API 响应的状态和内容
+    """
+    collector_url = CONFIG['collector_urls'][0]
+    api_endpoint = f'http://{collector_url}/query_status'  # 在这里定义 API 端点 URL
+    headers = {'Content-Type': 'application/json'}
+    params = {
+        'access_code': access_code,
+    }
+    try:
+        logging.info(f"Sending request to /query_status...")
+        response = requests.get(api_endpoint, params=params, headers=headers)
+        response.raise_for_status()  # 抛出 HTTPError 异常（如果发生）
+        if response.status_code == 200:
+            return response.status_code, response.json()
+        else:
+            raise Exception(f"Calling API failed: {response.text}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f'Error calling API: {e}')
+        return None, str(e)
+
+
 def call_collect_data_from_x(username, search_key_word, max_post_num, access_code):
     """
     调用 /collect_data_from_x API 接口
