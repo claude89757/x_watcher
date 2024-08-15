@@ -145,7 +145,7 @@ def append_record(record):
     df.to_csv(records_file, mode='a', header=not os.path.exists(records_file), index=False)
 
 
-if st.session_state.login_status == "online":
+if st.session_state.login_status == "online" and st.session_state.password:
     records_dir = f"./data/{st.session_state.access_code}/records/"
     os.makedirs(records_dir, exist_ok=True)
     records_file = os.path.join(records_dir, "send_msg_records.csv")
