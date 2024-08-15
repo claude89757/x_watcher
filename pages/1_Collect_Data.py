@@ -93,17 +93,16 @@ with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
 running_task = ""
 if tasks:
     st.write('History Collect Tasks:')
-    st.write(tasks)
     for task_name, status in tasks.items():
         if 'RUNNING' in status:
-            st.write(f'任务: {task_name}, 状态: {status}  - 🔄')  # 运行中任务显示转圈圈图标
+            st.markdown(f'> 任务: {task_name}, 状态: {status}  - 🔄')  # 运行中任务显示转圈圈图标
             running_task = f"{task_name} {status}"
         elif 'SUCCESS' in status:
-            st.write(f'任务: {task_name}, 状态: {status}  - ✅')  # 成功任务显示对勾图标
+            st.markdown(f'> 任务: {task_name}, 状态: {status}  - ✅')  # 成功任务显示对勾图标
         elif 'FAILED' in status:
-            st.write(f'任务: {task_name}, 状态: {status}  - ❌')  # 失败任务显示叉图标
+            st.markdown(f'> 任务: {task_name}, 状态: {status}  - ❌')  # 失败任务显示叉图标
         else:
-            st.write(f'任务: {task_name}, 状态: {status}')
+            st.markdown(f'> 任务: {task_name}, 状态: {status}')
 else:
     pass
 
