@@ -456,6 +456,7 @@ class TwitterWatcher:
                         self.driver.delete_all_cookies()
                         self.login()
                 else:
+                    logging.info("first time login...")
                     self.login()
                 # 混淆: 随机等待时间
                 time.sleep(random.uniform(1, 3))
@@ -749,7 +750,7 @@ class TwitterWatcher:
                 # 再试一次
                 current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
                 self.driver.save_screenshot(f"./saved_screenshots/login_failed_page_{current_time}.png")
-                return False, "Login failed"
+                return "Login failed"
 
             # 进入推特用户主页
             try:
@@ -764,7 +765,7 @@ class TwitterWatcher:
                 error_message = traceback.format_exc()
                 logger.error(error)
                 logger.error(error_message)
-                return False, "load user link failed"
+                return "load user link failed"
 
             # 显式等待私信按钮出现
             try:
@@ -779,7 +780,7 @@ class TwitterWatcher:
                 error_message = traceback.format_exc()
                 logger.error(error)
                 logger.error(error_message)
-                return False, "No found DM button"
+                return "No found DM button"
 
             # 输入消息
             try:
@@ -794,7 +795,7 @@ class TwitterWatcher:
                 error_message = traceback.format_exc()
                 logger.error(error)
                 logger.error(error_message)
-                return False, "No found DM input"
+                return "No found DM input"
             try:
                 time.sleep(random.uniform(0, 3))
                 dm_input.send_keys(msg)
@@ -803,13 +804,13 @@ class TwitterWatcher:
                 logger.info(f"enter to send.")
                 dm_input.send_keys(Keys.RETURN)
                 time.sleep(random.uniform(0, 3))
-                return True, "Success"
+                return "Success"
             except Exception as error:
                 self.driver.save_screenshot(f"./saved_screenshots/{to_user_url.split('/')[-1]}_error.png")
                 error_message = traceback.format_exc()
                 logger.error(error)
                 logger.error(error_message)
-                return False, "Send DM error"
+                return "Send DM error"
         finally:
             self.teardown_driver()
 
@@ -848,8 +849,8 @@ def check_service_status(username: str, email: str, password: str):
 # Test
 if __name__ == '__main__':
     from common.config import CONFIG
-    username = "Zacks89757"
+    username = "stephen__gzhh"
     email = CONFIG['x_collector_account_infos'][username]['email']
     password = CONFIG['x_collector_account_infos'][username]['password']
     watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, headless=False)
-    watcher.send_msg_to_user("https://x.com/ADrewD", "are you ok?")
+    watcher.check_login_status()
