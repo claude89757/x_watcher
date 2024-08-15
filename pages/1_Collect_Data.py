@@ -93,6 +93,7 @@ with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
 running_task = ""
 if tasks:
     st.write('History Collect Tasks:')
+    st.write(tasks)
     for task_name, status in tasks.items():
         if 'RUNNING' in status:
             st.write(f'任务: {task_name}, 状态: {status}  - 🔄')  # 运行中任务显示转圈圈图标
