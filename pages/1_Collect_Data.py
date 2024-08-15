@@ -114,23 +114,25 @@ if st.session_state.search_keyword:
         ]
     except Exception as e:
         raise Exception(f"Error retrieving files from COS: {e}")
-
-    selected_file = st.selectbox("Select a file to load", matching_files)
-    # 选择加载到本地的文件
-    if st.button("Load file"):
-        local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
-        # 检查本地是否已有文件
-        if not os.path.exists(local_file_path):
+    if matching_files:
+        selected_file = st.selectbox("Select a file to load", matching_files)
+        # 选择加载到本地的文件
+        if st.button("Load file"):
+            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
+            # 检查本地是否已有文件
+            if not os.path.exists(local_file_path):
+                try:
+                    download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
+                                  local_file_path=local_file_path)
+                    st.success("File downloaded from COS.")
+                except Exception as e:
+                    st.error(f"Error loading file from COS: {e}")
             try:
-                download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
-                              local_file_path=local_file_path)
-                st.success("File downloaded from COS.")
+                st.success(f"{selected_file} is loaded")
             except Exception as e:
-                st.error(f"Error loading file from COS: {e}")
-        try:
-            st.success(f"{selected_file} is loaded")
-        except Exception as e:
-            st.error(f"Error loading data from local file: {e}")
+                st.error(f"Error loading data from local file: {e}")
+    else:
+        pass
 else:
     pass
 
