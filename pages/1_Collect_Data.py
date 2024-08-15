@@ -10,6 +10,7 @@ import os
 import re
 import time
 import datetime
+import urllib.parse
 
 import pandas as pd
 import streamlit as st
@@ -153,8 +154,12 @@ if st.session_state.search_keyword:
         # 从 COS 中获取文件列表
         modified_keyword = re.sub(r'\s+', '_', st.session_state.search_keyword)
         all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-        # matching_files = [str(file_key).split('/')[-1] for file_key in all_files if modified_keyword in file_key]
-        matching_files = [str(file_key).split('/')[-1] for file_key in all_files]
+
+        matching_files = []
+        for raw_file_name in all_files:
+            file_name = urllib.parse.unquote(raw_file_name)
+            if modified_keyword in file_name:
+                matching_files.append(file_name)
     except Exception as e:
         raise Exception(f"Error retrieving files from COS: {e}")
     if matching_files:
