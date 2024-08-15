@@ -41,23 +41,23 @@ async def async_collect_data_from_x(username, email, password, search_key_word, 
 
     try:
         # 创建文件并写入 "RUNNING" 和当前时间
-        with open(task_file_path, 'w') as task_file:
-            task_file.write(f"RUNNING at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        async with aiofiles.open(task_file_path, 'w') as task_file:
+            await task_file.write(f"RUNNING at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # 数据收集
         logging.info("start collecting data.")
         watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, search_key_word)
-        watcher.run(max_post_num, access_code)
+        await watcher.run(max_post_num, access_code)
         logging.info("done collecting data.")
 
         # 数据收集完成后将文件内容改为 "SUCCESS" 和当前时间
-        with open(task_file_path, 'w') as task_file:
-            task_file.write(f"SUCCESS at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        async with aiofiles.open(task_file_path, 'w') as task_file:
+            await task_file.write(f"SUCCESS at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     except Exception as e:
-        # 如果发生异常，将文件内容改为 "FAILED" 和当前时间
-        with open(task_file_path, 'w') as task_file:
-            task_file.write(f"FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {e}")
+        # 如果发生异常,将文件内容改为 "FAILED" 和当前时间
+        async with aiofiles.open(task_file_path, 'w') as task_file:
+            await task_file.write(f"FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {e}")
 
 
 async def async_check_login_status(username, email, password):
