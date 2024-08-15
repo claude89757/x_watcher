@@ -176,6 +176,7 @@ if st.session_state.search_keyword:
             except Exception as e:
                 st.error(f"Error loading data from local file: {e}")
     else:
+        st.error("no matching_files")
         pass
 else:
     pass
