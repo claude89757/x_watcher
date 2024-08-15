@@ -139,16 +139,15 @@ if st.button("Preprocess Data"):
         # 去重逻辑：根据'reply_user_id'去重，保留'reply_content'最长的记录
         df = df.loc[df.groupby('reply_user_id')['reply_content'].apply(lambda x: x.str.len().idxmax())]
 
-        # 过滤掉超过30天的评论
-        current_time = datetime.datetime.utcnow()
-        thirty_days_ago = current_time - datetime.timedelta(days=30)
-        df['post_time'] = pd.to_datetime(df['post_time'], format='%Y-%m-%dT%H:%M:%S.%fZ')
-
-        # 过滤掉长度小于10的评论
-        df = df[df['reply_content'].apply(lambda x: len(x) >= 10)]
-
-        # 过滤掉超过30天的评论
-        df = df[df['post_time'] >= thirty_days_ago]
+        # # 过滤掉超过30天的评论
+        # current_time = datetime.datetime.utcnow()
+        # thirty_days_ago = current_time - datetime.timedelta(days=30)
+        # df['post_time'] = pd.to_datetime(df['post_time'], format='%Y-%m-%dT%H:%M:%S.%fZ')
+        # # 过滤掉超过30天的评论
+        # df = df[df['post_time'] >= thirty_days_ago]
+        #
+        # # 过滤掉长度小于10的评论
+        # df = df[df['reply_content'].apply(lambda x: len(x) >= 10)]
 
         # 只保留'reply_user_id'和'reply_content'字段
         df = df[['reply_user_id', 'reply_content']]
