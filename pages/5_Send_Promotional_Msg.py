@@ -130,6 +130,7 @@ if st.session_state.password:
     password = st.text_input("Password", type="password", value=st.session_state.password)
 else:
     password = st.text_input("Password", type="password")
+st.session_state.password = password
 
 if st.button("Verify Login Status"):
     with st.spinner('Verifying Login Status...'):
