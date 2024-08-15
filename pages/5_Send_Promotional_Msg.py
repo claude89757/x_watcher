@@ -171,8 +171,7 @@ if st.session_state.login_status == "online":
                 results.append({
                     'User ID': user_id,
                     'Message': message,
-                    'Status': 'Success' if code == 200 else 'Failure',
-                    'Details': text
+                    'Status': text
                 })
 
                 # 更新成功和失败计数
