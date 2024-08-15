@@ -94,14 +94,14 @@ running_task = ""
 if tasks:
     for task_name, status in tasks.items():
         if 'RUNNING' in status:
-            st.markdown(f'> Task: {task_name.split("_")[-2]} 🔄')  # 运行中任务显示转圈圈图标
+            st.markdown(f'> {task_name.split("_")[-2]} 🔄')  # 运行中任务显示转圈圈图标
             running_task = f"{task_name} {status}"
         elif 'SUCCESS' in status:
-            st.markdown(f'> Task: {task_name.split("_")[-2]} ✅')  # 成功任务显示对勾图标
+            st.markdown(f'> {task_name.split("_")[-2]} ✅')  # 成功任务显示对勾图标
         elif 'FAILED' in status:
-            st.markdown(f'> Task: {task_name.split("_")[-2]} ❌')  # 失败任务显示叉图标
+            st.markdown(f'> {task_name.split("_")[-2]} ❌')  # 失败任务显示叉图标
         else:
-            st.markdown(f'> Task: {task_name.split("_")[-2]} {status}')
+            st.markdown(f'> {task_name.split("_")[-2]} {status}')
 else:
     pass
 
