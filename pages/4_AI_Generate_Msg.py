@@ -90,8 +90,14 @@ else:
     time.sleep(3)
     st.switch_page("pages/2_Preprocess_Data.py")
 
+default_columns = []
+if 'Classification Tag' in data.columns:
+    default_columns.append('Classification Tag')
+if 'enable_dm' in data.columns:
+    default_columns.append('enable_dm')
+
 # 选择要过滤的列
-filter_columns = st.multiselect("Select columns to filter by:", data.columns)
+filter_columns = st.multiselect("Select columns to filter by:", data.columns, default=default_columns)
 
 # 初始化过滤器
 filters = {}
@@ -108,78 +114,91 @@ filtered_data = data.copy()
 for column, selected_values in filters.items():
     filtered_data = filtered_data[filtered_data[column].isin(selected_values)]
 
-# 显示过滤后的数据
-st.subheader("Filtered Data")
-st.dataframe(filtered_data)
+# 显示过滤后的数据（仅在有选择值时显示）
+if filters:
+    st.subheader("Filtered Data")
+    st.dataframe(filtered_data)
 
+    # 获取更多的用户信息
+    if st.button("Collect More User Details"):
+        with st.spinner("Collecting More User Details..."):
+            user_ids = data.iloc[:, 0].tolist()  # 假设第一列是 user_id
+            total_users = len(user_ids)
+            user_details = []
 
-# 获取更多的用户信息
-if st.button("Collect More User Details"):
-    with st.spinner("Collecting More User Details..."):
-        user_ids = data.iloc[:, 0].tolist()  # 假设第一列是 user_id
-        total_users = len(user_ids)
-        user_details = []
+            # 分批查询用户信息
+            # 创建进度条
+            progress_bar = st.progress(0)
+            batch_size = 5  # 每批查询的用户数量
+            for i in range(0, total_users, batch_size):
+                batch_user_ids = user_ids[i:i + batch_size]
+                # 调用 collect_user_link_details 函数
+                status_code, details = collect_user_link_details("Zacks89757", batch_user_ids)
+                if status_code == 200:
+                    user_details.extend(details)
+                else:
+                    pass
 
-        # 分批查询用户信息
-        # 创建进度条
-        progress_bar = st.progress(0)
-        batch_size = 5  # 每批查询的用户数量
-        for i in range(0, total_users, batch_size):
-            batch_user_ids = user_ids[i:i + batch_size]
-            # 调用 collect_user_link_details 函数
-            status_code, details = collect_user_link_details("Zacks89757", batch_user_ids)
-            if status_code == 200:
-                user_details.extend(details)
-            else:
-                pass
+                # 更新进度条
+                progress_bar.progress((i + batch_size) / total_users if (i + batch_size) < total_users else 1.0)
 
-            # 更新进度条
-            progress_bar.progress((i + batch_size) / total_users if (i + batch_size) < total_users else 1.0)
-        st.success("User details collected successfully!")
-        st.write(user_details)
-        # 将 details 补充到读取的本地文件中
-        details_df = pd.DataFrame(user_details)
-        merged_data = pd.merge(data, details_df, on="reply_user_id", how="left")
+            st.success("User details collected successfully!")
+            st.write(user_details)
 
-        # 保存合并后的数据到原文件
-        merged_data.to_csv(selected_file_path, index=False)
-        st.success(f"Merged data saved to {selected_file_path}")
-        st.balloons()
-        time.sleep(3)
-        st.rerun()
+            # 将 details 补充到读取的本地文件中
+            details_df = pd.DataFrame(user_details)
 
-if not filtered_data.empty:
-    # 输入示例的提示词
-    system_prompt = st.text_input("Enter the prompt for generating promotional SMS:",
-                                  "You are a marketing assistant. Your task is to generate personalized "
-                                  "promotional SMS messages for promoting product 【XYZ】.")
+            # 确保索引重置
+            data.reset_index(drop=True, inplace=True)
+            details_df.reset_index(drop=True, inplace=True)
 
-    # 选择模型
-    model = st.selectbox("Select a model:", ["gpt-4o-mini", "gpt-4o"])
+            # 合并数据
+            merged_data = pd.merge(data, details_df, on="reply_user_id", how="left")
 
-    batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
+            # 保存合并后的数据到原文件
+            merged_data.to_csv(selected_file_path, index=False)
+            st.success(f"Merged data saved to {selected_file_path}")
+            st.balloons()
+            time.sleep(3)
+            st.rerun()
+            
+    # 仅在采集数据后才显示
+    if not filtered_data.empty and 'enable_dm' in data.columns:
+        # 输入示例的提示词
+        system_prompt = st.text_input("Enter the prompt for generating promotional SMS:",
+                                      "You are a marketing assistant. Your task is to generate personalized "
+                                      "promotional SMS messages for promoting product 【XYZ】.")
 
-    # 生成推广短信按钮
-    if st.button("Generate Promotional Msg"):
-        with st.spinner('Generating Msg...'):
-            result_df = generate_promotional_sms(model, system_prompt, filtered_data.iloc[:, :3], batch_size=batch_size)
-            st.query_params.analysis_run = True
-            if not result_df.empty:
-                dst_dir = f"./data/{st.session_state.access_code}/msg/"
-                output_file = os.path.join(dst_dir, f"{st.session_state.selected_file}")
-                # 保存分析结果
-                # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                # logger.info(result_df.head(10))
-                # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-                result_df.to_csv(output_file, index=False)
+        # 选择模型
+        model = st.selectbox("Select a model:", ["gpt-4o-mini", "gpt-4o"])
 
-                # 显示结果output_file
-                st.success(f"Analysis complete! Results saved to {output_file}.")
-                st.dataframe(result_df.head(500), use_container_width=True, height=400)
+        batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
 
-                cache_file_counts()
-            else:
-                st.error("Failed to generate analysis results. Please check your prompt or API settings.")
+        # 生成推广短信按钮
+        if st.button("Generate Promotional Msg"):
+            with st.spinner('Generating Msg...'):
+                result_df = generate_promotional_sms(model, system_prompt, filtered_data.iloc[:, :3],
+                                                     batch_size=batch_size)
+                st.query_params.analysis_run = True
+                if not result_df.empty:
+                    dst_dir = f"./data/{st.session_state.access_code}/msg/"
+                    output_file = os.path.join(dst_dir, f"{st.session_state.selected_file}")
+                    # 保存分析结果
+                    # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                    # logger.info(result_df.head(10))
+                    # logger.info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                    result_df.to_csv(output_file, index=False)
+
+                    # 显示结果output_file
+                    st.success(f"Analysis complete! Results saved to {output_file}.")
+                    st.dataframe(result_df.head(500), use_container_width=True, height=400)
+
+                    cache_file_counts()
+                else:
+                    st.error("Failed to generate analysis results. Please check your prompt or API settings.")
+else:
+    st.warning("No filters applied. Please select values to filter the data.")
+
 
 # Next
 if st.session_state.msg_data_file_count:
