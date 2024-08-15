@@ -215,3 +215,4 @@ else:
         st.session_state.password = password
         st.query_params.username = username
         st.query_params.email = email
+        st.rerun()
