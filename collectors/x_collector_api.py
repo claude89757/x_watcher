@@ -84,7 +84,7 @@ async def query_status():
     task_files = [f for f in os.listdir(task_files_dir) if f.startswith(access_code) and f.endswith('_task')]
 
     if not task_files:
-        return 'No task files found for the given access_code', 404
+        return jsonify({}), 200
 
     statuses = {}
     for task_file in task_files:
