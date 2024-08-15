@@ -161,7 +161,7 @@ if filters:
             st.balloons()
             time.sleep(3)
             st.rerun()
-            
+
     # 仅在采集数据后才显示
     if not filtered_data.empty and 'enable_dm' in data.columns:
         # 输入示例的提示词
