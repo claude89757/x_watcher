@@ -90,8 +90,8 @@ async def query_status():
     for task_file in task_files:
         task_file_path = os.path.join(task_files_dir, task_file)
         try:
-            async with aiofiles.open(task_file_path, 'r') as file:
-                statuses[task_file] = await file.read()
+            with os.open(task_file_path, 'r') as file:
+                statuses[task_file] = file.read()
         except Exception as e:
             app.logger.error(f'Error reading task file {task_file}: {e}')
             statuses[task_file] = 'Error reading file'
