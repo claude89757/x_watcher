@@ -83,7 +83,7 @@ if access_granted:
 
     # 创建文件夹
     base_path = os.path.join("./data", st.session_state.access_code)
-    folders = ['raw', 'processed', 'analyzed', 'msg']
+    folders = ['raw', 'processed', 'analyzed', 'msg', 'records']
     for folder in folders:
         path = os.path.join(base_path, folder)
         if not os.path.exists(path):
