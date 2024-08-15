@@ -75,6 +75,7 @@ async def async_check_login_status(username, email, password):
 
 @app.route('/query_status', methods=['GET'])
 async def query_status():
+    logging.info("query_status...")
     access_code = request.args.get('access_code')
 
     if not access_code:
