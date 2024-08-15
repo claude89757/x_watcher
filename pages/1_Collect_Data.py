@@ -156,7 +156,7 @@ if st.session_state.search_keyword:
 
         matching_files = []
         for raw_file_name in all_files:
-            file_name = urllib.parse.unquote(raw_file_name)
+            file_name = str(urllib.parse.unquote(raw_file_name)).split('/')[-1]
             if st.session_state.search_keyword in file_name:
                 matching_files.append(file_name)
     except Exception as e:
