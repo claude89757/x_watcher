@@ -11,11 +11,10 @@ import json
 import traceback
 import logging
 import datetime
-import aiofiles
 
-from quart import Quart
-from quart import request
-from quart import jsonify
+from flask import Flask
+from flask import request
+from flask import jsonify
 
 from common.config import CONFIG
 from x_collect import TwitterWatcher
@@ -23,12 +22,12 @@ from x_collect import TwitterWatcher
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 
-app = Quart(__name__)
+app = Flask(__name__)
 
 
-def async_collect_data_from_x(username, email, password, search_key_word, max_post_num, access_code):
+def collect_data_from_x(username, email, password, search_key_word, max_post_num, access_code):
     """
-    异步收集数据
+    收集数据
     :param username:
     :param email:
     :param password:
@@ -109,9 +108,9 @@ def collect_data_from_x():
 
                 # 异步调用数据收集函数
                 app.logger.info('running...')
-                async_collect_data_from_x(username=username, email=email, password=password,
-                                          search_key_word=search_key_word, max_post_num=max_post_num,
-                                          access_code=access_code)
+                collect_data_from_x(username=username, email=email, password=password,
+                                    search_key_word=search_key_word, max_post_num=max_post_num,
+                                    access_code=access_code)
                 return 'Success', 200
             else:
                 return 'Missing username\'s info', 500
@@ -210,5 +209,5 @@ def collect_user_link_detail():
 
 
 if __name__ == '__main__':
-    app.logger.info('Starting Quart server...')
+    app.logger.info('Starting server...')
     app.run(host='0.0.0.0', port=8080, debug=True)
