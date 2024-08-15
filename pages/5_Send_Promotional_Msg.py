@@ -150,8 +150,8 @@ if st.session_state.login_status == "online":
     os.makedirs(records_dir, exist_ok=True)
     records_file = os.path.join(records_dir, "send_msg_records.csv")
 
-    st.markdown(":green_circle: **Online**")  # Emoji for online status
-    
+    st.success("🟢 **Online**")  # Emoji for online status
+
     if st.button("Send Promotional Messages", type='primary'):
         with st.spinner('Sending Promotional Msg...'):
             progress_bar = st.progress(0)
@@ -209,7 +209,7 @@ else:
             st.session_state.login_status = "online"
             st.query_params.login_status = "online"
         else:
-            st.warning("Verify Login Status failed.")
+            st.error("Verify Login Status failed.")
         st.session_state.username = username
         st.session_state.email = email
         st.session_state.password = password
