@@ -11,10 +11,11 @@ import json
 import traceback
 import logging
 import datetime
+import aiofiles
 
-from flask import Flask
-from flask import request
-from flask import jsonify
+from quart import Quart
+from quart import request
+from quart import jsonify
 
 from common.config import CONFIG
 from x_collect import TwitterWatcher
@@ -22,12 +23,12 @@ from x_collect import TwitterWatcher
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 
-app = Flask(__name__)
+app = Quart(__name__)
 
 
-def collect_data_from_x(username, email, password, search_key_word, max_post_num, access_code):
+async def async_collect_data_from_x(username, email, password, search_key_word, max_post_num, access_code):
     """
-    收集数据
+    异步收集数据
     :param username:
     :param email:
     :param password:
@@ -59,8 +60,21 @@ def collect_data_from_x(username, email, password, search_key_word, max_post_num
             task_file.write(f"FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {e}")
 
 
+async def async_check_login_status(username, email, password):
+    """
+    验证登录情况
+    :param username:
+    :param email:
+    :param password:
+    :return:
+    """
+    logging.info("start collecting data.")
+    watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, "cat")
+    return watcher.check_login_status()
+
+
 @app.route('/query_status', methods=['GET'])
-def query_status():
+async def query_status():
     access_code = request.args.get('access_code')
 
     if not access_code:
@@ -77,17 +91,17 @@ def query_status():
     for task_file in task_files:
         task_file_path = os.path.join(task_files_dir, task_file)
         try:
-            with open(task_file_path, 'r') as file:
-                statuses[task_file] = file.read()
+            async with aiofiles.open(task_file_path, 'r') as file:
+                statuses[task_file] = await file.read()
         except Exception as e:
             app.logger.error(f'Error reading task file {task_file}: {e}')
             statuses[task_file] = 'Error reading file'
-    logging.info("done read files...")
+    logging.info("Done read files...")
     return jsonify(statuses), 200
 
 
 @app.route('/collect_data_from_x', methods=['POST'])
-def collect_data_from_x():
+async def collect_data_from_x():
     # 使用爬虫号
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_data_from_x ')
@@ -108,9 +122,9 @@ def collect_data_from_x():
 
                 # 异步调用数据收集函数
                 app.logger.info('running...')
-                collect_data_from_x(username=username, email=email, password=password,
-                                    search_key_word=search_key_word, max_post_num=max_post_num,
-                                    access_code=access_code)
+                await async_collect_data_from_x(username=username, email=email, password=password,
+                                                search_key_word=search_key_word, max_post_num=max_post_num,
+                                                access_code=access_code)
                 return 'Success', 200
             else:
                 return 'Missing username\'s info', 500
@@ -123,7 +137,7 @@ def collect_data_from_x():
 
 
 @app.route('/check_login_status', methods=['POST'])
-def check_login_status():
+async def check_login_status():
     if request.method == 'POST':
         app.logger.info('Received POST request on /check_login_status ')
         data = await request.get_json()
@@ -148,7 +162,7 @@ def check_login_status():
 
 
 @app.route('/send_msg_to_user', methods=['POST'])
-def send_msg_to_user():
+async def send_msg_to_user():
     # 使用非爬虫号
     if request.method == 'POST':
         app.logger.info('Received POST request on /send_msg_to_user ')
@@ -177,7 +191,7 @@ def send_msg_to_user():
 
 
 @app.route('/collect_user_link_detail', methods=['POST'])
-def collect_user_link_detail():
+async def collect_user_link_detail():
     # 使用爬虫号
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_user_link_detail ')
@@ -209,5 +223,5 @@ def collect_user_link_detail():
 
 
 if __name__ == '__main__':
-    app.logger.info('Starting server...')
+    app.logger.info('Starting Quart server...')
     app.run(host='0.0.0.0', port=8080, debug=True)
