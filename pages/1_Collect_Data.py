@@ -87,6 +87,7 @@ if st.button(label="Collect Data"):
     try:
         task_num = 0
         with st.spinner("Collecting..."):
+            # todo: 这里要增加并发任务的逻辑
             for alive_username in ['Zacks89757']:
                 call_collect_data_from_x(
                     alive_username,
@@ -98,37 +99,40 @@ if st.button(label="Collect Data"):
             # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
             # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
             st.success("Data collection complete!")
-
-        try:
-            # 从 COS 中获取文件列表
-            modified_keyword = re.sub(r'\s+', '_', st.session_state.search_keyword)
-            all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
-            matching_files = [
-                str(file_key).split('/')[-1] for file_key in all_files if modified_keyword in file_key
-            ]
-        except Exception as e:
-            raise Exception(f"Error retrieving files from COS: {e}")
-
-        selected_file = st.selectbox("Select a file to load", matching_files)
-        # 选择加载到本地的文件
-        if st.button("Load file"):
-            local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
-            # 检查本地是否已有文件
-            if not os.path.exists(local_file_path):
-                try:
-                    download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
-                                  local_file_path=local_file_path)
-                    st.success("File downloaded from COS.")
-                except Exception as e:
-                    st.error(f"Error loading file from COS: {e}")
-            try:
-                st.success(f"{selected_file} is loaded")
-            except Exception as e:
-                st.error(f"Error loading data from local file: {e}")
     except Exception as e:
         # Log the error
         st.error(f"An error occurred: {e}")
 
+
+if st.session_state.search_keyword:
+    try:
+        # 从 COS 中获取文件列表
+        modified_keyword = re.sub(r'\s+', '_', st.session_state.search_keyword)
+        all_files = list_latest_files(prefix=f"{st.session_state.access_code}/")
+        matching_files = [
+            str(file_key).split('/')[-1] for file_key in all_files if modified_keyword in file_key
+        ]
+    except Exception as e:
+        raise Exception(f"Error retrieving files from COS: {e}")
+
+    selected_file = st.selectbox("Select a file to load", matching_files)
+    # 选择加载到本地的文件
+    if st.button("Load file"):
+        local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
+        # 检查本地是否已有文件
+        if not os.path.exists(local_file_path):
+            try:
+                download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
+                              local_file_path=local_file_path)
+                st.success("File downloaded from COS.")
+            except Exception as e:
+                st.error(f"Error loading file from COS: {e}")
+        try:
+            st.success(f"{selected_file} is loaded")
+        except Exception as e:
+            st.error(f"Error loading data from local file: {e}")
+else:
+    pass
 
 # 获取已下载文件的列表
 local_files_dir = f"./data/{st.session_state.access_code}/raw/"
