@@ -190,7 +190,6 @@ else:
 st.query_params.search_keyword = st.session_state.search_keyword
 st.query_params.max_post_num = st.session_state.max_post_num
 
-
 # Next
 if st.session_state.raw_data_file_count:
     if st.button(label="Next: Filter Data", type='primary'):
