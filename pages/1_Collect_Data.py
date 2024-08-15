@@ -85,7 +85,9 @@ st.session_state.max_post_num = st.selectbox(
 # 检查当前用户是否有任务在运行中，如果有任务运行中，不运行触发
 # 显示转圈圈图标表示检查任务状态
 with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
-    _, tasks = query_status(st.session_state.access_code)
+    code, tasks = query_status(st.session_state.access_code)
+    if code != 200:
+        st.error(tasks)
 
 running_task = ""
 if tasks:
