@@ -78,7 +78,6 @@ st.session_state.selected_file = st.selectbox("Select a file:", files)
 selected_file_path = None
 if st.session_state.selected_file:
     selected_file_path = os.path.join(cur_dir, st.session_state.selected_file)
-    st.subheader(f"File Data Preview: {st.session_state.selected_file}")
     # 检查本地是否已有文件
     try:
         # 获取文件信息
@@ -103,7 +102,6 @@ filter_columns = st.multiselect("Select columns to filter by:", data.columns, de
 filters = {}
 for column in filter_columns:
     # 显示过滤器
-    st.subheader(f"Filter by {column}")
     unique_values = data[column].unique()
     selected_values = st.multiselect(f"Select values from {column} to filter:", unique_values)
     if selected_values:
