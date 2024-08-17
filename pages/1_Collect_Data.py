@@ -11,6 +11,7 @@ import re
 import time
 import datetime
 import urllib.parse
+import random
 
 import pandas as pd
 import streamlit as st
@@ -112,14 +113,14 @@ if not running_task:
             task_num = 0
             with st.spinner("Collecting..."):
                 # todo: 这里要增加并发任务的逻辑
-                for alive_username in ['Zacks89757']:
-                    call_collect_data_from_x(
-                        alive_username,
-                        st.session_state.search_keyword,
-                        st.session_state.max_post_num,
-                        st.session_state.access_code,
-                    )
-                    task_num += 1
+                alive_username = random.choice(['GZhihong54934','GZhihong75562'])
+                call_collect_data_from_x(
+                    alive_username,
+                    st.session_state.search_keyword,
+                    st.session_state.max_post_num,
+                    st.session_state.access_code,
+                )
+                task_num += 1
                 # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
                 # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
                 st.success("Data collection complete!")
