@@ -9,6 +9,7 @@
 import os
 import time
 import random
+import datetime
 
 import pandas as pd
 import streamlit as st
@@ -136,12 +137,15 @@ st.session_state.password = password
 
 def load_records():
     if os.path.exists(records_file):
-        return pd.read_csv(records_file)
-    return pd.DataFrame(columns=['User ID', 'Message', 'Status'])
-
+        df = pd.read_csv(records_file)
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'])  # 确保时间戳列是 datetime 类型
+        return df.sort_values(by='Timestamp', ascending=False)  # 按时间倒序排序
+    return pd.DataFrame(columns=['Timestamp', 'User ID', 'Message', 'Status'])
 
 def append_record(record):
-    df = pd.DataFrame([record])
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    record_with_timestamp = {'Timestamp': timestamp, **record}
+    df = pd.DataFrame([record_with_timestamp])
     df.to_csv(records_file, mode='a', header=not os.path.exists(records_file), index=False)
 
 
