@@ -14,6 +14,7 @@ import random
 import datetime
 import logging
 import traceback
+import pyperclip
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -788,7 +789,7 @@ class TwitterWatcher:
                 logger.error(error_message)
                 return "No found DM button"
 
-            # 输入消息
+            # 点击输入框
             try:
                 logging.info("sending msg...")
                 dm_input = wait.until(
@@ -802,9 +803,14 @@ class TwitterWatcher:
                 logger.error(error)
                 logger.error(error_message)
                 return "No found DM input"
+            
+            # 输入消息并回车
             try:
                 time.sleep(random.uniform(0, 3))
-                dm_input.send_keys(msg)
+                # 将消息复制到剪贴板
+                pyperclip.copy(msg)
+                # 将剪贴板内容粘贴到输入框中
+                dm_input.send_keys(Keys.CONTROL, 'v')
                 logger.info(f"input msg.")
                 time.sleep(random.uniform(0, 3))
                 logger.info(f"enter to send.")
