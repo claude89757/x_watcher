@@ -148,3 +148,8 @@ if st.session_state.analyzed_data_file_count:
         st.switch_page("pages/4_AI_Generate_Msg.py")
     else:
         pass
+# log out
+if st.sidebar.button(label="Log out", type="primary"):
+    st.query_params.clear()
+    st.session_state.clear()
+    st.rerun()

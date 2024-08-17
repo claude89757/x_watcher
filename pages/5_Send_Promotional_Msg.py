@@ -220,3 +220,8 @@ else:
         st.query_params.username = username
         st.query_params.email = email
         st.rerun()
+# log out
+if st.sidebar.button(label="Log out", type="primary"):
+    st.query_params.clear()
+    st.session_state.clear()
+    st.rerun()

@@ -205,3 +205,8 @@ if st.session_state.msg_data_file_count:
         st.balloons()
         time.sleep(3)
         st.switch_page("pages/5_Send_Promotional_Msg.py")
+# log out
+if st.sidebar.button(label="Log out", type="primary"):
+    st.query_params.clear()
+    st.session_state.clear()
+    st.rerun()

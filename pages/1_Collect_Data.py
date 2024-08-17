@@ -248,3 +248,9 @@ if st.session_state.raw_data_file_count:
         st.switch_page("pages/2_Preprocess_Data.py")
     else:
         pass
+
+# log out
+if st.sidebar.button(label="Log out", type="primary"):
+    st.query_params.clear()
+    st.session_state.clear()
+    st.rerun()
