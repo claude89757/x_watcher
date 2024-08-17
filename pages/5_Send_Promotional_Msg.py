@@ -176,7 +176,7 @@ if st.session_state.login_status == "online" and st.session_state.password:
                 results.append(result)
                 append_record(result)
 
-                if code == 200:
+                if text == "Success":
                     success_count += 1
                 else:
                     failure_count += 1
