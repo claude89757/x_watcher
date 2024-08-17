@@ -199,6 +199,7 @@ class TwitterWatcher:
         search_input.send_keys(self.search_key_word)
         time.sleep(random.uniform(0, 3))
         search_input.send_keys(Keys.RETURN)
+        self.driver.save_screenshot(f"./saved_screenshots/{self.username}_{self.search_key_word}_enter.png")
 
     def old_get_top_n_posts(self, n):
         tweets = []
@@ -309,10 +310,6 @@ class TwitterWatcher:
                 seen_links.add(tweet_link)
                 tweets.append(tweet_data)
             
-            if not tweet_elements:
-                self.driver.refresh()
-                time.sleep(random.uniform(1, 3))
-
             if len(tweets) < n:
                 self.scroll_page()
                 scroll_attempts += 1
