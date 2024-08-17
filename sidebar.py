@@ -40,30 +40,33 @@ def clear_folder(folder_path):
 
 
 def sidebar():
-    # Cache file counts
-    cache_file_counts()
+    try:
+        # Cache file counts
+        cache_file_counts()
 
-    # Create a component in the sidebar to display file counts
-    st.sidebar.subheader("File Statistics")
+        # Create a component in the sidebar to display file counts
+        st.sidebar.subheader("File Statistics")
 
-    # Display counts and add buttons in a horizontal layout
-    with st.sidebar:
-        for label, key, folder in [
-            ("Raw Data Files", "raw", "raw"),
-            ("Processed Data Files", "processed", "processed"),
-            ("Analyzed Data Files", "analyzed", "analyzed"),
-            ("Msg Data Files", "msg", "msg")
-        ]:
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                st.caption(f"{label}: {st.session_state[f'{key}_data_file_count']}")
-            with col2:
-                if st.button("Clear", key=f"clear_{key}"):
-                    clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
-                    st.session_state[f'{key}_data_file_count'] = \
-                        count_files(f"./data/{st.session_state.access_code}/{folder}/")
+        # Display counts and add buttons in a horizontal layout
+        with st.sidebar:
+            for label, key, folder in [
+                ("Raw Data Files", "raw", "raw"),
+                ("Processed Data Files", "processed", "processed"),
+                ("Analyzed Data Files", "analyzed", "analyzed"),
+                ("Msg Data Files", "msg", "msg")
+            ]:
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    st.caption(f"{label}: {st.session_state[f'{key}_data_file_count']}")
+                with col2:
+                    if st.button("Clear", key=f"clear_{key}"):
+                        clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
+                        st.session_state[f'{key}_data_file_count'] = \
+                            count_files(f"./data/{st.session_state.access_code}/{folder}/")
 
-        # Add refresh button for file counts
-        if st.button("Refresh"):
-            cache_file_counts()
-            st.rerun()
+            # Add refresh button for file counts
+            if st.button("Refresh"):
+                cache_file_counts()
+                st.rerun()
+    except:
+        st.write("...")
