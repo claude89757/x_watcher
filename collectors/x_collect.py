@@ -499,27 +499,34 @@ class TwitterWatcher:
                         self.driver.get('https://twitter.com/home')
                         self.load_cookies()
                         self.driver.refresh()
-                        time.sleep(3)
+                        time.sleep(3)    
+
+                        if "home" in self.driver.current_url:
+                            logger.info("found home page")
+                            break
+                        else:
+                            # 再试一次
+                            logger.warning(f"{index} time login failed, try again...")
                     except Exception as error:
-                        logging.info(error)
-                        logging.info("Cookies are invalid, clearing cookies and re-login.")
+                        logger.info(error)
+                        logger.info("Cookies are invalid, clearing cookies and re-login.")
                         self.driver.delete_all_cookies()
                         self.login()
                 else:
                     self.login()
+                    
+                    if "home" in self.driver.current_url:
+                        logger.info("found home page")
+                        break
+                    else:
+                        # 再试一次
+                        logger.warning(f"{index} time login failed, try again...")
                 # 混淆: 随机等待时间
                 time.sleep(random.uniform(1, 3))
 
-                # 再次检查是否需要登录
-                if "home" in self.driver.current_url:
-                    break
-                else:
-                    # 再试一次
-                    logging.warning(f"{index} time login failed, try again...")
-
-            # 检查是否登录成功
+            # 再检查是否登录成功
             if "home" in self.driver.current_url:
-                logging.info("login successfully")
+                logger.info("login successfully")
             else:
                 # 再试一次
                 current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
