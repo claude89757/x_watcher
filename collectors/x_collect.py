@@ -144,6 +144,7 @@ class TwitterWatcher:
                 WebDriverWait(self.driver, 10).until(
                     EC.url_to_be('https://x.com/home')
                 )
+                self.driver.save_screenshot(f"./saved_screenshots/{self.username}_login.png")
             except Exception as error:
                 logging.info(error)
                 logging.info(f"可能账号受限，需要输入邮箱验证")
@@ -160,6 +161,7 @@ class TwitterWatcher:
                 WebDriverWait(self.driver, self.timeout).until(
                     EC.url_to_be('https://x.com/home')
                 )
+                self.driver.save_screenshot(f"./saved_screenshots/{self.username}_login_email1.png")
         elif input_type == "email":
             logging.info("账号受限可能需要输入邮箱")
             # 定位并输入账号
@@ -184,9 +186,10 @@ class TwitterWatcher:
             WebDriverWait(self.driver, self.interaction_timeout).until(
                 EC.url_to_be('https://x.com/home')
             )
+            self.driver.save_screenshot(f"./saved_screenshots/{self.username}_login_email2.png")
         else:
             logging.info("需人工介入")
-            self.driver.save_screenshot('screenshot.png')
+            self.driver.save_screenshot(f"./saved_screenshots/{self.username}_login_check_people.png")
             raise Exception("auto login failed!")
 
         self.save_cookies()
