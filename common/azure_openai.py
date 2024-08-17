@@ -44,16 +44,16 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
         batch_csv = batch.to_csv(index=False)
 
         batch_prompt = f"{system_prompt}\n\n" \
-                       f"Analyze the following data and provide the output in CSV format " \
-                       f"with the following structure:" \
-                       f"\n1. Original data with all columns intact." \
-                       f"\n2. A new column named 'Analysis Explanation' " \
-                       f"with insights or explanations for each row based on the data. " \
-                       f"Each explanation should be enclosed in double quotes and limited to 20 characters." \
-                       f"\n3. A new column named 'Classification Tag' with a category or tag indicating " \
-                       f"the potential interest level of each row in product XYZ. " \
-                       f"This tag should also be enclosed in double quotes." \
-                       f"\n\nData:\n{batch_csv}"
+               f"Analyze the following data and provide the output in CSV format " \
+               f"with the following structure:" \
+               f"\n1. Original data with all columns intact." \
+               f"\n2. A new column named 'Analysis Explanation' " \
+               f"with insights or explanations for each row based on the data. " \
+               f"Each explanation should be enclosed in double quotes and limited to 20 characters." \
+               f"\n3. A new column named 'Classification Tag' with one of two fixed categories or tags: " \
+               f'"High Interest" or "Low Interest" indicating the potential interest level of each row in product XYZ. ' \
+               f"\n\nData:\n{batch_csv}"
+
 
         payload = {
             "messages": [
