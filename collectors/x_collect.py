@@ -308,6 +308,10 @@ class TwitterWatcher:
 
                 seen_links.add(tweet_link)
                 tweets.append(tweet_data)
+            
+            if not tweet_elements:
+                self.driver.refresh()
+                time.sleep(random.uniform(1, 3))
 
             if len(tweets) < n:
                 self.scroll_page()
