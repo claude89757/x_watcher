@@ -484,6 +484,45 @@ class TwitterWatcher:
             self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
             return False
 
+
+    def auto_login(self):
+        self.setup_driver()
+        for index in range(2):
+            # 检查是否存在 cookies 文件
+            if os.path.exists(self.cookies_file) and not self.force_re_login:
+                try:
+                    self.driver.get('https://twitter.com/home')
+                    self.load_cookies()
+                    self.driver.refresh()
+                except Exception as error:
+                    logger.info(error)
+                    logger.info("Cookies are invalid, clearing cookies and re-login.")
+                    self.driver.delete_all_cookies()
+                    self.login()
+            else:
+                self.login()
+                
+                try:
+                    # 使用 WebDriverWait 等待页面加载完成
+                    WebDriverWait(self.driver, 10).until(
+                        EC.url_contains("home")
+                    )
+                    logger.info("found home page")
+                except Exception as error:
+                    # 再试一次
+                    logger.warning(error)
+                    logger.warning(f"{index} time login failed, try again...")
+            # 混淆: 随机等待时间
+            time.sleep(random.uniform(0, 1))
+
+        # 再检查是否登录成功
+        if "home" in self.driver.current_url:
+            logger.info("login successfully")
+        else:
+            current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+            self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
+            raise Exception(f"login failed: {self.driver.current_url}")
+
     def run(self, max_post_num: int, access_code: str):
         """
         运行程序
@@ -492,47 +531,8 @@ class TwitterWatcher:
         :return:
         """
         try:
-            self.setup_driver()
-            for index in range(3):
-                # 检查是否存在 cookies 文件
-                if os.path.exists(self.cookies_file) and not self.force_re_login:
-                    try:
-                        self.driver.get('https://twitter.com/home')
-                        self.load_cookies()
-                        self.driver.refresh()
-                        time.sleep(3)    
-
-                        if "home" in self.driver.current_url:
-                            logger.info("found home page")
-                            break
-                        else:
-                            # 再试一次
-                            logger.warning(f"{index} time login failed, try again...")
-                    except Exception as error:
-                        logger.info(error)
-                        logger.info("Cookies are invalid, clearing cookies and re-login.")
-                        self.driver.delete_all_cookies()
-                        self.login()
-                else:
-                    self.login()
-                    
-                    if "home" in self.driver.current_url:
-                        logger.info("found home page")
-                        break
-                    else:
-                        # 再试一次
-                        logger.warning(f"{index} time login failed, try again...")
-                # 混淆: 随机等待时间
-                time.sleep(random.uniform(1, 3))
-
-            # 再检查是否登录成功
-            if "home" in self.driver.current_url:
-                logger.info("login successfully")
-            else:
-                # 再试一次
-                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-                self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
-                raise Exception(f"login failed: {self.driver.current_url}")
+            # 自动登录
+            self.auto_login()
 
             # 搜索关键字的推特
             self.search()
@@ -596,41 +596,9 @@ class TwitterWatcher:
         :return:
         """
         data = []
-        self.setup_driver()
         try:
-            for index in range(3):
-                # 检查是否存在 cookies 文件
-                if os.path.exists(self.cookies_file) and not self.force_re_login:
-                    try:
-                        self.driver.get('https://twitter.com/home')
-                        self.load_cookies()
-                        self.driver.refresh()
-                        time.sleep(3)
-                    except Exception as error:
-                        logging.info(error)
-                        logging.info("Cookies are invalid, clearing cookies and re-login.")
-                        self.driver.delete_all_cookies()
-                        self.login()
-                else:
-                    self.login()
-                # 混淆: 随机等待时间
-                time.sleep(random.uniform(1, 3))
-
-                # 再次检查是否需要登录
-                if "home" in self.driver.current_url:
-                    break
-                else:
-                    # 再试一次
-                    logging.warning(f"{index} time login failed, try again...")
-
-            # 检查是否登录成功
-            if "home" in self.driver.current_url:
-                logging.info("login successfully")
-            else:
-                # 再试一次
-                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-                self.driver.save_screenshot(f"./saved_screenshots/login_failed_page_{current_time}.png")
-                return False, "Login failed"
+            # 自动登录
+            self.auto_login()
 
             for user_id in user_id_list:
                 # 进入推特用户主页
@@ -723,41 +691,9 @@ class TwitterWatcher:
         :param msg:
         :return:
         """
-        self.setup_driver()
         try:
-            for index in range(3):
-                # 检查是否存在 cookies 文件
-                if os.path.exists(self.cookies_file) and not self.force_re_login:
-                    try:
-                        self.driver.get('https://twitter.com/home')
-                        self.load_cookies()
-                        self.driver.refresh()
-                        time.sleep(3)
-                    except Exception as error:
-                        logging.info(error)
-                        logging.info("Cookies are invalid, clearing cookies and re-login.")
-                        self.driver.delete_all_cookies()
-                        self.login()
-                else:
-                    self.login()
-                # 混淆: 随机等待时间
-                time.sleep(random.uniform(1, 3))
-
-                # 再次检查是否需要登录
-                if "home" in self.driver.current_url:
-                    break
-                else:
-                    # 再试一次
-                    logging.warning(f"{index} time login failed, try again...")
-
-            # 检查是否登录成功
-            if "home" in self.driver.current_url:
-                logging.info("login successfully")
-            else:
-                # 再试一次
-                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-                self.driver.save_screenshot(f"./saved_screenshots/login_failed_page_{current_time}.png")
-                return "Login failed"
+            # 自动登录
+            self.auto_login()
 
             # 进入推特用户主页
             try:
@@ -807,11 +743,13 @@ class TwitterWatcher:
             # 输入消息并回车
             try:
                 time.sleep(random.uniform(0, 3))
-                # 将消息复制到剪贴板
-                pyperclip.copy(msg)
-                # 将剪贴板内容粘贴到输入框中
-                dm_input.send_keys(Keys.CONTROL, 'v')
-                logger.info(f"input msg.")
+                def remove_non_bmp_characters(text):
+                    # 过滤掉不在 BMP 范围内的字符
+                    return re.sub(r'[^\u0000-\uFFFF]', '', text)
+                # 过滤掉不支持的字符
+                filtered_message = remove_non_bmp_characters(msg)
+                dm_input.send_keys(filtered_message)
+                logger.info(f"input msg: {msg}")
                 time.sleep(random.uniform(0, 3))
                 logger.info(f"enter to send.")
                 dm_input.send_keys(Keys.RETURN)
