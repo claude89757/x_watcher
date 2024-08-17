@@ -141,7 +141,7 @@ class TwitterWatcher:
             # 等待浏览器页面变成home页面
             try:
                 logging.info("Waiting for the home pages to load...")
-                WebDriverWait(self.driver, self.timeout).until(
+                WebDriverWait(self.driver, 10).until(
                     EC.url_to_be('https://x.com/home')
                 )
             except Exception as error:
