@@ -582,10 +582,13 @@ class TwitterWatcher:
                     data_list.extend(data)
                 else:
                     pass
-
-            current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
-            filename = f"{self.search_key_word}_{current_time}_{len(data_list)}_{self.username}.csv"
-            process_and_upload_csv_to_cos(data_list, f"./{filename}", f"{access_code}/{filename}")
+            if data_list:
+                current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
+                filename = f"{self.search_key_word}_{current_time}_{len(data_list)}_{self.username}.csv"
+                process_and_upload_csv_to_cos(data_list, f"./{filename}", f"{access_code}/{filename}")
+            else:
+                self.driver.save_screenshot(f"{self.username}_nothings_{current_time}.png")
+                logger.error("found nothinng...")
         finally:
             self.teardown_driver()
 
