@@ -47,7 +47,7 @@ class TwitterWatcher:
         self.password = password
         self.search_key_word = search_key_word
         self.timeout = timeout
-        self.interaction_timeout = 600
+        self.interaction_timeout = 10
         self.cookies_file = f'{username}_cookies.pkl'
         self.driver = None
         self.headless = headless
