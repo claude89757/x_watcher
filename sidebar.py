@@ -13,6 +13,15 @@ import os
 def cache_file_counts():
     # This function should set the file counts in st.session_state
     # For example:
+    if "raw_data_file_count" not in st.session_state:
+        st.session_state.raw_data_file_count = 0
+    if "processed_data_file_count" not in st.session_state:
+        st.session_state.processed_data_file_count = 0
+    if "analyzed_data_file_count" not in st.session_state:
+        st.session_state.analyzed_data_file_count = 0
+    if "msg_data_file_count" not in st.session_state:
+        st.session_state.msg_data_file_count = 0
+
     st.session_state.raw_data_file_count = count_files(f"./data/{st.session_state.access_code}/raw/")
     st.session_state.processed_data_file_count = count_files(f"./data/{st.session_state.access_code}/processed/")
     st.session_state.analyzed_data_file_count = count_files(f"./data/{st.session_state.access_code}/analyzed/")
