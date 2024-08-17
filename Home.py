@@ -84,6 +84,13 @@ if access_granted:
     # 创建文件夹
     base_path = os.path.join("./data", st.session_state.access_code)
     folders = ['raw', 'processed', 'analyzed', 'msg', 'records']
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
+        st.write(f"Created directory: {base_path}")
+        logger.info(f"Created directory: {base_path}")
+    else:
+        # st.write(f"Directory already exists: {path}")
+        pass
     for folder in folders:
         path = os.path.join(base_path, folder)
         if not os.path.exists(path):
