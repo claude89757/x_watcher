@@ -56,8 +56,9 @@ async def async_collect_data_from_x(username, email, password, search_key_word, 
 
     except Exception as e:
         # 如果发生异常，将文件内容改为 "FAILED" 和当前时间
+        error_message = traceback.format_exc()
         with open(task_file_path, 'w') as task_file:
-            task_file.write(f"FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {e}")
+            task_file.write(f"FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {error_message}")
 
 
 async def async_check_login_status(username, email, password):
