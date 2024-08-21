@@ -132,7 +132,7 @@ if filters:
             for i in range(0, total_users, batch_size):
                 batch_user_ids = user_ids[i:i + batch_size]
                 # 调用 collect_user_link_details 函数
-                alive_username = random.choice(['GZhihong54934','GZhihong75562'])
+                alive_username = random.choice(['Zacks89757'])
                 status_code, details = collect_user_link_details(alive_username, batch_user_ids)
                 if status_code == 200:
                     user_details.extend(details)

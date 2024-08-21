@@ -113,7 +113,7 @@ if not running_task:
             task_num = 0
             with st.spinner("Collecting..."):
                 # todo: 这里要增加并发任务的逻辑
-                alive_username = random.choice(['GZhihong54934','GZhihong75562'])
+                alive_username = random.choice(['Zacks89757'])
                 call_collect_data_from_x(
                     alive_username,
                     st.session_state.search_keyword,
