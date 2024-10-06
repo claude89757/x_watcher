@@ -149,10 +149,10 @@ if access_granted:
                 email = details['email']
                 password = details['password']
                 status_code, response_text = check_x_login_status(username, email, password)
-                if status_code == 200 and "login successful" in response_text.lower():
+                if status_code == 200:
                     accounts[username]['status'] = 'Success'
                 else:
-                    accounts[username]['status'] = 'Unauthorized'
+                    accounts[username]['status'] = 'Failed'
                 accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
                 st.write(f"Account {username} login status: {accounts[username]['status']}")
