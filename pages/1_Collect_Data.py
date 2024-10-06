@@ -24,6 +24,8 @@ from common.collector_sdk import call_collect_data_from_x
 from common.collector_sdk import query_status
 from sidebar import sidebar
 from sidebar import cache_file_counts
+from common.redis_client import RedisClient
+
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -87,10 +89,18 @@ st.session_state.max_post_num = st.selectbox(
 # 检查当前用户是否有任务在运行中，如果有任务运行中，不运行触发
 # 显示转圈圈图标表示检查任务状态
 with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
-    code, tasks = query_status(st.session_state.access_code)
-    if code != 200:
-        st.error(tasks)
+    # 初始化 Redis 客户端
+    redis_client = RedisClient(db=0)
+    # 获取所有与 access_code 相关的任务键
+    task_keys = redis_client.keys(f"{st.session_state.access_code}_*_task")
+    tasks = {}
+    for task_key in task_keys:
+        # 从 Redis 中获取任务状态
+        task_info = redis_client.get_json_data(task_key)
+        if task_info:
+            tasks[task_key] = task_info.get('status', 'Unknown')
 
+      
 running_task = ""
 if tasks:
     for task_name, status in tasks.items():

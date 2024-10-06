@@ -14,33 +14,6 @@ from common.redis_client import RedisClient
 from common.config import CONFIG
 
 
-def query_status(access_code):
-    """
-    从 Redis 中查询任务状态
-
-    :param access_code: 访问码
-    :return: 返回状态码和任务信息
-    """
-    try:
-        # 初始化 Redis 客户端
-        redis_client = RedisClient(db=0)
-
-        # 获取所有与 access_code 相关的任务键
-        task_keys = redis_client.keys(f"{access_code}_*_task")
-
-        tasks = {}
-        for task_key in task_keys:
-            # 从 Redis 中获取任务状态
-            task_info = redis_client.get_json_data(task_key)
-            if task_info:
-                tasks[task_key] = task_info.get('status', 'Unknown')
-
-        return 200, tasks
-    except Exception as e:
-        logging.error(f'Error querying task status: {e}')
-        return 500, str(e)
-
-
 def call_collect_data_from_x(username, search_key_word, max_post_num, access_code):
     """
     调用 /collect_data_from_x API 接口
