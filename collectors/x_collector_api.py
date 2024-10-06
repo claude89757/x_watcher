@@ -39,12 +39,17 @@ async def async_collect_data_from_x(username, email, password, search_key_word, 
     :param access_code:
     :return:
     """
-    task_file_path = f"/root/{access_code}_{username}_{search_key_word}_task"
+    # 初始化 Redis 客户端
+    redis_client = RedisClient(db=0)
+    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    task_key = f"{access_code}_{search_key_word}_{timestamp}_task"
 
     try:
-        # 创建文件并写入 "RUNNING" 和当前时间
-        with open(task_file_path, 'w') as task_file:
-            task_file.write(f"RUNNING at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # 将任务状态写入 Redis
+        redis_client.set_json_data(task_key, {
+            "status": "RUNNING",
+            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
 
         # 数据收集
         logging.info("start collecting data.")
@@ -52,15 +57,20 @@ async def async_collect_data_from_x(username, email, password, search_key_word, 
         watcher.run(max_post_num, access_code)
         logging.info("done collecting data.")
 
-        # 数据收集完成后将文件内容改为 "SUCCESS" 和当前时间
-        with open(task_file_path, 'w') as task_file:
-            task_file.write(f"SUCCESS at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # 数据收集完成后更新 Redis 中的任务状态
+        redis_client.set_json_data(task_key, {
+            "status": "SUCCESS",
+            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }, expire_time=60 * 60 * 24 * 30)
 
     except Exception as e:
-        # 如果发生异常，将文件内容改为 "FAILED" 和当前时间
+        # 如果发生异常，更新 Redis 中的任务状态
         error_message = traceback.format_exc()
-        with open(task_file_path, 'w') as task_file:
-            task_file.write(f"FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}: {error_message}")
+        redis_client.set_json_data(task_key, {
+            "status": "FAILED",
+            "timestamp": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "error": error_message
+        }, expire_time=60 * 60 * 24 * 30)
 
 
 async def async_check_login_status(username, email, password):

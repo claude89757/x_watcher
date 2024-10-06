@@ -14,6 +14,7 @@ import time
 import uuid
 from datetime import datetime
 from common.config import CONFIG
+import logging
 
 
 class RedisClient:
@@ -89,8 +90,8 @@ class RedisClient:
             if identifier:
                 self.release_lock(lock_name, identifier)
 
-    def set_json_data(self, key, value, use_lock=False, lock_timeout=10):
-        """写入Redis的数据，JSON格式，并能设置超时时间，默认600秒超时"""
+    def set_json_data(self, key, value, use_lock=False, lock_timeout=10, expire_time=None):
+        """写入Redis的数据，JSON格式，并能设置超时时间，默认不超时"""
         identifier = None
         lock_name = self._get_lock_name(key) if use_lock else None
         if use_lock:
@@ -100,7 +101,10 @@ class RedisClient:
 
         try:
             json_data = json.dumps(value)
-            self.redis_conn.set(key, json_data)
+            if expire_time is not None:
+                self.redis_conn.set(key, json_data, ex=expire_time)  # 设置过期时间
+            else:
+                self.redis_conn.set(key, json_data)  # 不设置过期时间
             self._print_with_timestamp(f"Set JSON data for key '{key}' with length {len(value)}")
         finally:
             if identifier:
