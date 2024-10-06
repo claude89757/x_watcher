@@ -127,21 +127,20 @@ async def collect_data_from_x():
         # 从 Redis 中获取可登录的账号
         redis_client = RedisClient(db=0)
         accounts = redis_client.get_json_data('twitter_accounts') or {}
-        valid_accounts = [details for details in accounts.values() if details.get('status') == 'Success']
+        valid_accounts = [(username, details) for username, details in accounts.items() if details.get('status') == 'Success']
 
         if not valid_accounts:
             return 'No valid accounts available', 500
 
         # 随机选择一个可登录的账号
-        selected_account = random.choice(valid_accounts)
-        username = selected_account['username']
+        selected_username, selected_account = random.choice(valid_accounts)
         email = selected_account['email']
         password = selected_account['password']
 
         try:
             # 异步调用数据收集函数
             app.logger.info('running...')
-            await async_collect_data_from_x(username=username, email=email, password=password,
+            await async_collect_data_from_x(username=selected_username, email=email, password=password,
                                             search_key_word=search_key_word, max_post_num=max_post_num,
                                             access_code=access_code)
             return 'Success', 200
@@ -215,17 +214,16 @@ async def collect_user_link_detail():
         data = await request.get_json()
         user_id_list = data.get('user_id_list')
 
-        # 从 Redis 中获取可登录的账号
+       # 从 Redis 中获取可登录的账号
         redis_client = RedisClient(db=0)
         accounts = redis_client.get_json_data('twitter_accounts') or {}
-        valid_accounts = [details for details in accounts.values() if details.get('status') == 'Success']
+        valid_accounts = [(username, details) for username, details in accounts.items() if details.get('status') == 'Success']
 
         if not valid_accounts:
             return 'No valid accounts available', 500
 
         # 随机选择一个可登录的账号
-        selected_account = random.choice(valid_accounts)
-        username = selected_account['username']
+        selected_username, selected_account = random.choice(valid_accounts)
         email = selected_account['email']
         password = selected_account['password']
 
