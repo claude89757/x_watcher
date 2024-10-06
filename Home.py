@@ -103,20 +103,25 @@ if access_granted:
                     st.success(f"Deleted account: {username}")
                     logger.info(f"Deleted account: {username}")
 
-        # 添加新账号
-        st.write("Add New Account:")
-        new_username = st.text_input("Username", key="new_username")
-        new_email = st.text_input("Email", key="new_email")
-        new_password = st.text_input("Password", type="password", key="new_password")
+        # 显示��新增账号”按钮
+        if st.button("Add New Account"):
+            st.session_state.show_add_account_form = True
 
-        if st.button("Add Account"):
-            if new_username and new_email and new_password:
-                accounts[new_username] = {'email': new_email, 'password': new_password}
-                redis_client.set_json_data('twitter_accounts', accounts)
-                st.success(f"Added account: {new_username}")
-                logger.info(f"Added account: {new_username}")
-            else:
-                st.error("Please fill in all fields to add a new account.")
+        # 仅在点击“新增账号”按钮后显示输入表单
+        if st.session_state.get('show_add_account_form', False):
+            new_username = st.text_input("Username", key="new_username")
+            new_email = st.text_input("Email", key="new_email")
+            new_password = st.text_input("Password", type="password", key="new_password")
+
+            if st.button("Submit New Account"):
+                if new_username and new_email and new_password:
+                    accounts[new_username] = {'email': new_email, 'password': new_password}
+                    redis_client.set_json_data('twitter_accounts', accounts)
+                    st.success(f"Added account: {new_username}")
+                    logger.info(f"Added account: {new_username}")
+                    st.session_state.show_add_account_form = False  # 隐藏表单
+                else:
+                    st.error("Please fill in all fields to add a new account.")
 
         # 刷新账号状态
         if st.button("Refresh Account Status"):
