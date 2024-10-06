@@ -101,7 +101,8 @@ if access_granted:
             for username, details in accounts.items():
                 # 使用 emoji 显示登录状态
                 status_emoji = "✅" if details.get('status') == 'Success' else "❌"
-                with st.expander(f"Account: {username} {status_emoji}"):
+                last_checked = details.get('last_checked', 'Never')
+                with st.expander(f"{status_emoji} {username}  Last Checked: {last_checked}"):
                     col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
                     with col1:
                         st.write(f"Email: {details['email']}")
