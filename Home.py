@@ -15,6 +15,7 @@ from common.config import CONFIG
 from common.log_config import setup_logger
 from sidebar import sidebar
 from common.redis_client import RedisClient
+from common.collector_sdk import check_x_login_status
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -105,9 +106,12 @@ if access_granted:
                     with col1:
                         st.write(f"Email: {details['email']}")
                     with col2:
-                        # 检查并更新登录状态
-                        status = check_login_status(username, details['email'], details['password'])
-                        accounts[username]['status'] = 'Success' if status else 'Unauthorized'
+                        # 使用 check_x_login_status 函数检查并更新登录状态
+                        status_code, response_text = check_x_login_status(username, details['email'], details['password'])
+                        if status_code == 200 and "login successful" in response_text.lower():
+                            accounts[username]['status'] = 'Success'
+                        else:
+                            accounts[username]['status'] = 'Unauthorized'
                         accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
                         st.write(f"Status: {accounts[username]['status']}")
@@ -151,19 +155,16 @@ if access_granted:
             for username, details in accounts.items():
                 email = details['email']
                 password = details['password']
-                status = check_login_status(username, email, password)
-                accounts[username]['status'] = 'Success' if status else 'Unauthorized'
+                status_code, response_text = check_x_login_status(username, email, password)
+                if status_code == 200 and "login successful" in response_text.lower():
+                    accounts[username]['status'] = 'Success'
+                else:
+                    accounts[username]['status'] = 'Unauthorized'
                 accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
                 st.write(f"Account {username} login status: {accounts[username]['status']}")
                 st.write(f"Last Checked: {accounts[username]['last_checked']}")
                 logger.info(f"Account {username} login status: {accounts[username]['status']}")
-
-    # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
-    def check_login_status(username, email, password):
-        # 这里应该调用实际的登录检查逻辑
-        # 例如：return async_check_login_status(username, email, password)
-        return True  # 仅为示例，假设所有账号都能成功登录
 
     # 调用推特账号管理功能
     manage_twitter_accounts()
