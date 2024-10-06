@@ -21,7 +21,6 @@ from common.cos import list_latest_files
 from common.cos import download_file
 from common.log_config import setup_logger
 from common.collector_sdk import call_collect_data_from_x
-from common.collector_sdk import query_status
 from sidebar import sidebar
 from sidebar import cache_file_counts
 from common.redis_client import RedisClient
@@ -72,8 +71,6 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# health checker
-# TODO(claude): 从redis中读取服务的状态
 
 st.title("Step 1: Collect Data")
 st.markdown("Collecting comment data from popular posts found through keyword searches on X, "
@@ -86,21 +83,27 @@ st.session_state.max_post_num = st.selectbox(
     index=[1, 3, 5, 10, 20, 50].index(st.session_state.max_post_num)
 )
 
-# 检查当前用户是否有任务在运行中，如果有任务运行中，不运行触发
-# 显示转圈圈图标表示检查任务状态
-with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
-    # 初始化 Redis 客户端
+def query_status(access_code): 
+    """
+    从 Redis 中查询任务状态
+    :param access_code: 访问码
+    :return: 返回任务状态
+    """
     redis_client = RedisClient(db=0)
-    # 获取所有与 access_code 相关的任务键
-    task_keys = redis_client.keys(f"{st.session_state.access_code}_*_task")
+    task_keys = redis_client.keys(f"{access_code}_*_task")
     tasks = {}
     for task_key in task_keys:
-        # 从 Redis 中获取任务状态
         task_info = redis_client.get_json_data(task_key)
         if task_info:
             tasks[task_key] = task_info.get('status', 'Unknown')
+    return tasks
 
-      
+
+# 检查当前用户是否有任务在运行中，如果有任务运行中，不运行触发
+# 显示转圈圈图标表示检查任务状态
+with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
+    tasks = query_status(st.session_state.access_code)
+
 running_task = ""
 if tasks:
     for task_name, status in tasks.items():
@@ -141,7 +144,7 @@ else:
     with st.spinner(running_task):
         while True:
             try:
-                _, tasks = query_status(st.session_state.access_code)
+                tasks = query_status(st.session_state.access_code)
             except Exception as error:
                 st.error(f"query_status: {error}")
                 break
