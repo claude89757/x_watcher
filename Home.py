@@ -98,7 +98,9 @@ if access_granted:
         if accounts:
             st.write("Existing Accounts:")
             for username, details in accounts.items():
-                with st.expander(f"Account: {username}"):
+                # 使用 emoji 显示登录状态
+                status_emoji = "✅" if details.get('status') == 'Success' else "❌"
+                with st.expander(f"Account: {username} {status_emoji}"):
                     col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
                     with col1:
                         st.write(f"Email: {details['email']}")
@@ -149,7 +151,6 @@ if access_granted:
             for username, details in accounts.items():
                 email = details['email']
                 password = details['password']
-                # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
                 status = check_login_status(username, email, password)
                 accounts[username]['status'] = 'Success' if status else 'Unauthorized'
                 accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
