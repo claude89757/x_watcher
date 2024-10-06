@@ -13,6 +13,7 @@ import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
 from sidebar import sidebar
+from common.redis_client import RedisClient
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -80,6 +81,61 @@ if access_granted:
     st.page_link("pages/3_AI_Analyze_Data.py", label="AI Analyze Data", icon="3️⃣️", use_container_width=True)
     st.page_link("pages/4_AI_Generate_Msg.py", label="AI Generate Msg", icon="4️⃣", use_container_width=True)
     st.page_link("pages/5_Send_Promotional_Msg.py", label="Send Promotional MSG", icon="5️⃣", use_container_width=True)
+
+    # 初始化 Redis 客户端
+    redis_client = RedisClient(db=0)
+
+    # 新增推特账号管理功能
+    def manage_twitter_accounts():
+        st.subheader("Twitter Account Management")
+
+        # 从 Redis 中加载现有账号
+        accounts = redis_client.get_json_data('twitter_accounts') or {}
+
+        # 显示现有账号
+        if accounts:
+            st.write("Existing Accounts:")
+            for username, details in accounts.items():
+                st.write(f"Username: {username}, Email: {details['email']}")
+                if st.button(f"Delete {username}", key=f"delete_{username}"):
+                    del accounts[username]
+                    redis_client.set_json_data('twitter_accounts', accounts)
+                    st.success(f"Deleted account: {username}")
+                    logger.info(f"Deleted account: {username}")
+
+        # 添加新账号
+        st.write("Add New Account:")
+        new_username = st.text_input("Username", key="new_username")
+        new_email = st.text_input("Email", key="new_email")
+        new_password = st.text_input("Password", type="password", key="new_password")
+
+        if st.button("Add Account"):
+            if new_username and new_email and new_password:
+                accounts[new_username] = {'email': new_email, 'password': new_password}
+                redis_client.set_json_data('twitter_accounts', accounts)
+                st.success(f"Added account: {new_username}")
+                logger.info(f"Added account: {new_username}")
+            else:
+                st.error("Please fill in all fields to add a new account.")
+
+        # 刷新账号状态
+        if st.button("Refresh Account Status"):
+            for username, details in accounts.items():
+                email = details['email']
+                password = details['password']
+                # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
+                status = check_login_status(username, email, password)
+                st.write(f"Account {username} login status: {'Success' if status else 'Unauthorized'}")
+                logger.info(f"Account {username} login status: {'Success' if status else 'Unauthorized'}")
+
+    # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
+    def check_login_status(username, email, password):
+        # 这里应该调用实际的登录检查逻辑
+        # 例如：return async_check_login_status(username, email, password)
+        return True  # 仅为示例，假设所有账号都能成功登录
+
+    # 调用推特账号管理功能
+    manage_twitter_accounts()
 
     # 创建文件夹
     base_path = os.path.join("./data", st.session_state.access_code)
