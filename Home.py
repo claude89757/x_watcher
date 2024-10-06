@@ -106,15 +106,8 @@ if access_granted:
                     with col1:
                         st.write(f"Email: {details['email']}")
                     with col2:
-                        # 使用 check_x_login_status 函数检查并更新登录状态
-                        status_code, response_text = check_x_login_status(username, details['email'], details['password'])
-                        if status_code == 200 and "login successful" in response_text.lower():
-                            accounts[username]['status'] = 'Success'
-                        else:
-                            accounts[username]['status'] = 'Unauthorized'
-                        accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
-                        st.write(f"Status: {accounts[username]['status']}")
+                        # 从 Redis 中读取状态
+                        st.write(f"Status: {details.get('status', 'Unknown')}")
                     with col3:
                         last_checked = details.get('last_checked', 'Never')
                         st.write(f"Last Checked: {last_checked}")
