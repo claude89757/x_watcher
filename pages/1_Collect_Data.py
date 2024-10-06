@@ -106,16 +106,27 @@ with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
 
 running_task = ""
 if tasks:
-    for task_name, status in tasks.items():
+    # 创建三列布局
+    col1, col2, col3 = st.columns(3)
+    for i, (task_name, status) in enumerate(tasks.items()):
+        # 根据索引选择列
+        if i % 3 == 0:
+            col = col1
+        elif i % 3 == 1:
+            col = col2
+        else:
+            col = col3
+
+        # 在选定的列中显示任务状态
         if 'RUNNING' in status:
-            st.markdown(f'> {task_name.split("_")[-2]} 🔄')  # 运行中任务显示转圈圈图标
+            col.markdown(f'> {task_name} 🔄')  # 运行中任务显示转圈圈图标
             running_task = f"{task_name} {status}"
         elif 'SUCCESS' in status:
-            st.markdown(f'> {task_name.split("_")[-2]} ✅')  # 成功任务显示对勾图标
+            col.markdown(f'> {task_name} ✅')  # 成功任务显示对勾图标
         elif 'FAILED' in status:
-            st.markdown(f'> {task_name.split("_")[-2]} ❌')  # 失败任务显示叉图标
+            col.markdown(f'> {task_name} ❌')  # 失败任务显示叉图标
         else:
-            st.markdown(f'> {task_name.split("_")[-2]} {status}')
+            col.markdown(f'> {task_name} {status}')
 else:
     pass
 
@@ -137,6 +148,8 @@ if not running_task:
                 # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
                 # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
                 st.success("Data collection complete!")
+                time.sleep(3)
+                st.rerun()
         except Exception as e:
             # Log the error
             st.error(f"An error occurred: {e}")
