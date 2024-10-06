@@ -90,7 +90,7 @@ if access_granted:
 
     # 新增推特账号管理功能
     def manage_twitter_accounts():
-        st.subheader("X Account Management")
+        st.subheader("X Crawler Account Management")
 
         # 从 Redis 中加载现有账号
         accounts = redis_client.get_json_data('twitter_accounts') or {}
