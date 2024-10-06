@@ -8,6 +8,7 @@
 """
 import time
 import os
+import datetime
 
 import streamlit as st
 from common.config import CONFIG
@@ -98,14 +99,20 @@ if access_granted:
             st.write("Existing Accounts:")
             for username, details in accounts.items():
                 with st.expander(f"Account: {username}"):
-                    col1, col2, col3 = st.columns([3, 2, 1])
+                    col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
                     with col1:
                         st.write(f"Email: {details['email']}")
                     with col2:
-                        # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
+                        # 检查并更新登录状态
                         status = check_login_status(username, details['email'], details['password'])
-                        st.write(f"Status: {'Success' if status else 'Unauthorized'}")
+                        accounts[username]['status'] = 'Success' if status else 'Unauthorized'
+                        accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
+                        st.write(f"Status: {accounts[username]['status']}")
                     with col3:
+                        last_checked = details.get('last_checked', 'Never')
+                        st.write(f"Last Checked: {last_checked}")
+                    with col4:
                         if st.button(f"Delete {username}", key=f"delete_{username}"):
                             del accounts[username]
                             redis_client.set_json_data('twitter_accounts', accounts)
@@ -124,7 +131,12 @@ if access_granted:
 
             if st.button("Submit New Account"):
                 if new_username and new_email and new_password:
-                    accounts[new_username] = {'email': new_email, 'password': new_password}
+                    accounts[new_username] = {
+                        'email': new_email,
+                        'password': new_password,
+                        'status': 'Unknown',
+                        'last_checked': 'Never'
+                    }
                     redis_client.set_json_data('twitter_accounts', accounts)
                     st.success(f"Added account: {new_username}")
                     logger.info(f"Added account: {new_username}")
@@ -139,8 +151,12 @@ if access_granted:
                 password = details['password']
                 # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
                 status = check_login_status(username, email, password)
-                st.write(f"Account {username} login status: {'Success' if status else 'Unauthorized'}")
-                logger.info(f"Account {username} login status: {'Success' if status else 'Unauthorized'}")
+                accounts[username]['status'] = 'Success' if status else 'Unauthorized'
+                accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
+                st.write(f"Account {username} login status: {accounts[username]['status']}")
+                st.write(f"Last Checked: {accounts[username]['last_checked']}")
+                logger.info(f"Account {username} login status: {accounts[username]['status']}")
 
     # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
     def check_login_status(username, email, password):
