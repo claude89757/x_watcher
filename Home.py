@@ -81,6 +81,7 @@ if access_granted:
     st.page_link("pages/3_AI_Analyze_Data.py", label="AI Analyze Data", icon="3️⃣️", use_container_width=True)
     st.page_link("pages/4_AI_Generate_Msg.py", label="AI Generate Msg", icon="4️⃣", use_container_width=True)
     st.page_link("pages/5_Send_Promotional_Msg.py", label="Send Promotional MSG", icon="5️⃣", use_container_width=True)
+    st.markdown("-----")
 
     # 初始化 Redis 客户端
     redis_client = RedisClient(db=0)
