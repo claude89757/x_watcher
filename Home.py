@@ -97,14 +97,22 @@ if access_granted:
         if accounts:
             st.write("Existing Accounts:")
             for username, details in accounts.items():
-                st.write(f"Username: {username}, Email: {details['email']}")
-                if st.button(f"Delete {username}", key=f"delete_{username}"):
-                    del accounts[username]
-                    redis_client.set_json_data('twitter_accounts', accounts)
-                    st.success(f"Deleted account: {username}")
-                    logger.info(f"Deleted account: {username}")
+                with st.expander(f"Account: {username}"):
+                    col1, col2, col3 = st.columns([3, 2, 1])
+                    with col1:
+                        st.write(f"Email: {details['email']}")
+                    with col2:
+                        # 假设有一个函数 check_login_status(username, email, password) 返回登录状态
+                        status = check_login_status(username, details['email'], details['password'])
+                        st.write(f"Status: {'Success' if status else 'Unauthorized'}")
+                    with col3:
+                        if st.button(f"Delete {username}", key=f"delete_{username}"):
+                            del accounts[username]
+                            redis_client.set_json_data('twitter_accounts', accounts)
+                            st.success(f"Deleted account: {username}")
+                            logger.info(f"Deleted account: {username}")
 
-        # 显示��新增账号”按钮
+        # 显示“新增账号”按钮
         if st.button("Add New Account"):
             st.session_state.show_add_account_form = True
 
