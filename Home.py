@@ -159,6 +159,9 @@ if access_granted:
                 st.write(f"Last Checked: {accounts[username]['last_checked']}")
                 logger.info(f"Account {username} login status: {accounts[username]['status']}")
 
+            # 筛选页面
+            st.rerun()
+
     # 调用推特账号管理功能
     manage_twitter_accounts()
 
