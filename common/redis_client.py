@@ -13,7 +13,7 @@ import json
 import time
 import uuid
 from datetime import datetime
-from config import CONFIG
+from common.config import CONFIG
 
 
 class RedisClient:
