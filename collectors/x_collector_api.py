@@ -12,6 +12,8 @@ import traceback
 import logging
 import datetime
 import aiofiles
+import random
+from common.redis_client import RedisClient
 
 from quart import Quart
 from quart import request
@@ -108,28 +110,31 @@ async def collect_data_from_x():
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_data_from_x ')
         data = await request.get_json()
-        username = data.get('username')
         search_key_word = data.get('search_key_word')
         max_post_num = data.get('max_post_num')
         access_code = data.get('access_code')
 
-        if not username:
-            return 'Missing input username', 500
+        # 从 Redis 中获取可登录的账号
+        redis_client = RedisClient(db=0)
+        accounts = redis_client.get_json_data('twitter_accounts') or {}
+        valid_accounts = [details for details in accounts.values() if details.get('status') == 'Success']
+
+        if not valid_accounts:
+            return 'No valid accounts available', 500
+
+        # 随机选择一个可登录的账号
+        selected_account = random.choice(valid_accounts)
+        username = selected_account['username']
+        email = selected_account['email']
+        password = selected_account['password']
 
         try:
-            collector_username_infos = CONFIG['x_collector_account_infos']
-            if collector_username_infos.get(username):
-                email = collector_username_infos[username]['email']
-                password = collector_username_infos[username]['password']
-
-                # 异步调用数据收集函数
-                app.logger.info('running...')
-                await async_collect_data_from_x(username=username, email=email, password=password,
-                                                search_key_word=search_key_word, max_post_num=max_post_num,
-                                                access_code=access_code)
-                return 'Success', 200
-            else:
-                return 'Missing username\'s info', 500
+            # 异步调用数据收集函数
+            app.logger.info('running...')
+            await async_collect_data_from_x(username=username, email=email, password=password,
+                                            search_key_word=search_key_word, max_post_num=max_post_num,
+                                            access_code=access_code)
+            return 'Success', 200
         except Exception as e:
             app.logger.error(f'Internal Server Error: {e}')
             return 'Internal Server Error', 500
@@ -198,22 +203,27 @@ async def collect_user_link_detail():
     if request.method == 'POST':
         app.logger.info('Received POST request on /collect_user_link_detail ')
         data = await request.get_json()
-        username = data.get('username')
         user_id_list = data.get('user_id_list')
-        if not username or not user_id_list:
-            app.logger.error(f'Missing input username or email or password or to_user_link or msg')
-            return 'Missing input username or email or password or to_user_link or msg', 499
+
+        # 从 Redis 中获取可登录的账号
+        redis_client = RedisClient(db=0)
+        accounts = redis_client.get_json_data('twitter_accounts') or {}
+        valid_accounts = [details for details in accounts.values() if details.get('status') == 'Success']
+
+        if not valid_accounts:
+            return 'No valid accounts available', 500
+
+        # 随机选择一个可登录的账号
+        selected_account = random.choice(valid_accounts)
+        username = selected_account['username']
+        email = selected_account['email']
+        password = selected_account['password']
+
         try:
-            collector_username_infos = CONFIG['x_collector_account_infos']
-            if collector_username_infos.get(username):
-                email = collector_username_infos[username]['email']
-                password = collector_username_infos[username]['password']
-                watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
-                data = watcher.collect_user_link_detail(user_id_list)
-                data_str = json.dumps({"data": data})
-                return data_str, 200
-            else:
-                return 'Missing username\'s info', 401
+            watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
+            data = watcher.collect_user_link_detail(user_id_list)
+            data_str = json.dumps({"data": data})
+            return data_str, 200
         except Exception as e:
             error_message = traceback.format_exc()
             print(error_message)
