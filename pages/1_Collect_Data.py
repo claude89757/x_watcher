@@ -90,7 +90,7 @@ def query_status(access_code):
     :return: 返回任务状态
     """
     redis_client = RedisClient(db=0)
-    task_keys = redis_client.keys(f"{access_code}_*_task")
+    task_keys = redis_client.redis_conn.keys(f"{access_code}_*_task")
     tasks = {}
     for task_key in task_keys:
         task_info = redis_client.get_json_data(task_key)
