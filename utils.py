@@ -31,7 +31,7 @@ def save_comments_to_csv(comments_data: list, file_name: str):
         if file.tell() == 0:
             writer.writeheader()
 
-        # Write the comment data
+        # Write the comment data 
         writer.writerows(comments_data)
 
 
