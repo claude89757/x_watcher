@@ -320,6 +320,10 @@ class RedisClient:
             if identifier:
                 self.release_lock(lock_name, identifier)
 
+    def keys(self, pattern):
+        """获取匹配模式的所有键"""
+        return self.redis_conn.keys(pattern)
+
 
 # 示例使用
 if __name__ == "__main__":
