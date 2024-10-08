@@ -117,7 +117,7 @@ else:
             logger.info(f"{code} login successfully.")
             st.balloons()
             time.sleep(3)
-            st.switch_page("pages/1_Collect_Data.py", )
+            st.switch_page("pages/1_评论收集.py", )
         else:
             st.error(incorrect_code_message)
             logger.warning(f"{code} login failed.")
