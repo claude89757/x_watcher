@@ -71,14 +71,39 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
+# 在侧边栏添加语言选择
+language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
 
-st.title("Step 1: Collect Data")
-st.markdown("Collecting comment data from popular posts found through keyword searches on X, "
-            "which may take some time to complete.")
+# 将语言选择存储到 session_state 和 URL 参数
+st.session_state.language = language
+st.query_params.language = language
 
-st.session_state.search_keyword = st.text_input(label="Search Keyword", value=st.session_state.search_keyword)
+# 根据选择的语言设置文本
+if language == "CN":
+    page_title = "步骤 1: 收集数据"
+    page_description = "从X中通过关键词搜索找到的热门帖子中收集评论数据，可能需要一些时间来完成。"
+    search_keyword_label = "搜索关键词"
+    max_post_num_label = "最大帖子数量"
+    collect_data_button_label = "收集数据"
+    data_collection_complete_message = "数据收集完成！"
+    access_not_granted_message = "访问未授权！"
+    log_out_button_label = "登出"
+else:
+    page_title = "Step 1: Collect Data"
+    page_description = "Collecting comment data from popular posts found through keyword searches on X, which may take some time to complete."
+    search_keyword_label = "Search Keyword"
+    max_post_num_label = "Max Post Number"
+    collect_data_button_label = "Collect Data"
+    data_collection_complete_message = "Data collection complete!"
+    access_not_granted_message = "Access not Granted!"
+    log_out_button_label = "Log out"
+
+st.title(page_title)
+st.markdown(page_description)
+
+st.session_state.search_keyword = st.text_input(label=search_keyword_label, value=st.session_state.search_keyword)
 st.session_state.max_post_num = st.selectbox(
-    label="Max Post Number",
+    label=max_post_num_label,
     options=[1, 3, 5, 10, 20, 50],
     index=[1, 3, 5, 10, 20, 50].index(st.session_state.max_post_num)
 )
@@ -131,7 +156,7 @@ else:
     pass
 
 if not running_task:
-    if st.button(label="Collect Data"):
+    if st.button(label=collect_data_button_label):
         # (todo: claude)Initialize progress elements
         try:
             task_num = 0
@@ -147,7 +172,7 @@ if not running_task:
                 task_num += 1
                 # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
                 # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
-                st.success("Data collection complete!")
+                st.success(data_collection_complete_message)
                 time.sleep(3)
                 st.rerun()
         except Exception as e:
@@ -275,4 +300,3 @@ if st.session_state.raw_data_file_count:
         st.switch_page("pages/2_Preprocess_Data.py")
     else:
         pass
-

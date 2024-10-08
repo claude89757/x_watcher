@@ -62,9 +62,39 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-st.title("Step 2: Preprocessing and Filter Data")
-st.markdown("Preprocessing and filtering data, including selecting fields, choosing files,"
-            " and applying necessary preprocessing steps.")
+# 在侧边栏添加语言选择
+language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
+
+# 将语言选择存储到 session_state 和 URL 参数
+st.session_state.language = language
+st.query_params.language = language
+
+# 根据选择的语言设置文本
+if language == "CN":
+    page_title = "步骤 2: 预处理和过滤数据"
+    page_description = "预处理和过滤数据，包括选择字段、选择文件和应用必要的预处理步骤。"
+    select_file_label = "选择要分析的文件:"
+    no_data_warning = "没有原始数据，返回收集数据..."
+    preprocess_button_label = "预处理数据"
+    initial_data_count_label = "初始数据量"
+    final_data_count_label = "最终数据量"
+    preprocess_success_message = "数据预处理成功。"
+    next_button_label = "下一步: AI 分析数据"
+    log_out_button_label = "登出"
+else:
+    page_title = "Step 2: Preprocessing and Filter Data"
+    page_description = "Preprocessing and filtering data, including selecting fields, choosing files, and applying necessary preprocessing steps."
+    select_file_label = "Select a file to analyze:"
+    no_data_warning = "No raw data, return to collect data..."
+    preprocess_button_label = "Preprocess Data"
+    initial_data_count_label = "Initial data count"
+    final_data_count_label = "Final data count"
+    preprocess_success_message = "Preprocess Data successfully."
+    next_button_label = "Next: AI Analyze Data"
+    log_out_button_label = "Log out"
+
+st.title(page_title)
+st.markdown(page_description)
 
 src_dir = f"./data/{st.session_state.access_code}/raw/"
 dst_dir = f"./data/{st.session_state.access_code}/processed/"
@@ -73,7 +103,7 @@ files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, 
 # 从最新到最旧排序
 files.sort(key=lambda f: os.path.getmtime(os.path.join(src_dir, f)), reverse=True)
 if files:
-    st.session_state.selected_file = st.selectbox("Select a file to analyze:", files)
+    st.session_state.selected_file = st.selectbox(select_file_label, files)
     selected_file_path = os.path.join(src_dir, st.session_state.selected_file)
     st.subheader(f"File Data Preview: {st.session_state.selected_file}")
     # 选择确定处理的文件
@@ -96,13 +126,13 @@ if files:
     else:
         st.error("No selected file.")
 else:
-    st.warning("No raw data, return to collect data...")
+    st.warning(no_data_warning)
     time.sleep(1)
     st.switch_page("pages/1_Collect_Data.py")
 
 
 # Button to confirm the file
-if st.button("Preprocess Data"):
+if st.button(preprocess_button_label):
     with st.spinner('Preprocessing...'):
         # 获取源文件路径
         src_file_path = os.path.join(src_dir, st.session_state.selected_file)
@@ -162,9 +192,9 @@ if st.button("Preprocess Data"):
         final_count = len(df)
 
         # 展示处理前后的数据量
-        st.write(f"Initial data count: {initial_count}")
-        st.write(f"Final data count: {final_count}")
-        st.success("Preprocess Data successfully. ")
+        st.write(f"{initial_data_count_label}: {initial_count}")
+        st.write(f"{final_data_count_label}: {final_count}")
+        st.success(preprocess_success_message)
 
         # 更新文件计数
         cache_file_counts()
@@ -172,7 +202,7 @@ if st.button("Preprocess Data"):
 
 # Next
 if st.session_state.processed_data_file_count:
-    if st.button(label="Next: AI Analyze Data", type='primary'):
+    if st.button(label=next_button_label, type='primary'):
         st.success(f"Process data successfully, entering next step...")
         st.balloons()
         time.sleep(3)

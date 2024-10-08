@@ -26,6 +26,29 @@ logger = setup_logger(__name__)
 
 st.set_page_config(page_title="Generate Msg", page_icon="🤖", layout="wide")
 
+# 在侧边栏添加语言选择
+language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
+
+# 将语言选择存储到 session_state 和 URL 参数
+st.session_state.language = language
+st.query_params.language = language
+
+# 根据选择的语言设置文本
+if language == "CN":
+    page_title = "步骤 4: AI 生成消息"
+    page_description = "为特定客户生成个性化的推广消息，旨在提高营销效果和用户参与度。"
+    filter_columns_label = "选择要过滤的列:"
+    collect_user_details_button_label = "收集更多用户详情"
+    generate_msg_button_label = "生成推广消息"
+    log_out_button_label = "登出"
+else:
+    page_title = "Step 4: AI Generate Msg"
+    page_description = "A personalized promotional message generated for specific customers based on AI classification results, aimed at enhancing marketing effectiveness and user engagement."
+    filter_columns_label = "Select columns to filter by:"
+    collect_user_details_button_label = "Collect More User Details"
+    generate_msg_button_label = "Generate Promotional Msg"
+    log_out_button_label = "Log out"
+
 
 # init session state
 if 'access_code' not in st.session_state:
@@ -68,9 +91,8 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-st.title("Step 4: AI Generate Msg")
-st.markdown("A personalized promotional message generated for specific customers based on AI classification results, "
-            "aimed at enhancing marketing effectiveness and user engagement.")
+st.title(page_title)
+st.markdown(page_description)
 
 cur_dir = f"./data/{st.session_state.access_code}/analyzed/"
 files = [f for f in os.listdir(cur_dir) if os.path.isfile(os.path.join(cur_dir, f))]
@@ -97,7 +119,7 @@ if 'enable_dm' in data.columns:
     default_columns.append('enable_dm')
 
 # 选择要过滤的列
-filter_columns = st.multiselect("Select columns to filter by:", data.columns, default=default_columns)
+filter_columns = st.multiselect(filter_columns_label, data.columns, default=default_columns)
 
 # 初始化过滤器
 filters = {}
@@ -119,7 +141,7 @@ if filters:
     st.dataframe(filtered_data)
 
     # 获取更多的用户信息
-    if st.button("Collect More User Details"):
+    if st.button(collect_user_details_button_label):
         with st.spinner("Collecting More User Details..."):
             user_ids = data.iloc[:, 0].tolist()  # 假设第一列是 user_id
             total_users = len(user_ids)
@@ -175,7 +197,7 @@ if filters:
         batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
 
         # 生成推广短信按钮
-        if st.button("Generate Promotional Msg"):
+        if st.button(generate_msg_button_label):
             with st.spinner('Generating Msg...'):
                 result_df = generate_promotional_sms(model, system_prompt, filtered_data.iloc[:, :3],
                                                      batch_size=batch_size)
