@@ -46,31 +46,34 @@ else:
     time.sleep(3)
     st.switch_page("Home.py", )
 
-# 强制响应式布局
-st.write(
-    """<style>
-    [data-testid="column"] {
-        width: calc(50% - 1rem);
-        flex: 1 1 calc(50% - 1rem);
-        min-width: calc(50% - 1rem);
-    }
-    </style>""",
-    unsafe_allow_html=True,
-)
+# 在侧边栏添加语言选择
+language = st.sidebar.radio("选择语言 / Choose Language", ("中文", "English"), index=0 if st.query_params.get('language') == '中文' else 1)
 
-# 隐藏Streamlit元素
-hide_streamlit_style = """
-            <style>
-            .stDeployButton {visibility: hidden;}
-            [data-testid="stToolbar"] {visibility: hidden !important;}
-            footer {visibility: hidden !important;}
-            </style>
-            """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# 将语言选择存储到 session_state 和 URL 参数
+st.session_state.language = language
+st.query_params.language = language
 
-st.title("Step 3: AI Analyze Data")
-st.markdown("Sending data to a LLM model for analysis, where the model will process "
-            "and generate insights based on the provided data.")
+# 根据选择的语言设置文本
+if language == "中文":
+    page_title = "步骤 3: AI 分析数据"
+    page_description = "将数据发送到 LLM 模型进行分析，模型将根据提供的数据进行处理并生成见解。"
+    prompt_label = "输入分析提示词:"
+    analyze_button_label = "分析数据"
+    reanalyze_button_label = "重新分析"
+    analysis_complete_message = "分析完成！结果已保存到"
+    log_out_button_label = "登出"
+else:
+    page_title = "Step 3: AI Analyze Data"
+    page_description = "Sending data to a LLM model for analysis, where the model will process and generate insights based on the provided data."
+    prompt_label = "Enter your prompt for analysis:"
+    analyze_button_label = "Analysis Data"
+    reanalyze_button_label = "Reanalyze"
+    analysis_complete_message = "Analysis complete! Results saved to"
+    log_out_button_label = "Log out"
+
+# 使用动态文本
+st.title(page_title)
+st.markdown(page_description)
 
 src_dir = f"./data/{st.session_state.access_code}/processed/"
 dst_dir = f"./data/{st.session_state.access_code}/analyzed/"
@@ -99,16 +102,14 @@ else:
     time.sleep(3)
     st.switch_page("pages/2_Preprocess_Data.py")
 
-prompt = st.text_area("Enter your prompt for analysis:",
-                      value="Analyze the data and identify potential customers interested in purchasing product XYZ")
-
+prompt = st.text_area(prompt_label, value="Analyze the data and identify potential customers interested in purchasing product XYZ")
 
 selected_model = st.selectbox("Current Model:", ["gpt-4o-mini", "gpt-4o"])
 
 batch_size = st.selectbox("Select batch size", [10, 20, 30, 40, 50])
 
-analyze_button = st.button("Analysis Data" if not st.session_state.get('analysis_run', False)
-                           else "Reanalyze")
+analyze_button = st.button(analyze_button_label if not st.session_state.get('analysis_run', False)
+                           else reanalyze_button_label)
 
 # 在分析之后
 if analyze_button:
@@ -149,7 +150,7 @@ if st.session_state.analyzed_data_file_count:
     else:
         pass
 # log out
-if st.sidebar.button(label="Log out", type="primary"):
+if st.sidebar.button(label=log_out_button_label, type="primary"):
     st.query_params.clear()
     st.session_state.clear()
     st.rerun()
