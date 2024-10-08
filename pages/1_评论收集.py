@@ -86,6 +86,15 @@ if st.session_state.language == "CN":
     access_not_granted_message = "访问未授权！"
     log_out_button_label = "登出"
     no_search_keyword_message = "请输入搜索关键词。"
+    select_file_label = "选择要加载的文件"
+    load_file_button_label = "加载文件"
+    file_downloaded_message = "文件已从COS下载。"
+    file_loaded_message = "{} 已加载"
+    error_loading_file_message = "从本地文件加载数据时出错：{}"
+    no_matching_files_message = "没有匹配的文件"
+    loaded_collected_files_header = "已加载的收集文件"
+    next_button_label = "下一步: 过滤数据"
+    ready_to_filter_message = "准备过滤数据..."
 else:
     page_title = "Step 1: Collect Data"
     page_description = "Collecting comment data from popular posts found through keyword searches on X, which may take some time to complete."
@@ -96,6 +105,15 @@ else:
     access_not_granted_message = "Access not Granted!"
     log_out_button_label = "Log out"
     no_search_keyword_message = "Please enter a search keyword."
+    select_file_label = "Select a file to load"
+    load_file_button_label = "Load file"
+    file_downloaded_message = "File downloaded from COS."
+    file_loaded_message = "{} is loaded"
+    error_loading_file_message = "Error loading data from local file: {}"
+    no_matching_files_message = "No matching files"
+    loaded_collected_files_header = "Loaded collected files"
+    next_button_label = "Next: Filter Data"
+    ready_to_filter_message = "Ready to filter data..."
 
 st.title(page_title)
 st.markdown(page_description)
@@ -214,24 +232,24 @@ if st.session_state.search_keyword:
     except Exception as e:
         raise Exception(f"Error retrieving files from COS: {e}")
     if matching_files:
-        selected_file = st.selectbox("Select a file to load", matching_files)
+        selected_file = st.selectbox(select_file_label, matching_files)
         # 选择加载到本地的文件
-        if st.button("Load file"):
+        if st.button(load_file_button_label):
             local_file_path = os.path.join(f"./data/{st.session_state.access_code}/raw/", selected_file)
             # 检查本地是否已有文件
             if not os.path.exists(local_file_path):
                 try:
                     download_file(object_key=f"{st.session_state.access_code}/{selected_file}",
                                   local_file_path=local_file_path)
-                    st.success("File downloaded from COS.")
+                    st.success(file_downloaded_message)
                 except Exception as e:
                     st.error(f"Error loading file from COS: {e}")
             try:
-                st.success(f"{selected_file} is loaded")
+                st.success(file_loaded_message.format(selected_file))
             except Exception as e:
-                st.error(f"Error loading data from local file: {e}")
+                st.error(error_loading_file_message.format(e))
     else:
-        st.error("no matching_files")
+        st.error(no_matching_files_message)
         pass
 else:
     pass
@@ -248,7 +266,7 @@ if downloaded_files or st.session_state.raw_data_file_count:
         downloaded_files = os.listdir(local_files_dir)
     else:
         pass
-    st.header("Loaded collected files")
+    st.header(loaded_collected_files_header)
     file_info_list = []
     for file in downloaded_files:
         file_path = os.path.join(local_files_dir, file)
@@ -294,8 +312,8 @@ st.query_params.max_post_num = st.session_state.max_post_num
 
 # Next
 if st.session_state.raw_data_file_count:
-    if st.button(label="Next: Filter Data", type='primary'):
-        st.success("Ready to filter data...")
+    if st.button(label=next_button_label, type='primary'):
+        st.success(ready_to_filter_message)
         st.balloons()
         time.sleep(3)
         st.switch_page("pages/2_评论过滤.py")
