@@ -24,7 +24,7 @@ from sidebar import sidebar
 # Configure logger
 logger = setup_logger(__name__)
 
-st.set_page_config(page_title="Send Msg", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="私信发送", page_icon="🤖", layout="wide")
 
 
 # init session state
@@ -54,7 +54,7 @@ if st.session_state.access_code and st.session_state.access_code in CONFIG['acce
 else:
     st.warning("Access not Granted!")
     time.sleep(3)
-    st.switch_page("Home.py", )
+    st.switch_page("主页.py", )
 
 # Force responsive layout for columns also on mobile
 st.write(
@@ -138,7 +138,7 @@ if st.session_state.selected_file:
 else:
     st.warning("No processed data, return to AI Generate Msg...")
     time.sleep(3)
-    st.switch_page("pages/4_AI_Generate_Msg.py")
+    st.switch_page("pages/4_私信生成_AI.py")
 
 
 st.markdown("------")

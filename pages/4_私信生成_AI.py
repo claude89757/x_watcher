@@ -24,7 +24,7 @@ from sidebar import cache_file_counts
 # Configure logger
 logger = setup_logger(__name__)
 
-st.set_page_config(page_title="Generate Msg", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="私信生成_AI", page_icon="🤖", layout="wide")
 
 # init session state
 if 'access_code' not in st.session_state:
@@ -46,7 +46,7 @@ if st.session_state.access_code and st.session_state.access_code in CONFIG['acce
 else:
     st.warning("Access not Granted!")
     time.sleep(3)
-    st.switch_page("Home.py", )
+    st.switch_page("主页.py", )
 
 
 # 根据选择的语言设置文本
@@ -225,4 +225,4 @@ if st.session_state.msg_data_file_count:
         st.success("Ready to Send Promotional Msg...")
         st.balloons()
         time.sleep(3)
-        st.switch_page("pages/5_Send_Promotional_Msg.py")
+        st.switch_page("pages/5_私信发送.py")

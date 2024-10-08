@@ -25,7 +25,7 @@ logger = setup_logger(__name__)
 
 
 # set page config
-st.set_page_config(page_title="Analyze Data", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="评论分析_AI", page_icon="🤖", layout="wide")
 
 # init session state
 if 'access_code' not in st.session_state:
@@ -47,7 +47,7 @@ if st.session_state.access_code and st.session_state.access_code in CONFIG['acce
 else:
     st.warning("Access not Granted!")
     time.sleep(3)
-    st.switch_page("Home.py", )
+    st.switch_page("主页.py", )
 
 # 强制响应式布局
 st.write(
@@ -163,6 +163,6 @@ if st.session_state.analyzed_data_file_count:
         st.success("Ready to AI Generate Msg...")
         st.balloons()
         time.sleep(3)
-        st.switch_page("pages/4_AI_Generate_Msg.py")
+        st.switch_page("pages/4_私信生成_AI.py")
     else:
         pass

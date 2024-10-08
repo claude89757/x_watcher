@@ -30,7 +30,7 @@ from common.redis_client import RedisClient
 logger = setup_logger(__name__)
 
 # Configure Streamlit pages and state
-st.set_page_config(page_title="Collect Data", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="评论收集", page_icon="🤖", layout="wide")
 
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
@@ -294,6 +294,6 @@ if st.session_state.raw_data_file_count:
         st.success("Ready to filter data...")
         st.balloons()
         time.sleep(3)
-        st.switch_page("pages/2_Preprocess_Data.py")
+        st.switch_page("pages/2_评论过滤.py")
     else:
         pass

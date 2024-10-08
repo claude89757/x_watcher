@@ -23,7 +23,7 @@ from sidebar import cache_file_counts
 logger = setup_logger(__name__)
 
 # set page config
-st.set_page_config(page_title="Filter Data", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="评论过滤", page_icon="🤖", layout="wide")
 
 # Initialize session state
 if 'access_code' not in st.session_state:
@@ -41,7 +41,7 @@ if st.session_state.access_code and st.session_state.access_code in CONFIG['acce
 else:
     st.warning("Access not Granted!")
     time.sleep(3)
-    st.switch_page("Home.py", )
+    st.switch_page("主页.py", )
 
 # Force responsive layout for columns also on mobile
 st.write(
@@ -202,6 +202,6 @@ if st.session_state.processed_data_file_count:
         st.success(f"Process data successfully, entering next step...")
         st.balloons()
         time.sleep(3)
-        st.switch_page("pages/3_AI_Analyze_Data.py")
+        st.switch_page("pages/3_评论分析_AI.py")
     else:
         pass

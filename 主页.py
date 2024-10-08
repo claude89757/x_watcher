@@ -126,11 +126,11 @@ if access_granted:
     sidebar()
     st.success(access_granted_message)
     st.markdown("-----")
-    st.page_link("pages/1_Collect_Data.py", label="Collect Data", icon="1️⃣", use_container_width=True)
-    st.page_link("pages/2_Preprocess_Data.py", label="Preprocess Data", icon="2️⃣", use_container_width=True)
-    st.page_link("pages/3_AI_Analyze_Data.py", label="AI Analyze Data", icon="3️⃣️", use_container_width=True)
-    st.page_link("pages/4_AI_Generate_Msg.py", label="AI Generate Msg", icon="4️⃣", use_container_width=True)
-    st.page_link("pages/5_Send_Promotional_Msg.py", label="Send Promotional MSG", icon="5️⃣", use_container_width=True)
+    st.page_link("pages/1_评论收集.py", label="评论收集", icon="1️⃣", use_container_width=True)
+    st.page_link("pages/2_评论过滤.py", label="评论过滤", icon="2️⃣", use_container_width=True)
+    st.page_link("pages/3_评论分析_AI.py", label="评论分析_AI", icon="3️⃣️", use_container_width=True)
+    st.page_link("pages/4_私信生成_AI.py", label="私信生成_AI", icon="4️⃣", use_container_width=True)
+    st.page_link("pages/5_私信发送.py", label="私信发送", icon="5️⃣", use_container_width=True)
     st.markdown("-----")
 
     # 初始化 Redis 客户端
