@@ -45,8 +45,51 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
+# 在侧边栏添加语言选择
+language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
+
+# 将语言选择存储到 session_state 和 URL 参数
+st.session_state.language = language
+st.query_params.language = language
+
+# 根据选择的语言设置文本
+if language == "CN":
+    page_title = "Demo: X AI 营销"
+    access_granted_message = "访问已授权！"
+    access_denied_message = "访问未授权！"
+    enter_access_code_message = "请输入访问码"
+    submit_button_label = "提交"
+    incorrect_code_message = "访问码错误，请重试。"
+    log_out_button_label = "登出"
+    account_management_label = "X 爬虫账号管理"
+    existing_accounts_label = "现有账号:"
+    add_new_account_label = "新增账号"
+    username_label = "用户名"
+    email_label = "电子邮件"
+    password_label = "密码"
+    submit_new_account_label = "提交新账号"
+    refresh_account_status_label = "刷新账号状态"
+    delete_account_label = "删除"
+else:
+    page_title = "Demo: X AI Marketing"
+    access_granted_message = "Access Granted!"
+    access_denied_message = "Access not Granted!"
+    enter_access_code_message = "Please Enter the Access Code"
+    submit_button_label = "Submit"
+    incorrect_code_message = "Incorrect Code. Please try again."
+    log_out_button_label = "Log out"
+    account_management_label = "X Crawler Account Management"
+    existing_accounts_label = "Existing Accounts:"
+    add_new_account_label = "Add New Account"
+    username_label = "Username"
+    email_label = "Email"
+    password_label = "Password"
+    submit_new_account_label = "Submit New Account"
+    refresh_account_status_label = "Refresh Account Status"
+    delete_account_label = "Delete"
+
 # Render Streamlit pages
-st.title("Demo: X AI Marketing")
+st.title(page_title)
 
 access_granted = False
 if st.session_state.get('access_code') and st.session_state.get('access_code') in CONFIG['access_code_list']:
@@ -58,25 +101,25 @@ elif st.query_params.get('access_code') and st.query_params.get('access_code') i
     st.session_state.access_code = st.query_params.access_code
     access_granted = True
 else:
-    st.title("Please Enter the Access Code")
+    st.title(enter_access_code_message)
     code = st.text_input("Access Code", type="password")
-    if st.button("Submit", type="primary"):
+    if st.button(submit_button_label, type="primary"):
         if code in CONFIG['access_code_list']:
             access_granted = True
             st.query_params.access_code = code
             st.session_state.access_code = code
-            st.success("Access Granted!")
+            st.success(access_granted_message)
             logger.info(f"{code} login successfully.")
             st.balloons()
             time.sleep(3)
             st.switch_page("pages/1_Collect_Data.py", )
         else:
-            st.error("Incorrect Code. Please try again.")
+            st.error(incorrect_code_message)
             logger.warning(f"{code} login failed.")
 
 if access_granted:
     sidebar()
-    st.success("Access Granted!")
+    st.success(access_granted_message)
     st.markdown("-----")
     st.page_link("pages/1_Collect_Data.py", label="Collect Data", icon="1️⃣", use_container_width=True)
     st.page_link("pages/2_Preprocess_Data.py", label="Preprocess Data", icon="2️⃣", use_container_width=True)
@@ -90,14 +133,14 @@ if access_granted:
 
     # 新增推特账号管理功能
     def manage_twitter_accounts():
-        st.subheader("X Crawler Account Management")
+        st.subheader(account_management_label)
 
         # 从 Redis 中加载现有账号
         accounts = redis_client.get_json_data('twitter_accounts') or {}
 
         # 显示现有账号
         if accounts:
-            st.write("Existing Accounts:")
+            st.write(existing_accounts_label)
             for username, details in accounts.items():
                 # 使用 emoji 显示登录状态
                 status_emoji = "✅" if details.get('status') == 'Success' else "❌"
@@ -105,7 +148,7 @@ if access_granted:
                 with st.expander(f"{status_emoji} {username}  Last Checked: {last_checked}"):
                     col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
                     with col1:
-                        st.write(f"Email: {details['email']}")
+                        st.write(f"{email_label}: {details['email']}")
                     with col2:
                         # 从 Redis 中读取状态
                         st.write(f"Status: {details.get('status', 'Unknown')}")
@@ -113,23 +156,23 @@ if access_granted:
                         last_checked = details.get('last_checked', 'Never')
                         st.write(f"Last Checked: {last_checked}")
                     with col4:
-                        if st.button(f"Delete {username}", key=f"delete_{username}"):
+                        if st.button(f"{delete_account_label} {username}", key=f"delete_{username}"):
                             del accounts[username]
                             redis_client.set_json_data('twitter_accounts', accounts)
                             st.success(f"Deleted account: {username}")
                             logger.info(f"Deleted account: {username}")
 
         # 显示“新增账号”按钮
-        if st.button("Add New Account"):
+        if st.button(add_new_account_label):
             st.session_state.show_add_account_form = True
 
         # 仅在点击“新增账号”按钮后显示输入表单
         if st.session_state.get('show_add_account_form', False):
-            new_username = st.text_input("Username", key="new_username")
-            new_email = st.text_input("Email", key="new_email")
-            new_password = st.text_input("Password", type="password", key="new_password")
+            new_username = st.text_input(username_label, key="new_username")
+            new_email = st.text_input(email_label, key="new_email")
+            new_password = st.text_input(password_label, type="password", key="new_password")
 
-            if st.button("Submit New Account"):
+            if st.button(submit_new_account_label):
                 if new_username and new_email and new_password:
                     accounts[new_username] = {
                         'email': new_email,
@@ -145,7 +188,7 @@ if access_granted:
                     st.error("Please fill in all fields to add a new account.")
 
         # 刷新账号状态
-        if st.button("Refresh Account Status"):
+        if st.button(refresh_account_status_label):
             for username, details in accounts.items():
                 email = details['email']
                 password = details['password']
@@ -188,7 +231,7 @@ if access_granted:
 
     # todo: 显示当前用户的状态和数据信息
 
-    if st.sidebar.button(label="Log out", type="primary"):
+    if st.sidebar.button(label=log_out_button_label, type="primary"):
         st.query_params.clear()
         st.session_state.clear()
         st.rerun()
