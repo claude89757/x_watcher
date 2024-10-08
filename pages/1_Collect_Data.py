@@ -35,6 +35,8 @@ st.set_page_config(page_title="Collect Data", page_icon="🤖", layout="wide")
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
+if 'language' not in st.session_state:
+    st.session_state.language = st.query_params.get('language')
 if "max_post_num" not in st.session_state:
     st.session_state.max_post_num = int(st.query_params.get("max_post_num", 3))
 if "search_keyword" not in st.session_state:
@@ -43,6 +45,7 @@ if "search_keyword" not in st.session_state:
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
+    st.query_params.language = st.session_state.language
     sidebar()
 else:
     st.warning("Access not Granted!")
@@ -71,15 +74,9 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# 在侧边栏添加语言选择
-language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
-
-# 将语言选择存储到 session_state 和 URL 参数
-st.session_state.language = language
-st.query_params.language = language
 
 # 根据选择的语言设置文本
-if language == "CN":
+if st.session_state.language == "CN":
     page_title = "步骤 1: 收集数据"
     page_description = "从X中通过关键词搜索找到的热门帖子中收集评论数据，可能需要一些时间来完成。"
     search_keyword_label = "搜索关键词"

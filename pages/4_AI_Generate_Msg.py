@@ -26,15 +26,31 @@ logger = setup_logger(__name__)
 
 st.set_page_config(page_title="Generate Msg", page_icon="🤖", layout="wide")
 
-# 在侧边栏添加语言选择
-language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
+# init session state
+if 'access_code' not in st.session_state:
+    st.session_state.access_code = st.query_params.get('access_code')
+if 'language' not in st.session_state:  
+    st.session_state.language = st.query_params.get('language')
+if "search_keyword" not in st.session_state:
+    st.session_state.search_keyword = st.query_params.get("search_keyword")
+if "matching_files" not in st.session_state:
+    st.session_state.matching_files = ""
+if "analysis_run" not in st.session_state:
+    st.session_state.analysis_run = False
 
-# 将语言选择存储到 session_state 和 URL 参数
-st.session_state.language = language
-st.query_params.language = language
+# check access
+if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
+    st.query_params.access_code = st.session_state.access_code
+    st.query_params.language = st.session_state.language
+    sidebar()
+else:
+    st.warning("Access not Granted!")
+    time.sleep(3)
+    st.switch_page("Home.py", )
+
 
 # 根据选择的语言设置文本
-if language == "CN":
+if st.session_state.language == "CN":
     page_title = "步骤 4: AI 生成消息"
     page_description = "为特定客户生成个性化的推广消息，旨在提高营销效果和用户参与度。"
     filter_columns_label = "选择要过滤的列:"
@@ -49,25 +65,6 @@ else:
     generate_msg_button_label = "Generate Promotional Msg"
     log_out_button_label = "Log out"
 
-
-# init session state
-if 'access_code' not in st.session_state:
-    st.session_state.access_code = st.query_params.get('access_code')
-if "search_keyword" not in st.session_state:
-    st.session_state.search_keyword = st.query_params.get("search_keyword")
-if "matching_files" not in st.session_state:
-    st.session_state.matching_files = ""
-if "analysis_run" not in st.session_state:
-    st.session_state.analysis_run = False
-
-# check access
-if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
-    st.query_params.access_code = st.session_state.access_code
-    sidebar()
-else:
-    st.warning("Access not Granted!")
-    time.sleep(3)
-    st.switch_page("Home.py", )
 
 # Force responsive layout for columns also on mobile
 st.write(

@@ -53,7 +53,7 @@ st.session_state.language = language
 st.query_params.language = language
 
 # 根据选择的语言设置文本
-if language == "CN":
+if st.session_state.language == "CN":
     page_title = "Demo: X AI 营销"
     access_granted_message = "访问已授权！"
     access_denied_message = "访问未授权！"

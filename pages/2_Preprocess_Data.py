@@ -28,12 +28,15 @@ st.set_page_config(page_title="Filter Data", page_icon="🤖", layout="wide")
 # Initialize session state
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
+if 'language' not in st.session_state:
+    st.session_state.language = st.query_params.get('language')
 if "selected_file" not in st.session_state:
     st.session_state.selected_file = st.query_params.get("selected_file")
 
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
+    st.query_params.language = st.session_state.language
     sidebar()
 else:
     st.warning("Access not Granted!")
@@ -62,15 +65,8 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# 在侧边栏添加语言选择
-language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
-
-# 将语言选择存储到 session_state 和 URL 参数
-st.session_state.language = language
-st.query_params.language = language
-
 # 根据选择的语言设置文本
-if language == "CN":
+if st.session_state.language == "CN":
     page_title = "步骤 2: 预处理和过滤数据"
     page_description = "预处理和过滤数据，包括选择字段、选择文件和应用必要的预处理步骤。"
     select_file_label = "选择要分析的文件:"

@@ -30,6 +30,8 @@ st.set_page_config(page_title="Analyze Data", page_icon="🤖", layout="wide")
 # init session state
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
+if 'language' not in st.session_state:
+    st.session_state.language = st.query_params.get('language')
 if "search_keyword" not in st.session_state:
     st.session_state.search_keyword = st.query_params.get("search_keyword")
 if "selected_file" not in st.session_state:
@@ -40,6 +42,7 @@ if "analysis_run" not in st.session_state:
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
+    st.query_params.language = st.session_state.language
     sidebar()
 else:
     st.warning("Access not Granted!")
@@ -68,15 +71,8 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# 在侧边栏添加语言选择
-language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
-
-# 将语言选择存储到 session_state 和 URL 参数
-st.session_state.language = language
-st.query_params.language = language
-
 # 根据选择的语言设置文本
-if language == "CN":
+if st.session_state.language == "CN":
     page_title = "步骤 3: AI 分析数据"
     page_description = "将数据发送到 LLM 模型进行分析，模型将根据提供的数据进行处理并生成见解。"
     prompt_label = "输入分析提示词:"
