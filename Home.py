@@ -56,7 +56,7 @@ language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), inde
 # 如果选择的语言与当前 session_state 不同，更新 session_state 和 URL 参数
 if language != st.session_state.language:
     st.session_state.language = language
-    st.experimental_set_query_params(language=language)
+    st.query_params.language = language
 
 # 根据选择的语言设置文本
 if st.session_state.language == "CN":
