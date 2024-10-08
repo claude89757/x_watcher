@@ -228,7 +228,7 @@ async def collect_user_link_detail():
         password = selected_account['password']
 
         try:
-            watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password)
+            watcher = TwitterWatcher('/usr/local/bin/chromedriver', selected_username, email, password)
             data = watcher.collect_user_link_detail(user_id_list)
             data_str = json.dumps({"data": data})
             return data_str, 200
