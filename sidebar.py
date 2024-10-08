@@ -77,13 +77,5 @@ def sidebar():
             if st.button("Refresh"):
                 cache_file_counts()
                 st.rerun()
-
-        # 在侧边栏添加语言选择
-        language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
-
-        # 将语言选择存储到 session_state 和 URL 参数
-        st.session_state.language = language
-        st.query_params.language = language
-        
     except:
         st.write("...")
