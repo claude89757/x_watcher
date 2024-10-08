@@ -85,6 +85,7 @@ if st.session_state.language == "CN":
     data_collection_complete_message = "数据收集完成！"
     access_not_granted_message = "访问未授权！"
     log_out_button_label = "登出"
+    no_search_keyword_message = "请输入搜索关键词。"
 else:
     page_title = "Step 1: Collect Data"
     page_description = "Collecting comment data from popular posts found through keyword searches on X, which may take some time to complete."
@@ -94,6 +95,7 @@ else:
     data_collection_complete_message = "Data collection complete!"
     access_not_granted_message = "Access not Granted!"
     log_out_button_label = "Log out"
+    no_search_keyword_message = "Please enter a search keyword."
 
 st.title(page_title)
 st.markdown(page_description)
@@ -154,27 +156,29 @@ else:
 
 if not running_task:
     if st.button(label=collect_data_button_label):
-        # (todo: claude)Initialize progress elements
-        try:
-            task_num = 0
-            with st.spinner("Collecting..."):
-                # todo: 这里要增加并发任务的逻辑
-                alive_username = random.choice(['Zacks89757'])
-                call_collect_data_from_x(
-                    alive_username,
-                    st.session_state.search_keyword,
-                    st.session_state.max_post_num,
-                    st.session_state.access_code,
-                )
-                task_num += 1
-                # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-                # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
-                st.success(data_collection_complete_message)
-                time.sleep(3)
-                st.rerun()
-        except Exception as e:
-            # Log the error
-            st.error(f"An error occurred: {e}")
+        if st.session_state.search_keyword:            
+            try:
+                task_num = 0
+                with st.spinner("Collecting..."):
+                    # todo: 这里要增加并发任务的逻辑
+                    alive_username = random.choice(['Zacks89757'])
+                    call_collect_data_from_x(
+                        alive_username,
+                        st.session_state.search_keyword,
+                        st.session_state.max_post_num,
+                        st.session_state.access_code,
+                    )
+                    task_num += 1
+                    # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
+                    # (todo(claudexie): 查询进度)等待数据收集完成，异步等待
+                    st.success(data_collection_complete_message)
+                    time.sleep(3)
+                    st.rerun()
+            except Exception as e:
+                # Log the error
+                st.error(f"An error occurred: {e}")
+        else:
+            st.error(no_search_keyword_message)
 else:
     with st.spinner(running_task):
         while True:
