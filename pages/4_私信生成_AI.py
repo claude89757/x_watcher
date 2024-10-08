@@ -156,13 +156,16 @@ if filters:
                 if status_code == 200:
                     user_details.extend(details)
                 else:
-                    pass
+                    st.error(f"Failed to collect user details: {status_code}, {details}")
 
                 # 更新进度条
                 progress_bar.progress((i + batch_size) / total_users if (i + batch_size) < total_users else 1.0)
 
-            st.success("User details collected successfully!")
-            st.write(user_details)
+            if user_details:
+                st.success("User details collected successfully!")
+                st.write(user_details)
+            else:
+                st.error("Failed to collect user details. Please check your API settings.")
 
             # 将 details 补充到读取的本地文件中
             details_df = pd.DataFrame(user_details)
