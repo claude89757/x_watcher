@@ -75,30 +75,8 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# 在侧边栏添加语言选择
-language = st.sidebar.radio("选择语言 / Choose Language", ("中文", "English"), index=0 if st.query_params.get('language') == '中文' else 1)
-
-# 将语言选择存储到 session_state 和 URL 参数
-st.session_state.language = language
-st.query_params.language = language
-
-# 根据选择的语言设置文本
-if language == "中文":
-    page_title = "步骤 5: 发送推广消息"
-    page_description = "自动发送 AI 生成的推广消息。"
-    edit_msg_label = "编辑推广消息:"
-    send_msg_button_label = "发送推广消息"
-    log_out_button_label = "登出"
-else:
-    page_title = "Step 5: Send Promotional Msg"
-    page_description = "Automate the sending of AI-generated promotional messages."
-    edit_msg_label = "Edit Promotional Msg:"
-    send_msg_button_label = "Send Promotional Messages"
-    log_out_button_label = "Log out"
-
-# 使用动态文本
-st.title(page_title)
-st.markdown(page_description)
+st.title("Step 5: Send Promotional Msg")
+st.markdown("Automate the sending of AI-generated promotional messages.")
 
 cur_dir = f"./data/{st.session_state.access_code}/msg/"
 records_dir = f"./data/{st.session_state.access_code}/records/"
@@ -118,7 +96,7 @@ if st.session_state.selected_file:
 
         # Add text area to edit the last column
         last_col_data = "\n".join(data_df.iloc[:, -1].astype(str).tolist())
-        edited_last_col = st.text_area(edit_msg_label, value=last_col_data, height=300)
+        edited_last_col = st.text_area("Edit Promotional Msg:", value=last_col_data, height=300)
 
         # Convert edited data back to dataframe
         edited_data = edited_last_col.split('\n')
@@ -178,7 +156,7 @@ if st.session_state.login_status == "online" and st.session_state.password:
 
     st.success("🟢 **Online**")  # Emoji for online status
 
-    if st.button(send_msg_button_label, type='primary'):
+    if st.button("Send Promotional Messages", type='primary'):
         with st.spinner('Sending Promotional Msg...'):
             progress_bar = st.progress(0)
             results = []
@@ -243,7 +221,7 @@ else:
         st.query_params.email = email
         st.rerun()
 # log out
-if st.sidebar.button(label=log_out_button_label, type="primary"):
+if st.sidebar.button(label="Log out", type="primary"):
     st.query_params.clear()
     st.session_state.clear()
     st.rerun()

@@ -53,52 +53,28 @@ def sidebar():
         # Cache file counts
         cache_file_counts()
 
-        # 在侧边栏添加语言选择
-        language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.query_params.get('language') == 'CN' else 1)
-
-        # 将语言选择存储到 session_state 和 URL 参数
-        st.session_state.language = language
-        st.query_params.language = language
-
-        # 根据选择的语言设置文本
-        if language == "CN":
-            file_statistics_label = "文件统计"
-            clear_button_label = "清除"
-            refresh_button_label = "刷新"
-            file_labels = {
-                "raw": "原始数据文件",
-                "processed": "处理后数据文件",
-                "analyzed": "分析后数据文件",
-                "msg": "消息数据文件"
-            }
-        else:
-            file_statistics_label = "File Statistics"
-            clear_button_label = "Clear"
-            refresh_button_label = "Refresh"
-            file_labels = {
-                "raw": "Raw Data Files",
-                "processed": "Processed Data Files",
-                "analyzed": "Analyzed Data Files",
-                "msg": "Msg Data Files"
-            }
-
         # Create a component in the sidebar to display file counts
-        st.sidebar.subheader(file_statistics_label)
+        st.sidebar.subheader("File Statistics")
 
         # Display counts and add buttons in a horizontal layout
         with st.sidebar:
-            for key, folder in file_labels.items():
+            for label, key, folder in [
+                ("Raw Data Files", "raw", "raw"),
+                ("Processed Data Files", "processed", "processed"),
+                ("Analyzed Data Files", "analyzed", "analyzed"),
+                ("Msg Data Files", "msg", "msg")
+            ]:
                 col1, col2 = st.columns([1, 2])
                 with col1:
-                    st.caption(f"{folder}: {st.session_state[f'{key}_data_file_count']}")
+                    st.caption(f"{label}: {st.session_state[f'{key}_data_file_count']}")
                 with col2:
-                    if st.button(clear_button_label, key=f"clear_{key}"):
-                        clear_folder(f"./data/{st.session_state.access_code}/{key}/")
+                    if st.button("Clear", key=f"clear_{key}"):
+                        clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
                         st.session_state[f'{key}_data_file_count'] = \
-                            count_files(f"./data/{st.session_state.access_code}/{key}/")
+                            count_files(f"./data/{st.session_state.access_code}/{folder}/")
 
             # Add refresh button for file counts
-            if st.button(refresh_button_label):
+            if st.button("Refresh"):
                 cache_file_counts()
                 st.rerun()
     except:
