@@ -187,10 +187,12 @@ if st.button(preprocess_button_label):
         # 去重逻辑：根据'reply_user_id'去重，保留'reply_content'最长的记录
         df = df.loc[df.groupby('reply_user_id')['reply_content'].apply(lambda x: x.str.len().idxmax())]
 
+        # 确保在选择列之前处理'post_time'
+        df['post_time'] = pd.to_datetime(df['post_time'], format='%Y-%m-%dT%H:%M:%S.%fZ')
+
         # 过滤掉超过30天的评论
         current_time = datetime.datetime.utcnow()
         thirty_days_ago = current_time - datetime.timedelta(days=30)
-        df['post_time'] = pd.to_datetime(df['post_time'], format='%Y-%m-%dT%H:%M:%S.%fZ')
         # 过滤掉超过30天的评论
         df = df[df['post_time'] >= thirty_days_ago]
 
@@ -201,7 +203,7 @@ if st.button(preprocess_button_label):
         required_columns = ['reply_user_id', 'reply_content']
         if all(column in df.columns for column in required_columns):
             # 只保留'reply_user_id'和'reply_content'字段
-            df = df[required_columns]
+            df = df[['reply_user_id', 'reply_content']]
         else:
             # 过滤掉缺少所需列的数据
             df = df.dropna(subset=required_columns)
