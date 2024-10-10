@@ -117,7 +117,8 @@ else:
             logger.info(f"{code} login successfully.")
             st.balloons()
             time.sleep(3)
-            st.switch_page("pages/1_评论收集.py", )
+            # 刷新页面
+            st.rerun()
         else:
             st.error(incorrect_code_message)
             logger.warning(f"{code} login failed.")
@@ -208,7 +209,7 @@ if access_granted:
                 st.write(f"Last Checked: {accounts[username]['last_checked']}")
                 logger.info(f"Account {username} login status: {accounts[username]['status']}")
 
-            # 筛选页面
+            # 刷新页面
             st.rerun()
 
     # 调用推特账号管理功能
