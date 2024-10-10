@@ -51,7 +51,11 @@ if 'language' not in st.session_state:
     st.session_state.language = st.query_params.get('language', 'CN')
 
 # 在侧边栏添加语言选择
-language = st.sidebar.radio("选择语言 / Choose Language", ("CN", "EN"), index=0 if st.session_state.language == 'CN' else 0)
+language = st.sidebar.radio(
+    "选择语言 / Choose Language", 
+    ("CN", "EN"), 
+    index=0 if st.session_state.language == 'CN' else 1  # 修正 index 参数
+)
 
 # 将语言选择存储到 session_state 和 URL 参数
 st.session_state.language = language
