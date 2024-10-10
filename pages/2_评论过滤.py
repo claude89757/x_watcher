@@ -147,6 +147,9 @@ if st.button(preprocess_button_label):
                 return match.group(1)
             return None
 
+        # 剔除掉reply_content未None的评论
+        df = df[df['reply_content'].notna()]
+
         # 添加新列 'reply_user_id'
         df['reply_user_id'] = df['reply_user_link'].apply(extract_user_id)
 
