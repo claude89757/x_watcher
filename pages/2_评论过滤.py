@@ -175,9 +175,6 @@ if st.button(preprocess_button_label):
         # 删除连续空格和首尾空格
         df['reply_content'] = df['reply_content'].str.replace(r'\s+', ' ', regex=True).str.strip()
 
-        # 过滤掉 'reply_content' 列中非字符串类型的数据
-        df = df[df['reply_content'].apply(lambda x: isinstance(x, str))]
-
         # 去除特殊字符，保留字母数字和基本标点符号
         df['reply_content'] = df['reply_content'].apply(lambda x: re.sub(r'[^\w\s.,!?]', '', x, flags=re.UNICODE))
 
@@ -193,25 +190,28 @@ if st.button(preprocess_button_label):
         # 过滤掉超过30天的评论
         current_time = datetime.datetime.utcnow()
         thirty_days_ago = current_time - datetime.timedelta(days=30)
-        # 过滤掉超过30天的评论
         df = df[df['post_time'] >= thirty_days_ago]
 
         # 过滤掉长度小于10的评论
         df = df[df['reply_content'].apply(lambda x: len(x) >= 10)]
 
-        # 检查所需的列是否存在
-        df = df[['reply_user_id', 'reply_content']]
+        # 检查数据框是否为空
+        if df.empty:
+            st.error("所有数据都被过滤掉了，无法继续处理。请检查数据源。")
+        else:
+            # 检查所需的列是否存在
+            df = df[['reply_user_id', 'reply_content']]
 
-        # 将处理后的数据保存到目标文件夹中
-        df.to_csv(dst_file_path, index=False)
+            # 将处理后的数据保存到目标文件夹中
+            df.to_csv(dst_file_path, index=False)
 
-        # 记录处理后的数据量
-        final_count = len(df)
+            # 记录处理后的数据量
+            final_count = len(df)
 
-        # 展示处理前后的数据量
-        st.write(f"{initial_data_count_label}: {initial_count}")
-        st.write(f"{final_data_count_label}: {final_count}")
-        st.success(preprocess_success_message)
+            # 展示处理前后的数据量
+            st.write(f"{initial_data_count_label}: {initial_count}")
+            st.write(f"{final_data_count_label}: {final_count}")
+            st.success(preprocess_success_message)
 
         # 更新文件计数
         cache_file_counts()
