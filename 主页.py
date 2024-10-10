@@ -174,9 +174,29 @@ if access_granted:
                                 st.success(f"Deleted account: {username}")
                                 logger.info(f"Deleted account: {username}")
 
-            # 显示“新增账号”按钮
-            if st.button(add_new_account_label):
-                st.session_state.show_add_account_form = True
+            # 并排显示“新增账号”和“刷新账号状态”按钮
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(add_new_account_label, use_container_width=True):
+                    st.session_state.show_add_account_form = True
+            with col2:
+                if st.button(refresh_account_status_label, use_container_width=True):
+                    for username, details in accounts.items():
+                        email = details['email']
+                        password = details['password']
+                        status_code, response_text = check_x_login_status(username, email, password)
+                        if status_code == 200:
+                            accounts[username]['status'] = 'Success'
+                        else:
+                            accounts[username]['status'] = 'Failed'
+                        accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
+                        st.write(f"Account {username} login status: {accounts[username]['status']}")
+                        st.write(f"Last Checked: {accounts[username]['last_checked']}")
+                        logger.info(f"Account {username} login status: {accounts[username]['status']}")
+
+                    # 刷新页面
+                    st.rerun()
 
             # 仅在点击“新增账号”按钮后显示输入表单
             if st.session_state.get('show_add_account_form', False):
@@ -198,25 +218,6 @@ if access_granted:
                         st.session_state.show_add_account_form = False  # 隐藏表单
                     else:
                         st.error("Please fill in all fields to add a new account.")
-
-            # 刷新账号状态
-            if st.button(refresh_account_status_label):
-                for username, details in accounts.items():
-                    email = details['email']
-                    password = details['password']
-                    status_code, response_text = check_x_login_status(username, email, password)
-                    if status_code == 200:
-                        accounts[username]['status'] = 'Success'
-                    else:
-                        accounts[username]['status'] = 'Failed'
-                    accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
-                    st.write(f"Account {username} login status: {accounts[username]['status']}")
-                    st.write(f"Last Checked: {accounts[username]['last_checked']}")
-                    logger.info(f"Account {username} login status: {accounts[username]['status']}")
-
-                # 刷新页面
-                st.rerun()
 
         # 调用推特账号管理功能
         manage_twitter_accounts()
