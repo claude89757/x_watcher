@@ -163,14 +163,21 @@ if st.button(preprocess_button_label):
                 return match.group(1)
             return None
 
+        # 记录被过滤掉的数据
+        filtered_data = []
+
         # 剔除掉无'reply_content'键，或者'reply_content'为空或None的评论
-        df = df[df['reply_content'].notna() & df['reply_content'].astype(bool)]
+        mask = df['reply_content'].notna() & df['reply_content'].astype(bool)
+        filtered_data.append(("无'reply_content'键或为空/None", df[~mask]))
+        df = df[mask]
 
         # 添加新列 'reply_user_id'
         df['reply_user_id'] = df['reply_user_link'].apply(extract_user_id)
 
         # 过滤掉'reply_content'列中非字符串类型的数据
-        df = df[df['reply_content'].apply(lambda x: isinstance(x, str))]
+        mask = df['reply_content'].apply(lambda x: isinstance(x, str))
+        filtered_data.append(("非字符串类型的'reply_content'", df[~mask]))
+        df = df[mask]
 
         # 删除连续空格和首尾空格
         df['reply_content'] = df['reply_content'].str.replace(r'\s+', ' ', regex=True).str.strip()
@@ -190,10 +197,14 @@ if st.button(preprocess_button_label):
         # 过滤掉超过30天的评论
         current_time = datetime.datetime.utcnow()
         thirty_days_ago = current_time - datetime.timedelta(days=30)
-        df = df[df['post_time'] >= thirty_days_ago]
+        mask = df['post_time'] >= thirty_days_ago
+        filtered_data.append(("超过30天的评论", df[~mask]))
+        df = df[mask]
 
         # 过滤掉长度小于10的评论
-        df = df[df['reply_content'].apply(lambda x: len(x) >= 10)]
+        mask = df['reply_content'].apply(lambda x: len(x) >= 10)
+        filtered_data.append(("长度小于10的评论", df[~mask]))
+        df = df[mask]
 
         # 检查数据框是否为空
         if df.empty:
@@ -212,6 +223,12 @@ if st.button(preprocess_button_label):
             st.write(f"{initial_data_count_label}: {initial_count}")
             st.write(f"{final_data_count_label}: {final_count}")
             st.success(preprocess_success_message)
+
+        # 打印被过滤掉的数据及其原因
+        for reason, data in filtered_data:
+            if not data.empty:
+                st.write(f"被过滤掉的原因: {reason}")
+                st.dataframe(data)
 
         # 更新文件计数
         cache_file_counts()
