@@ -156,16 +156,6 @@ if st.button(preprocess_button_label):
         # 记录处理前的数据量
         initial_count = len(df)
 
-        # 检查列是否存在
-        existing_columns = df.columns.intersection(['reply_user_id', 'reply_content'])
-
-        # 只保留存在的列
-        df = df[existing_columns]
-
-        # 如果需要确保这两列都存在，可以在此处添加一个检查
-        if len(existing_columns) < 2:
-            print("Warning: Some columns are missing. Data may be incomplete.")
-
         # 定义正则表达式来提取用户名
         def extract_user_id(link):
             match = re.search(r"https://x\.com/([^/]+)/status/", link)
@@ -193,6 +183,15 @@ if st.button(preprocess_button_label):
 
         # 统一大小写
         df['reply_content'] = df['reply_content'].str.lower()
+
+        # 检查所需的列是否存在
+        required_columns = ['reply_user_id', 'reply_content']
+        if all(column in df.columns for column in required_columns):
+            # 只保留'reply_user_id'和'reply_content'字段
+            df = df[required_columns]
+        else:
+            # 过滤掉缺少所需列的数据
+            df = df.dropna(subset=required_columns)
 
         # 去重逻辑：根据'reply_user_id'去重，保留'reply_content'最长的记录
         df = df.loc[df.groupby('reply_user_id')['reply_content'].apply(lambda x: x.str.len().idxmax())]
