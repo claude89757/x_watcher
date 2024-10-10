@@ -156,6 +156,16 @@ if st.button(preprocess_button_label):
         # 记录处理前的数据量
         initial_count = len(df)
 
+        # 检查列是否存在
+        existing_columns = df.columns.intersection(['reply_user_id', 'reply_content'])
+
+        # 只保留存在的列
+        df = df[existing_columns]
+
+        # 如果需要确保这两列都存在，可以在此处添加一个检查
+        if len(existing_columns) < 2:
+            print("Warning: Some columns are missing. Data may be incomplete.")
+
         # 定义正则表达式来提取用户名
         def extract_user_id(link):
             match = re.search(r"https://x\.com/([^/]+)/status/", link)
