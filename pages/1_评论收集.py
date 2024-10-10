@@ -148,27 +148,24 @@ with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
 
 running_task = ""
 if tasks:
-    # 创建三列布局
-    col1, col2, col3 = st.columns(3)
-    for i, (task_name, status) in enumerate(tasks.items()):
-        # 根据索引选择列
-        if i % 3 == 0:
-            col = col1
-        elif i % 3 == 1:
-            col = col2
-        else:
-            col = col3
+    with st.expander("查看任务状态"):
+        # 准备任务数据
+        task_data = []
+        for task_name, status in tasks.items():
+            if 'RUNNING' in status:
+                status_icon = '🔄'
+                running_task = f"{task_name} {status}"
+            elif 'SUCCESS' in status:
+                status_icon = '✅'
+            elif 'FAILED' in status:
+                status_icon = '❌'
+            else:
+                status_icon = status
 
-        # 在选定的列中显示任务状态
-        if 'RUNNING' in status:
-            col.markdown(f'> {task_name} 🔄')  # 运行中任务显示转圈圈图标
-            running_task = f"{task_name} {status}"
-        elif 'SUCCESS' in status:
-            col.markdown(f'> {task_name} ✅')  # 成功任务显示对勾图标
-        elif 'FAILED' in status:
-            col.markdown(f'> {task_name} ❌')  # 失败任务显示叉图标
-        else:
-            col.markdown(f'> {task_name} {status}')
+            task_data.append({"任务名称": task_name, "状态": f"{status_icon} {status}"})
+
+        # 使用表格展示任务状态
+        st.table(task_data)
 else:
     pass
 

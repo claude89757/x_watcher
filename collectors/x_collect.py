@@ -444,7 +444,7 @@ class TwitterWatcher:
 
     def check_login_status(self):
         """
-        检查登录状态
+        检查登录状态和账号是否被封禁
         :return:
         """
         try:
@@ -473,19 +473,26 @@ class TwitterWatcher:
                     break
                 else:
                     # 再试一次
-                    logging.warning(f"{index} time login failed, try again...")
+                    logging.warning(f"第{index+1}次登录失败，重试...")
 
             # 检查是否登录成功
             if "home" in self.driver.current_url:
                 logging.info("login successfully")
-                return True
+
+                # 检查是否存在封禁提示
+                suspension_elements = self.driver.find_elements(By.XPATH, "//span[contains(text(), '账号已被冻结') or contains(text(), 'Your account is suspended')]")
+                if suspension_elements:
+                    logging.error(f"账号 {self.username} 已被封禁")
+                    return False
+                else:
+                    return True
+
             else:
-                # 再试一次
                 current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
                 self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
                 return False
         except Exception as error:
-            logger.error(f"login failed: {error}")
+            logger.error(f"登录失败: {error}")
             current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
             self.driver.save_screenshot(f"login_failed_page_{current_time}.png")
             return False
