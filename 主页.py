@@ -140,20 +140,6 @@ if access_granted:
         st.markdown("-----")
 
     with tab2:
-        # 自定义按钮样式
-        st.markdown("""
-            <style>
-            .stButton>button:first-child {
-                background-color: #007BFF; /* 蓝色 */
-                color: white;
-            }
-            .stButton>button:nth-child(2) {
-                background-color: #FF4B4B; /* 红色 */
-                color: white;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-
         # 初始化 Redis 客户端
         redis_client = RedisClient(db=0)
 
@@ -182,7 +168,7 @@ if access_granted:
                             last_checked = details.get('last_checked', 'Never')
                             st.write(f"Last Checked: {last_checked}")
                         with col4:
-                            if st.button(f"{delete_account_label} {username}", key=f"delete_{username}"):
+                            if st.button(f"{delete_account_label} {username}", key=f"delete_{username}", type="primary"):
                                 del accounts[username]
                                 redis_client.set_json_data('twitter_accounts', accounts)
                                 st.success(f"Deleted account: {username}")
@@ -218,7 +204,7 @@ if access_granted:
                 new_email = st.text_input(email_label, key="new_email")
                 new_password = st.text_input(password_label, type="password", key="new_password")
 
-                if st.button(submit_new_account_label):
+                if st.button(submit_new_account_label, type="primary"):
                     if new_username and new_email and new_password:
                         accounts[new_username] = {
                             'email': new_email,
