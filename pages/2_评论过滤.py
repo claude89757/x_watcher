@@ -198,7 +198,7 @@ if st.button(preprocess_button_label):
         current_time = datetime.datetime.utcnow()
         thirty_days_ago = current_time - datetime.timedelta(days=180)
         mask = df['post_time'] >= thirty_days_ago
-        filtered_data.append(("超过30天的评论", df[~mask]))
+        filtered_data.append(("超过180天的评论", df[~mask]))
         df = df[mask]
 
         # 过滤掉长度小于10的评论
