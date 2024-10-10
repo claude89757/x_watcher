@@ -127,6 +127,22 @@ else:
     st.switch_page("pages/1_Collect_Data.py")
 
 
+# 添加详细的提示文本
+st.info("""
+点击下方按钮开始预处理数据。这将执行以下操作：
+1. 清理评论内容：
+   - 删除空评论
+   - 去除特殊字符，仅保留字母、数字和基本标点
+   - 统一转换为小写
+   - 删除多余空格
+2. 提取用户ID
+3. 去重：每个用户只保留最长的评论
+4. 过滤旧评论：删除30天前的评论
+5. 过滤短评论：删除少于10个字符的评论
+6. 保留关键字段：仅保留用户ID和评论内容
+7. 保存处理后的数据
+""")
+
 # Button to confirm the file
 if st.button(preprocess_button_label):
     with st.spinner('Preprocessing...'):
