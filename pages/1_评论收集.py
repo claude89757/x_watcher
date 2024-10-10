@@ -81,7 +81,7 @@ if st.session_state.language == "CN":
     page_description = "从X中通过关键词搜索找到的热门帖子中收集评论数据，可能需要一些时间来完成。"
     search_keyword_label = "搜索关键词"
     max_post_num_label = "最大帖子数量"
-    collect_data_button_label = "收集数据"
+    collect_data_button_label = "🚀开始收集评论数据"
     data_collection_complete_message = "数据收集完成！"
     access_not_granted_message = "访问未授权！"
     log_out_button_label = "登出"
@@ -148,7 +148,7 @@ with st.spinner(f'Checking {st.session_state.access_code} tasks...'):
 
 running_task = ""
 if tasks:
-    with st.expander("查看任务状态"):
+    with st.expander("查看历史任务列表"):
         # 准备任务数据
         task_data = []
         for task_name, status in tasks.items():
