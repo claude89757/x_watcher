@@ -163,8 +163,8 @@ if st.button(preprocess_button_label):
                 return match.group(1)
             return None
 
-        # 剔除掉reply_content未None的评论
-        df = df[df['reply_content'].notna()]
+        # 剔除掉无'reply_content'键，或者'reply_content'为空或None的评论
+        df = df[df['reply_content'].notna() & df['reply_content'].astype(bool)]
 
         # 添加新列 'reply_user_id'
         df['reply_user_id'] = df['reply_user_link'].apply(extract_user_id)
@@ -200,13 +200,7 @@ if st.button(preprocess_button_label):
         df = df[df['reply_content'].apply(lambda x: len(x) >= 10)]
 
         # 检查所需的列是否存在
-        required_columns = ['reply_user_id', 'reply_content']
-        if all(column in df.columns for column in required_columns):
-            # 只保留'reply_user_id'和'reply_content'字段
-            df = df[['reply_user_id', 'reply_content']]
-        else:
-            # 过滤掉缺少所需列的数据
-            df = df.dropna(subset=required_columns)
+        df = df[['reply_user_id', 'reply_content']]
 
         # 将处理后的数据保存到目标文件夹中
         df.to_csv(dst_file_path, index=False)
