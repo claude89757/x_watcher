@@ -137,7 +137,7 @@ st.info("""
    - 删除多余空格
 2. 提取用户ID
 3. 去重：每个用户只保留最长的评论
-4. 过滤旧评论：删除30天前的评论
+4. 过滤旧评论：删除180天前的评论
 5. 过滤短评论：删除少于10个字符的评论
 6. 保留关键字段：仅保留用户ID和评论内容
 7. 保存处理后的数据
@@ -196,7 +196,7 @@ if st.button(preprocess_button_label):
 
         # 过滤掉超过30天的评论
         current_time = datetime.datetime.utcnow()
-        thirty_days_ago = current_time - datetime.timedelta(days=30)
+        thirty_days_ago = current_time - datetime.timedelta(days=180)
         mask = df['post_time'] >= thirty_days_ago
         filtered_data.append(("超过30天的评论", df[~mask]))
         df = df[mask]
