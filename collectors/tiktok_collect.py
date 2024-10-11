@@ -231,17 +231,18 @@ def collect_comments(driver, video_url):
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
             
-            # 尝试通过其他方式获取评论内容和时间
-            reply_content = comment_div.find('span', recursive=False).get_text(strip=True) if comment_div.find('span', recursive=False) else ''
-            reply_time = comment_div.find('span', recursive=False, style=lambda value: value and 'font-size: 14px' in value).get_text(strip=True) if comment_div.find('span', recursive=False, style=lambda value: value and 'font-size: 14px' in value) else ''
+            # 更具体地选择评论内容
+            reply_content = comment_div.select_one('span.comment-content-class').get_text(strip=True) if comment_div.select_one('span.comment-content-class') else ''
+            reply_time = comment_div.select_one('span.comment-time-class').get_text(strip=True) if comment_div.select_one('span.comment-time-class') else ''
             
-            # 添加评论数据到列表
-            comments_data.append({
-                'user_id': user_id,
-                'reply_content': reply_content,
-                'reply_time': reply_time,
-                'reply_video_url': video_url
-            })
+            # 当评论有内容时才添加评论数据到列表
+            if reply_content:
+                comments_data.append({
+                    'user_id': user_id,
+                    'reply_content': reply_content,
+                    'reply_time': reply_time,
+                    'reply_video_url': video_url
+                })
         
         # 模拟鼠标滚动
         ActionChains(driver).scroll_by_amount(0, 1000).perform()
@@ -256,7 +257,7 @@ def collect_comments(driver, video_url):
             scroll_attempts = 0
             logger.info("加载了新评论，重置滚动尝试次数")
         
-        logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新的2条评论: {comments_data[-2:]}")
+        logger.info(f"当前已收集 {len(comments_data)} 条评论，最新的评论数据是: {comments_data[-1]}")
         last_comments_count = len(comments_data)
 
         # 检查是否出现验证码
