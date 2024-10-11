@@ -233,12 +233,12 @@ def take_screenshot(driver, prefix="screenshot"):
     logger.info(f"截图已保存: {filename}")
 
 def main():
-    username = "claude89757@gmail.com"  # 替换为您的用户名
-    password = "thanks0719HTT@"  # 替换为您的密码
+    username = "xxx"  # 替换为您的用户名
+    password = "xxx"  # 替换为您的密码
     keyword = "cat"  # 替换为您要搜索的关键字
     driver = setup_driver()
     try:
-        login(driver, username, password)
+        # login(driver, username, password)
         video_links = search_tiktok_videos(driver, keyword)
         all_comments = {}
         for video_url in video_links:
