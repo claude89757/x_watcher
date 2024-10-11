@@ -69,6 +69,11 @@ def setup_driver():
     
     driver = webdriver.Chrome(service=Service(CHROME_DRIVER), options=options)
     logger.info("WebDriver已设置完成")
+
+    # 设置浏览器全屏
+    driver.maximize_window()
+    logger.info("浏览器已设置为全屏模式")
+
     return driver
 
 def random_sleep(min_seconds=1, max_seconds=3):
@@ -96,6 +101,23 @@ def load_cookies(driver, username):
     except FileNotFoundError:
         logger.info(f"未找到 {username}_cookies.pkl 文件")
         return False
+
+def is_captcha_present(driver):
+    """检查页面上是否存在验证码元素。"""
+    try:
+        # 这里假设验证码元素有一个特定的CSS选择器
+        captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
+        logger.info("检测到验证码")
+        return True
+    except Exception:
+        logger.info("未检测到验证码")
+        return False
+
+def solve_captcha(driver):
+    """处理验证码逻辑。"""
+    # 这里可以添加处理验证码的逻辑，例如手动解决或使用自动化工具
+    logger.info("请手动解决验证码")
+    input("解决验证码后按Enter继续...")
 
 def login(driver, username, password):
     """使用给定的用户名和密码登录TikTok。"""
@@ -132,6 +154,10 @@ def login(driver, username, password):
         # 点击登录按钮
         login_button.click()
         logger.info("点击登录按钮")
+
+        # 检查是否出现验证码
+        if is_captcha_present(driver):
+            solve_captcha(driver)
 
         # 等待页面跳转并检查URL
         WebDriverWait(driver, 180).until(
@@ -186,44 +212,59 @@ def collect_comments(driver, video_url):
     except Exception as e:
         logger.warning("未能暂停视频，可能未找到视频元素")
 
-    # 等待评论元素加载
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, 'div.css-1gstnae-DivCommentItemWrapper'))
+    # 等待评论元素加���
+    WebDriverWait(driver, 15).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
     )
 
     # 滚动页面以加载更多评论
-    comments = []
+    comments_data = []
     scroll_attempts = 0
     max_scroll_attempts = 5
     logger.info(f"开始滚动页面，最大滚动尝试次数: {max_scroll_attempts}")
 
+    last_comments_count = 0
     while scroll_attempts < max_scroll_attempts:
         # 使用BeautifulSoup解析页面
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-        for comment_div in soup.select('div.css-1gstnae-DivCommentItemWrapper'):
-            comment_text = comment_div.get_text(strip=True)
-            if comment_text not in comments:
-                comments.append(comment_text)
+        for comment_div in soup.select('div[class*="CommentItemWrapper"]'):
+            user_link = comment_div.select_one('a[href^="/@"]')
+            user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
+            
+            # 尝试通过其他方式获取评论内容和时间
+            reply_content = comment_div.find('span', recursive=False).get_text(strip=True) if comment_div.find('span', recursive=False) else ''
+            reply_time = comment_div.find('span', recursive=False, style=lambda value: value and 'font-size: 14px' in value).get_text(strip=True) if comment_div.find('span', recursive=False, style=lambda value: value and 'font-size: 14px' in value) else ''
+            
+            # 添加评论数据到列表
+            comments_data.append({
+                'user_id': user_id,
+                'reply_content': reply_content,
+                'reply_time': reply_time,
+                'reply_video_url': video_url
+            })
         
-        logger.info(f"当前已收集 {len(comments)} 条评论")
-
         # 模拟鼠标滚动
         ActionChains(driver).scroll_by_amount(0, 1000).perform()
         logger.info("页面向下滚动1000像素")
         random_sleep(5, 15)  # 增加随机等待时间
 
         # 检查是否有新的评论加载
-        new_soup = BeautifulSoup(driver.page_source, 'html.parser')
-        new_comments = [div.get_text(strip=True) for div in new_soup.select('div.css-1gstnae-DivCommentItemWrapper')]
-        if len(new_comments) == len(comments):
+        if last_comments_count == len(comments_data):
             scroll_attempts += 1
             logger.info(f"未加载新评论，滚动尝试次数: {scroll_attempts}")
         else:
             scroll_attempts = 0
             logger.info("加载了新评论，重置滚动尝试次数")
+        
+        logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新的2条评论: {comments_data[-2:]}")
+        last_comments_count = len(comments_data)
 
-    logger.info(f"评论收集完成，共收集 {len(comments)} 条评论")
-    return comments
+        # 检查是否出现验证码
+        if is_captcha_present(driver):
+            solve_captcha(driver)
+
+    logger.info(f"评论收集完成，共收集 {len(comments_data)} 条评论")
+    return comments_data
 
 def take_screenshot(driver, prefix="screenshot"):
     """保存当前页面的截图，文件名包含时间戳。"""
@@ -234,7 +275,7 @@ def take_screenshot(driver, prefix="screenshot"):
 
 def main():
     username = "xxx"  # 替换为您的用户名
-    password = "xxx"  # 替换为您的密码
+    password = "xxx"  # 替为您的密码
     keyword = "cat"  # 替换为您要搜索的关键字
     driver = setup_driver()
     try:
