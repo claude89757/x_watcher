@@ -231,9 +231,18 @@ def collect_comments(driver, video_url):
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
             
-            # 更具体地选择评论内容
-            reply_content = comment_div.select_one('span.comment-content-class').get_text(strip=True) if comment_div.select_one('span.comment-content-class') else ''
-            reply_time = comment_div.select_one('span.comment-time-class').get_text(strip=True) if comment_div.select_one('span.comment-time-class') else ''
+            # 使用data-e2e属性选择评论内容
+            reply_content_span = comment_div.select_one('span[data-e2e^="comment-level"]')
+            reply_content = reply_content_span.get_text(strip=True) if reply_content_span else ''
+            
+            # 更通用地获取评论时间
+            reply_time = ''
+            for span in comment_div.find_all('span'):
+                text = span.get_text(strip=True)
+                # 检查是否是时间格式
+                if re.match(r'^\d+[smhdw] ago$', text) or re.match(r'^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$', text) or re.match(r'^\d{1,2}:\d{2}(?:AM|PM)?$', text, re.IGNORECASE):
+                    reply_time = text
+                    break
             
             # 当评论有内容时才添加评论数据到列表
             if reply_content:
@@ -260,10 +269,6 @@ def collect_comments(driver, video_url):
         logger.info(f"当前已收集 {len(comments_data)} 条评论")
         last_comments_count = len(comments_data)
         
-        if comments_data:
-            # 打印部分最新评论
-            logger.info(f"最新评论: {comments_data[-5:]}")
-
         # 检查是否出现验证码
         if is_captcha_present(driver):
             solve_captcha(driver)
