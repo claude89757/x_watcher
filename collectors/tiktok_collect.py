@@ -257,8 +257,12 @@ def collect_comments(driver, video_url):
             scroll_attempts = 0
             logger.info("加载了新评论，重置滚动尝试次数")
         
-        logger.info(f"当前已收集 {len(comments_data)} 条评论，最新的评论数据是: {comments_data[-1]}")
+        logger.info(f"当前已收集 {len(comments_data)} 条评论")
         last_comments_count = len(comments_data)
+        
+        if comments_data:
+            # 打印部分最新评论
+            logger.info(f"最新评论: {comments_data[-5:]}")
 
         # 检查是否出现验证码
         if is_captcha_present(driver):
