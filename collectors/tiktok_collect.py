@@ -225,6 +225,13 @@ def collect_comments(driver, video_url):
     logger.info(f"评论收集完成，共收集 {len(comments)} 条评论")
     return comments
 
+def take_screenshot(driver, prefix="screenshot"):
+    """保存当前页面的截图，文件名包含时间戳。"""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{prefix}_{timestamp}.png"
+    driver.save_screenshot(filename)
+    logger.info(f"截图已保存: {filename}")
+
 def main():
     username = "claude89757@gmail.com"  # 替换为您的用户名
     password = "thanks0719HTT@"  # 替换为您的密码
@@ -243,6 +250,7 @@ def main():
         # process_and_upload_csv_to_cos(all_comments)
     except Exception as e:
         logger.error(f"发生错误: {traceback.format_exc()}")
+        take_screenshot(driver, "error")
     finally:
         driver.quit()
 
