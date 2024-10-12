@@ -409,10 +409,13 @@ def collect_comments(driver, video_url):
         )
         
         if comments_data:
-            latest_comments = comments_data[-5:]  # 只显示最新的5条评论
-            logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新5条评论:")
-            for idx, comment in enumerate(latest_comments, 1):
-                logger.info(f"{idx}. 用户: {comment['user_id']}, 内容: {comment['reply_content'][:30]}...")
+            new_comments = comments_data[last_comments_count:]
+            if new_comments:
+                logger.info(f"本轮新收集到 {len(new_comments)} 条评论:")
+                for idx, comment in enumerate(new_comments, 1):
+                    logger.info(f"{idx}. 用户: {comment['user_id']}, 内容: {comment['reply_content'][:30]}..., 时间: {comment['reply_time']}")
+            else:
+                pass
         else:
             logger.info("当前还未收集到评论")
 
