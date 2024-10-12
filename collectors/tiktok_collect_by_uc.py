@@ -49,8 +49,12 @@ def setup_driver():
     # 根据操作系统设置无头模式
     current_system = platform.system()
     if current_system == "Linux":
-        options.add_argument('--headless')  # Linux系统（如Ubuntu）使用无头模式
-        logger.info("检测到Linux系统，启用无头模式")
+        # 检查是否是Ubuntu
+        if "Ubuntu" in platform.version():
+            logger.info("检测到Ubuntu系统，禁用无头模式")
+        else:
+            options.add_argument('--headless')  # 非Ubuntu的Linux系统使用无头模式
+            logger.info("检测到非Ubuntu的Linux系统，启用无头模式")
     elif current_system == "Darwin":
         logger.info("检测到macOS系统，禁用无头模式")
     else:
