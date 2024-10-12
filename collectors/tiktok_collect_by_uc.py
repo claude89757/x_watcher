@@ -115,14 +115,10 @@ def save_cookies(driver, username):
         cookie.pop('origin', None)
     
     # 保存为JSON文件
-    with open("exported-cookies.json", "w") as file:
+    filename = f"{username}-cookies.json"
+    with open(filename, "w") as file:
         json.dump(cookies, file, indent=2)
-    logger.info("Cookies已保存到 exported-cookies.json")
-
-    # 同时保存为pickle格式作为备份
-    with open(f"{username}_cookies.pkl", "wb") as file:
-        pickle.dump(cookies, file)
-    logger.info(f"Cookies备份已保存到 {username}_cookies.pkl")
+    logger.info(f"Cookies已保存到 {filename}")
 
 def load_cookies(driver, username):
     """从文件加载Cookies到当前会话。"""
@@ -135,8 +131,9 @@ def load_cookies(driver, username):
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
         
         # 尝试加载JSON格式的cookies
-        logger.info("尝试加载 claudexie1-cookies.json 文件")
-        with open("./claudexie1-cookies.json", "r") as file:
+        filename = f"{username}-cookies.json"
+        logger.info(f"尝试加载 {filename} 文件")
+        with open(filename, "r") as file:
             cookies = json.load(file)
             logger.info(f"从文件中读取到 {len(cookies)} 个cookies")
             
@@ -158,13 +155,13 @@ def load_cookies(driver, username):
         for cookie in current_cookies:
             logger.info(f"Cookie: {cookie['name']} = {cookie['value'][:10]}... (domain: {cookie['domain']})")
         
-        logger.info("Cookies已从 claudexie1-cookies.json 加载")
+        logger.info(f"Cookies已从 {filename} 加载")
         return True
     except FileNotFoundError:
-        logger.info("未找到 claudexie1-cookies.json 文件")
+        logger.info(f"未找到 {filename} 文件")
         return False
     except json.JSONDecodeError:
-        logger.error("claudexie1-cookies.json 文件格式错误")
+        logger.error(f"{filename} 文件格式错误")
         return False
 
 def is_captcha_present(driver):
@@ -451,9 +448,9 @@ def take_screenshot(driver, prefix="screenshot"):
     logger.info(f"截图已保存: {filename}")
 
 def main():
-    username = os.environ.get('TIKTOK_USERNAME', "test123")
+    username = "gktwk0526903"
     password = os.environ.get('TIKTOK_PASSWORD', "test")
-    keyword = "cat"
+    keyword = "chatgpt"
     driver = setup_driver()
     try:
         login(driver, username, password)
