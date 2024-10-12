@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 import platform
 import json
+from datetime import datetime, timedelta
 
 def setup_driver():
     """设置并返回一个Selenium WebDriver实例。"""
@@ -183,8 +184,50 @@ def solve_captcha(driver):
     logger.info("请手动解决验证码")
     input("解决验证码后按Enter继续...")
 
+def check_login_status(driver):
+    """检查当前的登录状态"""
+    try:
+        driver.get("https://www.tiktok.com/foryou")
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        profile_icon = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[data-e2e="top-nav-user-icon"]'))
+        )
+        logger.info("检测到用户头像，登录状态有效")
+        return True
+    except Exception as e:
+        logger.info(f"登录状态检查失败: {str(e)}")
+        return False
+
+def refresh_login(driver, username, password):
+    """刷新登录状态"""
+    logger.info("开始刷新登录状态")
+    login(driver, username, password)
+    save_cookies(driver, username)
+    update_last_login_time()
+
+def update_last_login_time():
+    """更新最后登录时间"""
+    with open("last_login.json", "w") as f:
+        json.dump({"last_login": datetime.now().isoformat()}, f)
+
+def get_last_login_time():
+    """获取最后登录时间"""
+    try:
+        with open("last_login.json", "r") as f:
+            data = json.load(f)
+            return datetime.fromisoformat(data["last_login"])
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return None
+
 def login(driver, username, password):
     """使用给定的用户名和密码登录TikTok。"""
+    last_login = get_last_login_time()
+    if last_login and datetime.now() - last_login < timedelta(days=5):
+        if load_cookies(driver, username) and check_login_status(driver):
+            logger.info("使用有效的Cookies成功登录")
+            return
+    
+    logger.info("需要刷新登录状态")
     if load_cookies(driver, username):
         logger.info("使用Cookies登录中...")
         driver.get("https://www.tiktok.com/foryou")
@@ -258,6 +301,9 @@ def login(driver, username, password):
     except Exception as e:
         logger.error(f"登录失败: {traceback.format_exc()}")
         raise
+
+    # 登录成功后更新最后登录时间
+    update_last_login_time()
 
 def search_tiktok_videos(driver, keyword):
     """在TikTok上搜索关键字并返回视频链接列表。"""
@@ -379,13 +425,16 @@ def take_screenshot(driver, prefix="screenshot"):
     logger.info(f"截图已保存: {filename}")
 
 def main():
-    username = os.environ.get('TIKTOK_USERNAME', "test123")  # 从环境变量读取用户名
-    password = os.environ.get('TIKTOK_PASSWORD', "test")  # 从环境变量读取密码
-
-    keyword = "cat"  # 替换为您要搜索的关键字
+    username = os.environ.get('TIKTOK_USERNAME', "test123")
+    password = os.environ.get('TIKTOK_PASSWORD', "test")
+    keyword = "cat"
     driver = setup_driver()
     try:
         login(driver, username, password)
+        if not check_login_status(driver):
+            logger.info("登录状态无效，尝试刷新登录")
+            refresh_login(driver, username, password)
+        
         video_links = search_tiktok_videos(driver, keyword)
         all_comments = {}
         for video_url in video_links:
@@ -393,7 +442,7 @@ def main():
             all_comments[video_url] = comments
             logger.info(f"收集到 {len(comments)} 条来自 {video_url} 的评论")
 
-        # # 处理并上传评论数据
+        # 处理并上传评论数据
         # process_and_upload_csv_to_cos(all_comments)
     except Exception as e:
         logger.error(f"发生错误: {traceback.format_exc()}")
