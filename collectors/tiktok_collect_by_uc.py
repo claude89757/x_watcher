@@ -137,9 +137,11 @@ def load_cookies(driver, username):
         current_domain = driver.current_url.split('//')[1].split('/')[0]
         
         # 尝试加载JSON格式的cookies
-        logger.info("尝试加载 exported-cookies.json 文件")
+        logger.info("尝试加载 claudexie1-cookies.json 文件")
         with open("./claudexie1-cookies.json", "r") as file:
             cookies = json.load(file)
+            logger.info(f"从文件中读取到 {len(cookies)} 个cookies")
+            
             for cookie in cookies:
                 # 移除可能导致问题的字段
                 cookie.pop('sameSite', None)
@@ -150,28 +152,25 @@ def load_cookies(driver, username):
                 if current_domain in cookie['domain']:
                     try:
                         driver.add_cookie(cookie)
+                        logger.info(f"成功添加cookie: {cookie['name']}")
                     except Exception as e:
                         logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
-        logger.info("Cookies已从 exported-cookies.json 加载")
+                else:
+                    logger.warning(f"跳过不匹配的cookie: {cookie['name']} (domain: {cookie['domain']})")
+        
+        # 打印所有当前的cookies
+        current_cookies = driver.get_cookies()
+        logger.info(f"当前浏览器中有 {len(current_cookies)} 个cookies")
+        for cookie in current_cookies:
+            logger.info(f"Cookie: {cookie['name']} = {cookie['value'][:10]}... (domain: {cookie['domain']})")
+        
+        logger.info("Cookies已从 claudexie1-cookies.json 加载")
         return True
     except FileNotFoundError:
-        logger.info("未找到 exported-cookies.json 文件，尝试加载pickle格式的cookies")
-        try:
-            with open(f"{username}_cookies.pkl", "rb") as file:
-                cookies = pickle.load(file)
-                for cookie in cookies:
-                    if current_domain in cookie['domain']:
-                        try:
-                            driver.add_cookie(cookie)
-                        except Exception as e:
-                            logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
-            logger.info(f"Cookies已从 {username}_cookies.pkl 加载")
-            return True
-        except FileNotFoundError:
-            logger.info(f"未找到 {username}_cookies.pkl 文件")
-            return False
+        logger.info("未找到 claudexie1-cookies.json 文件")
+        return False
     except json.JSONDecodeError:
-        logger.error("exported-cookies.json 文件格式错误")
+        logger.error("claudexie1-cookies.json 文件格式错误")
         return False
 
 def is_captcha_present(driver):
@@ -179,7 +178,7 @@ def is_captcha_present(driver):
     try:
         # 这里假设验证码元素有一个特定的CSS选择器
         captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
-        logger.info("检测到���证码")
+        logger.info("检测到证码")
         return True
     except Exception:
         logger.info("未检测到验证码")
@@ -187,16 +186,15 @@ def is_captcha_present(driver):
 
 def solve_captcha(driver):
     """处理验证码逻辑。"""
-    # 这里可以添加处理验证码的逻辑���例如手动解决或使用自动化工具
+    # 这里可以添加处理验证码的逻辑例如手动解决或使用自动化工具
     logger.info("请手动解决验证码")
     input("解决验证码后按Enter继续...")
 
 def login(driver, username, password):
     """使用给定的用户名和密码登录TikTok。"""
-  
     if load_cookies(driver, username):
         logger.info("使用Cookies登录中...")
-        driver.get("https://www.tiktok.com/foryou")  # 直接访问主页
+        driver.get("https://www.tiktok.com/foryou")
         logger.info("使用Cookies登录")
         try:
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
@@ -218,7 +216,7 @@ def login(driver, username, password):
                 return
             else:
                 logger.info("Cookies无效，页面未显示预期内容")
-                logger.info(f"页面源代码: {driver.page_source[:500]}...")  # 打印前500个字符的页面源代码
+                logger.info(f"页面源代码: {driver.page_source[:1000]}...")  # 打印前1000个字符的页面源代码
         except Exception as e:
             logger.error(f"使用Cookies登录时发生错误: {str(e)}")
         
