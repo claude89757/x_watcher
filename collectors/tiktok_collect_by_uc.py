@@ -154,7 +154,7 @@ def load_cookies(driver, username):
         
         # 打印所有当前的cookies
         current_cookies = driver.get_cookies()
-        logger.info(f"当前浏览器中有 {len(current_cookies)} 个cookies")
+        logger.info(f"当前浏览器有 {len(current_cookies)} 个cookies")
         for cookie in current_cookies:
             logger.info(f"Cookie: {cookie['name']} = {cookie['value'][:10]}... (domain: {cookie['domain']})")
         
@@ -185,7 +185,7 @@ def solve_captcha(driver):
     input("解决验证码后按Enter继续...")
 
 def check_login_status(driver):
-    """检查当前的登录状态"""
+    """检查当前的登录状���"""
     try:
         driver.get("https://www.tiktok.com/foryou")
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
@@ -336,10 +336,9 @@ def collect_comments(driver, video_url):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
     driver.get(video_url)
-    random_sleep(5, 10)  # 随机等待页面加载
+    random_sleep(5, 10)
     logger.info("等待页面加载完成")
 
-    # 暂停视频播放
     try:
         video_element = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.TAG_NAME, 'video'))
@@ -349,40 +348,36 @@ def collect_comments(driver, video_url):
     except Exception as e:
         logger.warning("未能暂停视频，可能未找到视频元素")
 
-    # 等待评论元素加
     WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
     )
 
-    # 滚动页面以加载更多评论
     comments_data = []
     scroll_attempts = 0
-    max_scroll_attempts = 5
+    max_scroll_attempts = 10
+    consecutive_no_new_comments = 0
+    max_consecutive_no_new = 3
     logger.info(f"开始滚动页面，最大滚动尝试次数: {max_scroll_attempts}")
 
     last_comments_count = 0
-    seen_comments = set()  # 用于存储已见过的评论
+    seen_comments = set()
+
     while scroll_attempts < max_scroll_attempts:
-        # 使用BeautifulSoup解析页面
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         for comment_div in soup.select('div[class*="CommentItemWrapper"]'):
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
             
-            # 使用data-e2e属性选择评论内容
             reply_content_span = comment_div.select_one('span[data-e2e^="comment-level"]')
             reply_content = reply_content_span.get_text(strip=True) if reply_content_span else ''
             
-            # 更通用地获取评论时间
             reply_time = ''
             for span in comment_div.find_all('span'):
                 text = span.get_text(strip=True)
-                # 检查是否是时间格式
                 if re.match(r'^\d+[smhdw] ago$', text) or re.match(r'^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$', text) or re.match(r'^\d{1,2}:\d{2}(?:AM|PM)?$', text, re.IGNORECASE):
                     reply_time = text
                     break
             
-            # 当评论有内容且未被收集过时才添加评论数据到列表
             comment_key = f"{user_id}:{reply_content}"
             if reply_content and comment_key not in seen_comments:
                 comments_data.append({
@@ -393,12 +388,21 @@ def collect_comments(driver, video_url):
                 })
                 seen_comments.add(comment_key)
         
-        # 模拟鼠标滚动
-        ActionChains(driver).scroll_by_amount(0, 1000).perform()
-        logger.info("页面向下滚动1000像素")
-        random_sleep(5, 15)  # 增加随机等待时间
+        if consecutive_no_new_comments >= max_consecutive_no_new:
+            logger.info("连续多次未加载新评论，尝试向上滚动")
+            up_scroll_distance = random.randint(300, 700)
+            ActionChains(driver).scroll_by_amount(0, -up_scroll_distance).perform()
+            random_sleep(1, 3)
+            down_scroll_distance = random.randint(up_scroll_distance - 100, up_scroll_distance + 100)
+            ActionChains(driver).scroll_by_amount(0, down_scroll_distance).perform()
+            consecutive_no_new_comments = 0
+        else:
+            scroll_distance = random.randint(800, 1200)
+            ActionChains(driver).scroll_by_amount(0, scroll_distance).perform()
         
-        # 展示最新的10条评论数据
+        logger.info(f"页面滚动完成，滚动距离: {scroll_distance if 'scroll_distance' in locals() else down_scroll_distance} 像素")
+        random_sleep(2, 5)
+        
         if comments_data:
             latest_comments = comments_data[-10:]
             logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新10条评论:")
@@ -407,22 +411,18 @@ def collect_comments(driver, video_url):
         else:
             logger.info("当前还未收集到评论")
 
-        # 检查是否有新的评论加载
         if last_comments_count == len(comments_data):
+            consecutive_no_new_comments += 1
             scroll_attempts += 1
-            logger.info(f"未加载新评论，滚动尝试次数: {scroll_attempts}")
+            logger.info(f"未加载新评论，连续未加载次数: {consecutive_no_new_comments}, 总滚动尝试次数: {scroll_attempts}")
         else:
+            consecutive_no_new_comments = 0
             scroll_attempts = 0
-            logger.info("加载了新评论，重置滚动尝试次数")
+            new_comments_count = len(comments_data) - last_comments_count
+            logger.info(f"加载了 {new_comments_count} 条新评论，重置滚动尝试次数")
         
-        if comments_data:
-            logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新评论: {comments_data[-1]}")
-        else:
-            pass
         last_comments_count = len(comments_data)
 
-        
-        # 检查是否出现验证码
         if is_captcha_present(driver):
             solve_captcha(driver)
 
