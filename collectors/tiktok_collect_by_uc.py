@@ -190,7 +190,7 @@ def check_login_status(driver):
         driver.get("https://www.tiktok.com/foryou")
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
         profile_icon = WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '[data-e2e="top-nav-user-icon"]'))
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-e2e="profile-icon"]'))
         )
         logger.info("检测到用户头像，登录状态有效")
         return True
@@ -240,7 +240,7 @@ def login(driver, username, password):
             # 检查是否存在登录状态的元素
             try:
                 profile_icon = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, '[data-e2e="top-nav-user-icon"]'))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-e2e="profile-icon"]'))
                 )
                 logger.info("检测到用户头像，登录成功")
                 return
