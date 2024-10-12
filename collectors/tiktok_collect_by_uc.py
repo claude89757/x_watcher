@@ -433,7 +433,7 @@ def take_screenshot(driver, prefix="screenshot"):
     logger.info(f"截图已保存: {filename}")
 
 def main():
-    username = "gktwk0526903"
+    username = "claudexie1"
     password = os.environ.get('TIKTOK_PASSWORD', "test")
     keyword = "chatgpt"
     driver = setup_driver()
