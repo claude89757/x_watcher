@@ -25,6 +25,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 import undetected_chromedriver as uc
+from selenium.common.exceptions import TimeoutException
 
 # from common.cos import process_and_upload_csv_to_cospy
 
@@ -192,9 +193,11 @@ def search_tiktok_videos(driver, keyword):
     search_url = f"https://www.tiktok.com/search?q={keyword}"
     driver.get(search_url)
     logger.info(f"正在访问搜索页面: {search_url}")
-    time.sleep(10)  # 等待页面加载
-    logger.info("等待页面加载完成")
-
+    WebDriverWait(driver, 30).until(
+        EC.presence_of_element_located((By.TAG_NAME, 'video'))
+    )
+    logger.info("视频加载成功")
+ 
     # 使用BeautifulSoup解析页面
     logger.info("开始解析页面")
     soup = BeautifulSoup(driver.page_source, 'html.parser')
