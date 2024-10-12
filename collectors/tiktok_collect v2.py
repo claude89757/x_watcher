@@ -24,6 +24,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+import undetected_chromedriver as uc
 
 # from common.cos import process_and_upload_csv_to_cospy
 
@@ -42,7 +43,7 @@ import platform
 
 def setup_driver():
     """设置并返回一个Selenium WebDriver实例。"""
-    options = Options()
+    options = uc.ChromeOptions()
     
     # 根据操作系统设置无头模式
     current_system = platform.system()
@@ -81,7 +82,7 @@ def setup_driver():
     
     logger.info("正在设置WebDriver选项")
     
-    driver = webdriver.Chrome(service=Service(CHROME_DRIVER), options=options)
+    driver = uc.Chrome(options=options)
     logger.info("WebDriver已设置完成")
 
     # 设置浏览器全屏
@@ -117,7 +118,7 @@ def load_cookies(driver, username):
         return False
 
 def is_captcha_present(driver):
-    """检查页面上是否存在验证码元素。"""
+    """检查面上是否存在验证码元素。"""
     try:
         # 这里假设验证码元素有一个特定的CSS选择器
         captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
@@ -307,7 +308,7 @@ def main():
     keyword = "cat"  # 替换为您要搜索的关键字
     driver = setup_driver()
     try:
-        login(driver, username, password)
+        # login(driver, username, password)
         video_links = search_tiktok_videos(driver, keyword)
         all_comments = {}
         for video_url in video_links:
