@@ -41,6 +41,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 import platform
+import json
 
 def setup_driver():
     """设置并返回一个Selenium WebDriver实例。"""
@@ -103,23 +104,74 @@ def random_sleep(min_seconds=1, max_seconds=3):
     time.sleep(time_to_sleep)
 
 def save_cookies(driver, username):
-    """保存当前会话的Cookies到文件。"""
+    """保存当前会话的Cookies到JSON文件。"""
     cookies = driver.get_cookies()
+    
+    # 移除可能导致问题的字段
+    for cookie in cookies:
+        cookie.pop('sameSite', None)
+        cookie.pop('storeId', None)
+        cookie.pop('origin', None)
+    
+    # 保存为JSON文件
+    with open("exported-cookies.json", "w") as file:
+        json.dump(cookies, file, indent=2)
+    logger.info("Cookies已保存到 exported-cookies.json")
+
+    # 同时保存为pickle格式作为备份
     with open(f"{username}_cookies.pkl", "wb") as file:
         pickle.dump(cookies, file)
-    logger.info(f"Cookies已保存到 {username}_cookies.pkl")
+    logger.info(f"Cookies备份已保存到 {username}_cookies.pkl")
 
 def load_cookies(driver, username):
     """从文件加载Cookies到当前会话。"""
     try:
-        with open(f"{username}_cookies.pkl", "rb") as file:
-            cookies = pickle.load(file)
+        # 首先导航到TikTok主页
+        driver.get("https://www.tiktok.com/foryou")
+        logger.info("已导航到TikTok主页")
+        
+        # 等待页面加载完成
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        
+        # 获取当前域名
+        current_domain = driver.current_url.split('//')[1].split('/')[0]
+        
+        # 尝试加载JSON格式的cookies
+        logger.info("尝试加载 exported-cookies.json 文件")
+        with open("./claudexie1-cookies.json", "r") as file:
+            cookies = json.load(file)
             for cookie in cookies:
-                driver.add_cookie(cookie)
-        logger.info(f"Cookies已从 {username}_cookies.pkl 加载")
+                # 移除可能导致问题的字段
+                cookie.pop('sameSite', None)
+                cookie.pop('storeId', None)
+                cookie.pop('origin', None)
+                
+                # 只添加与当前域名匹配的cookie
+                if current_domain in cookie['domain']:
+                    try:
+                        driver.add_cookie(cookie)
+                    except Exception as e:
+                        logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
+        logger.info("Cookies已从 exported-cookies.json 加载")
         return True
     except FileNotFoundError:
-        logger.info(f"未找到 {username}_cookies.pkl 文件")
+        logger.info("未找到 exported-cookies.json 文件，尝试加载pickle格式的cookies")
+        try:
+            with open(f"{username}_cookies.pkl", "rb") as file:
+                cookies = pickle.load(file)
+                for cookie in cookies:
+                    if current_domain in cookie['domain']:
+                        try:
+                            driver.add_cookie(cookie)
+                        except Exception as e:
+                            logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
+            logger.info(f"Cookies已从 {username}_cookies.pkl 加载")
+            return True
+        except FileNotFoundError:
+            logger.info(f"未找到 {username}_cookies.pkl 文件")
+            return False
+    except json.JSONDecodeError:
+        logger.error("exported-cookies.json 文件格式错误")
         return False
 
 def is_captcha_present(driver):
@@ -127,7 +179,7 @@ def is_captcha_present(driver):
     try:
         # 这里假设验证码元素有一个特定的CSS选择器
         captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
-        logger.info("检测到验证码")
+        logger.info("检测到���证码")
         return True
     except Exception:
         logger.info("未检测到验证码")
@@ -135,25 +187,50 @@ def is_captcha_present(driver):
 
 def solve_captcha(driver):
     """处理验证码逻辑。"""
-    # 这里可以添加处理验证码的逻辑，例如手动解决或使用自动化工具
+    # 这里可以添加处理验证码的逻辑���例如手动解决或使用自动化工具
     logger.info("请手动解决验证码")
     input("解决验证码后按Enter继续...")
 
 def login(driver, username, password):
     """使用给定的用户名和密码登录TikTok。"""
+  
+    if load_cookies(driver, username):
+        logger.info("使用Cookies登录中...")
+        driver.get("https://www.tiktok.com/foryou")  # 直接访问主页
+        logger.info("使用Cookies登录")
+        try:
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+            logger.info(f"当前页面URL: {driver.current_url}")
+            logger.info(f"当前页面标题: {driver.title}")
+            
+            # 检查是否存在登录状态的元素
+            try:
+                profile_icon = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, '[data-e2e="top-nav-user-icon"]'))
+                )
+                logger.info("检测到用户头像，登录成功")
+                return
+            except TimeoutException:
+                logger.info("未检测到用户头像，可能登录失败")
+            
+            if "foryou" in driver.current_url or "For You" in driver.title:
+                logger.info("使用Cookies登录成功")
+                return
+            else:
+                logger.info("Cookies无效，页面未显示预期内容")
+                logger.info(f"页面源代码: {driver.page_source[:500]}...")  # 打印前500个字符的页面源代码
+        except Exception as e:
+            logger.error(f"使用Cookies登录时发生错误: {str(e)}")
+        
+        logger.info("Cookies无效，继续使用用户名和密码登录")
+    else:
+        logger.info("未找到Cookies，继续使用用户名和密码登录")
+
     login_url = "https://www.tiktok.com/login/phone-or-email/email?lang=en"
     driver.get(login_url)
     logger.info("访问登录页面")
 
-    if load_cookies(driver, username):
-        driver.refresh()
-        logger.info("使用Cookies登录")
-        if "foryou" in driver.current_url:
-            logger.info("使用Cookies登录成功")
-            return
-        else:
-            logger.info("Cookies无效，继续使用用户名和密码登录")
-
+    # 如果Cookies登录失败，继续使用用户名和密码登录的原有逻辑
     try:
         # 等待用户名输入框加载
         username_input = WebDriverWait(driver, 10).until(
@@ -310,11 +387,9 @@ def take_screenshot(driver, prefix="screenshot"):
     logger.info(f"截图已保存: {filename}")
 
 def main():
-    username = os.environ.get('TIKTOK_USERNAME')  # 从环境变量读取用户名
-    password = os.environ.get('TIKTOK_PASSWORD')  # 从环境变量读取密码
-    if not username or not password:
-        logger.error("未设置 TIKTOK_USERNAME 或 TIKTOK_PASSWORD 环境变量")
-        raise ValueError("请设置 TIKTOK_USERNAME 和 TIKTOK_PASSWORD 环境变量")
+    username = os.environ.get('TIKTOK_USERNAME', "test123")  # 从环境变量读取用户名
+    password = os.environ.get('TIKTOK_PASSWORD', "test")  # 从环境变量读取密码
+
     keyword = "cat"  # 替换为您要搜索的关键字
     driver = setup_driver()
     try:
