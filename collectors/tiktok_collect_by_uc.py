@@ -127,14 +127,11 @@ def load_cookies(driver, username):
     """从文件加载Cookies到当前会话。"""
     try:
         # 首先导航到TikTok主页
-        driver.get("https://www.tiktok.com/foryou")
+        driver.get("https://www.tiktok.com")
         logger.info("已导航到TikTok主页")
         
         # 等待页面加载完成
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-        
-        # 获取当前域名
-        current_domain = driver.current_url.split('//')[1].split('/')[0]
         
         # 尝试加载JSON格式的cookies
         logger.info("尝试加载 claudexie1-cookies.json 文件")
@@ -148,15 +145,11 @@ def load_cookies(driver, username):
                 cookie.pop('storeId', None)
                 cookie.pop('origin', None)
                 
-                # 只添加与当前域名匹配的cookie
-                if current_domain in cookie['domain']:
-                    try:
-                        driver.add_cookie(cookie)
-                        logger.info(f"成功添加cookie: {cookie['name']}")
-                    except Exception as e:
-                        logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
-                else:
-                    logger.warning(f"跳过不匹配的cookie: {cookie['name']} (domain: {cookie['domain']})")
+                try:
+                    driver.add_cookie(cookie)
+                    logger.info(f"成功添加cookie: {cookie['name']}")
+                except Exception as e:
+                    logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
         
         # 打印所有当前的cookies
         current_cookies = driver.get_cookies()
