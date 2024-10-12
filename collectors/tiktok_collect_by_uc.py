@@ -106,7 +106,7 @@ def load_cookies(driver, username):
     try:
         # 首先导航到TikTok主页
         driver.get("https://www.tiktok.com")
-        logger.info("已导航到TikTok���页")
+        logger.info("已导航到TikTok页")
         
         # 等待页面加载完成
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
@@ -199,10 +199,14 @@ def get_last_login_time():
 
 def login(driver, username, password):
     """使用给定的用户名和密码登录TikTok。"""
+    # 清理所有cookies
+    driver.delete_all_cookies()
+    logger.info("已清理所有cookies")
+
     last_login = get_last_login_time()
     if last_login and datetime.now() - last_login < timedelta(days=5):
         if load_cookies(driver, username) and check_login_status(driver):
-            logger.info("使用有效的Cookies���功登录")
+            logger.info("使用有效的Cookies成功登录")
             return
     
     logger.info("需要刷新登录状态")
@@ -434,6 +438,10 @@ def main():
     keyword = "chatgpt"
     driver = setup_driver()
     try:
+        # 在登录之前清理所有cookies
+        driver.delete_all_cookies()
+        logger.info("已清理所有cookies")
+
         login(driver, username, password)
         if not check_login_status(driver):
             logger.info("登录状态无效，尝试刷新登录")
