@@ -361,6 +361,7 @@ def collect_comments(driver, video_url):
     logger.info(f"开始滚动页面，最大滚动尝试次数: {max_scroll_attempts}")
 
     last_comments_count = 0
+    seen_comments = set()  # 用于存储已见过的评论
     while scroll_attempts < max_scroll_attempts:
         # 使用BeautifulSoup解析页面
         soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -381,19 +382,30 @@ def collect_comments(driver, video_url):
                     reply_time = text
                     break
             
-            # 当评论有内容时才添加评论数据到列表
-            if reply_content:
+            # 当评论有内容且未被收集过时才添加评论数据到列表
+            comment_key = f"{user_id}:{reply_content}"
+            if reply_content and comment_key not in seen_comments:
                 comments_data.append({
                     'user_id': user_id,
                     'reply_content': reply_content,
                     'reply_time': reply_time,
                     'reply_video_url': video_url
                 })
+                seen_comments.add(comment_key)
         
         # 模拟鼠标滚动
         ActionChains(driver).scroll_by_amount(0, 1000).perform()
         logger.info("页面向下滚动1000像素")
         random_sleep(5, 15)  # 增加随机等待时间
+        
+        # 展示最新的10条评论数据
+        if comments_data:
+            latest_comments = comments_data[-10:]
+            logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新10条评论:")
+            for idx, comment in enumerate(latest_comments, 1):
+                logger.info(f"{idx}. 用户: {comment['user_id']}, 内容: {comment['reply_content'][:30]}...")
+        else:
+            logger.info("当前还未收集到评论")
 
         # 检查是否有新的评论加载
         if last_comments_count == len(comments_data):
