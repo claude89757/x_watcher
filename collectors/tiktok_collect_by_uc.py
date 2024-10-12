@@ -185,7 +185,7 @@ def solve_captcha(driver):
     input("解决验证码后按Enter继续...")
 
 def check_login_status(driver):
-    """检查当前的登录状���"""
+    """检查当前的登录状"""
     try:
         driver.get("https://www.tiktok.com/foryou")
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
@@ -354,29 +354,27 @@ def collect_comments(driver, video_url):
 
     comments_data = []
     scroll_attempts = 0
-    max_scroll_attempts = 10
+    max_scroll_attempts = 20  # 增加最大尝试次数
     consecutive_no_new_comments = 0
-    max_consecutive_no_new = 3
-    logger.info(f"开始滚动页面，最大滚动尝试次数: {max_scroll_attempts}")
+    max_consecutive_no_new = 5  # 增加连续无新评论的最大次数
 
     last_comments_count = 0
     seen_comments = set()
 
     while scroll_attempts < max_scroll_attempts:
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-        for comment_div in soup.select('div[class*="CommentItemWrapper"]'):
+        for comment_div in soup.select('div[class*="DivCommentItemWrapper"]'):
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
             
-            reply_content_span = comment_div.select_one('span[data-e2e^="comment-level"]')
+            reply_content_span = comment_div.select_one('span[data-e2e="comment-level-1"]')
             reply_content = reply_content_span.get_text(strip=True) if reply_content_span else ''
             
+            # 更新获取评论时间的逻辑
             reply_time = ''
-            for span in comment_div.find_all('span'):
-                text = span.get_text(strip=True)
-                if re.match(r'^\d+[smhdw] ago$', text) or re.match(r'^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$', text) or re.match(r'^\d{1,2}:\d{2}(?:AM|PM)?$', text, re.IGNORECASE):
-                    reply_time = text
-                    break
+            time_span = comment_div.select_one('div.css-2c97me-DivCommentSubContentWrapper span')
+            if time_span:
+                reply_time = time_span.get_text(strip=True)
             
             comment_key = f"{user_id}:{reply_content}"
             if reply_content and comment_key not in seen_comments:
@@ -390,22 +388,29 @@ def collect_comments(driver, video_url):
         
         if consecutive_no_new_comments >= max_consecutive_no_new:
             logger.info("连续多次未加载新评论，尝试向上滚动")
-            up_scroll_distance = random.randint(300, 700)
+            up_scroll_distance = random.randint(100, 300)
             ActionChains(driver).scroll_by_amount(0, -up_scroll_distance).perform()
-            random_sleep(1, 3)
-            down_scroll_distance = random.randint(up_scroll_distance - 100, up_scroll_distance + 100)
+            random_sleep(2, 4)
+            down_scroll_distance = random.randint(up_scroll_distance - 50, up_scroll_distance + 50)
             ActionChains(driver).scroll_by_amount(0, down_scroll_distance).perform()
             consecutive_no_new_comments = 0
         else:
-            scroll_distance = random.randint(800, 1200)
+            scroll_distance = random.randint(300, 500)  # 减少滚动距离
             ActionChains(driver).scroll_by_amount(0, scroll_distance).perform()
         
         logger.info(f"页面滚动完成，滚动距离: {scroll_distance if 'scroll_distance' in locals() else down_scroll_distance} 像素")
-        random_sleep(2, 5)
+        
+        # 增加滚动后的等待时间，并添加随机性
+        random_sleep(3, 7)
+        
+        # 检查新内容是否加载
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
+        )
         
         if comments_data:
-            latest_comments = comments_data[-10:]
-            logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新10条评论:")
+            latest_comments = comments_data[-5:]  # 只显示最新的5条评论
+            logger.info(f"当前已收集 {len(comments_data)} 条评论, 最新5条评论:")
             for idx, comment in enumerate(latest_comments, 1):
                 logger.info(f"{idx}. 用户: {comment['user_id']}, 内容: {comment['reply_content'][:30]}...")
         else:
@@ -425,6 +430,12 @@ def collect_comments(driver, video_url):
 
         if is_captcha_present(driver):
             solve_captcha(driver)
+
+        # 随机暂停，模拟人类行为
+        if random.random() < 0.2:  # 20%的概率
+            pause_time = random.uniform(5, 15)
+            logger.info(f"随机暂停 {pause_time:.2f} 秒")
+            time.sleep(pause_time)
 
     logger.info(f"评论收集完成，共收集 {len(comments_data)} 条评论")
     return comments_data
