@@ -310,12 +310,15 @@ def take_screenshot(driver, prefix="screenshot"):
     logger.info(f"截图已保存: {filename}")
 
 def main():
-    username = "xxx"  # 替换为您的用户名
-    password = "xxx"  # 替为您的密码
+    username = os.environ.get('TIKTOK_USERNAME')  # 从环境变量读取用户名
+    password = os.environ.get('TIKTOK_PASSWORD')  # 从环境变量读取密码
+    if not username or not password:
+        logger.error("未设置 TIKTOK_USERNAME 或 TIKTOK_PASSWORD 环境变量")
+        raise ValueError("请设置 TIKTOK_USERNAME 和 TIKTOK_PASSWORD 环境变量")
     keyword = "cat"  # 替换为您要搜索的关键字
     driver = setup_driver()
     try:
-        # login(driver, username, password)
+        login(driver, username, password)
         video_links = search_tiktok_videos(driver, keyword)
         all_comments = {}
         for video_url in video_links:
