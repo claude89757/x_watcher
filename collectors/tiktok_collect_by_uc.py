@@ -268,7 +268,8 @@ def search_tiktok_videos(driver, keyword):
     WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.TAG_NAME, 'video'))
     )
-    logger.info("视频加载成功")
+    logger.info("视频加载成功, 等待30秒")
+    time.sleep(30)
  
     # 使用BeautifulSoup解析页面
     logger.info("开始解析页面")
