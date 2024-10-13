@@ -109,7 +109,7 @@ class MySQLDatabase:
             CREATE TABLE IF NOT EXISTS tiktok_tasks (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 keyword VARCHAR(255) NOT NULL,
-                status ENUM('pending', 'running', 'completed', 'failed') DEFAULT 'pending',
+                status ENUM('pending', 'running', 'completed', 'failed', 'paused') DEFAULT 'pending',
                 max_videos INT DEFAULT 100,
                 max_comments_per_video INT DEFAULT 1000,
                 start_time TIMESTAMP NULL,
@@ -212,8 +212,30 @@ class MySQLDatabase:
 
     def update_tiktok_task_status(self, task_id, status):
         """更新TikTok任务状态"""
-        query = f"UPDATE tiktok_tasks SET status = '{status}' WHERE id = {task_id}"
-        return self.execute_update(query)
+        valid_statuses = ['pending', 'running', 'completed', 'failed', 'paused']
+        if status not in valid_statuses:
+            raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+        
+        query = f"UPDATE tiktok_tasks SET status = %s WHERE id = %s"
+        return self.execute_update(query, (status, task_id))
+
+    def delete_tiktok_task(self, task_id):
+        """删除TikTok任务及相关数据"""
+        queries = [
+            f"DELETE FROM tiktok_task_logs WHERE task_id = {task_id}",
+            f"DELETE FROM tiktok_comments WHERE video_id IN (SELECT id FROM tiktok_videos WHERE task_id = {task_id})",
+            f"DELETE FROM tiktok_videos WHERE task_id = {task_id}",
+            f"DELETE FROM tiktok_tasks WHERE id = {task_id}"
+        ]
+        try:
+            for query in queries:
+                self.execute_update(query)
+            self.connection.commit()
+            return True
+        except Exception as e:
+            logger.error(f"删除任务时出错: {e}")
+            self.connection.rollback()
+            return False
 
     def get_tiktok_task_status(self, task_id):
         """获取TikTok任务状态"""
@@ -269,7 +291,7 @@ class MySQLDatabase:
                     update_fields.append(f"{key} = {value}")
 
         if not update_fields:
-            logger.warning("没有提供有效的更新字段")
+            logger.warning("没有提供有效的更新字")
             return 0
 
         query = f"UPDATE tiktok_tasks SET {', '.join(update_fields)} WHERE id = {task_id}"
@@ -427,6 +449,53 @@ class MySQLDatabase:
         query = f"""
         SELECT * FROM tiktok_tasks 
         WHERE status = 'running' AND keyword = '{keyword}'
+        """
+        return self.execute_query(query)
+
+    def get_all_tiktok_tasks(self):
+        """获取所有TikTok任务"""
+        query = "SELECT * FROM tiktok_tasks ORDER BY created_at DESC"
+        return self.execute_query(query)
+
+    def get_tiktok_comments_by_task(self, task_id):
+        """获取指定任务的TikTok评论"""
+        query = f"""
+        SELECT c.* FROM tiktok_comments c
+        JOIN tiktok_videos v ON c.video_id = v.id
+        WHERE v.task_id = {task_id}
+        LIMIT 100
+        """
+        return self.execute_query(query)
+
+    def get_tiktok_task_logs(self, task_id):
+        """获取指定任务的日志"""
+        query = f"SELECT * FROM tiktok_task_logs WHERE task_id = {task_id} ORDER BY created_at DESC"
+        return self.execute_query(query)
+
+    def get_tiktok_tasks_by_keyword(self, keyword):
+        """获取指定关键词的TikTok任务"""
+        query = f"SELECT * FROM tiktok_tasks WHERE keyword LIKE '%{keyword}%' ORDER BY created_at DESC"
+        return self.execute_query(query)
+
+    def get_tiktok_comments_by_keyword(self, keyword):
+        """获取指定关键词的TikTok评论"""
+        query = f"""
+        SELECT c.* FROM tiktok_comments c
+        JOIN tiktok_videos v ON c.video_id = v.id
+        JOIN tiktok_tasks t ON v.task_id = t.id
+        WHERE t.keyword LIKE '%{keyword}%'
+        LIMIT 100
+        """
+        return self.execute_query(query)
+
+    def get_tiktok_task_logs_by_keyword(self, keyword):
+        """获取指定关键词的任务日志"""
+        query = f"""
+        SELECT l.* FROM tiktok_task_logs l
+        JOIN tiktok_tasks t ON l.task_id = t.id
+        WHERE t.keyword LIKE '%{keyword}%'
+        ORDER BY l.created_at DESC
+        LIMIT 100
         """
         return self.execute_query(query)
 

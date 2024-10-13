@@ -489,6 +489,16 @@ def process_task(task_id, keyword, server_ip):
 
         video_count = 0
         while True:
+            # 检查任务状态
+            task_status = db.get_tiktok_task_status(task_id)
+            if task_status == 'paused':
+                logger.info(f"任务 {task_id} 已暂停,等待恢复...")
+                time.sleep(60)  # 每分钟检查一次状态
+                continue
+            elif task_status in ['completed', 'failed']:
+                logger.info(f"任务 {task_id} 已结束,状态: {task_status}")
+                break
+
             logger.info(f"正在获取任务 {task_id} 的下一个待处理视频")
             next_video = db.get_next_pending_video(task_id, server_ip)
             if not next_video:
