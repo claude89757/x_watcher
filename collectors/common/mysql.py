@@ -31,7 +31,9 @@ class MySQLDatabase:
 
     def log_sql(self, query, params=None):
         """记录 SQL 查询"""
-        if params:
+        if isinstance(params, str):  # 处理批量插入的情况
+            formatted_query = f"{query} {params}"
+        elif params:
             # 使用 pymysql.converters.escape_string 来正确转义参数值
             escaped_params = tuple(escape_string(str(p)) for p in params)
             # 使用 SQL 的格式化方法来插入参数

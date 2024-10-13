@@ -417,7 +417,7 @@ def collect_comments(driver, video_url, video_id, keyword, db):
 
 def take_screenshot(driver, prefix="screenshot"):
     """保存当前页面的截图，文件名包含时间戳。"""
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{prefix}_{timestamp}.png"
     driver.save_screenshot(filename)
     logger.info(f"截图已保存: {filename}")
