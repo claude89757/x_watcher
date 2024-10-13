@@ -172,9 +172,31 @@ class MySQLDatabase:
         logger.info("所有必要的表已创建或已存在")
 
     def create_tiktok_task(self, keyword):
-        """创建新的TikTok任务"""
-        query = f"INSERT INTO tiktok_tasks (keyword) VALUES ('{keyword}')"
-        return self.execute_update(query)
+        """创建新的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
+        # 首先检查是否存在相同关键字的待处理任务
+        check_query = f"""
+        SELECT id FROM tiktok_tasks 
+        WHERE keyword = '{keyword}' AND status = 'pending'
+        LIMIT 1
+        """
+        existing_task = self.execute_query(check_query)
+        
+        if existing_task:
+            existing_task_id = existing_task[0]['id']
+            logger.info(f"已存在关键字为 '{keyword}' 的待处理任务,任务ID: {existing_task_id}")
+            return existing_task_id
+        
+        # 如果不存在,则创建新任务
+        insert_query = f"INSERT INTO tiktok_tasks (keyword) VALUES ('{keyword}')"
+        result = self.execute_update(insert_query)
+        
+        if result > 0:
+            new_task_id = self.execute_query("SELECT LAST_INSERT_ID() as id")[0]['id']
+            logger.info(f"成功创建关键字为 '{keyword}' 的新任务,任务ID: {new_task_id}")
+            return new_task_id
+        else:
+            logger.error(f"创建关键字为 '{keyword}' 的任务失败")
+            return None
 
     def update_tiktok_task_status(self, task_id, status):
         """更新TikTok任务状态"""
