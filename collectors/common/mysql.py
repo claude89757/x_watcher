@@ -211,7 +211,7 @@ class MySQLDatabase:
             return None
 
     def update_tiktok_task_status(self, task_id, status):
-        """更新TikTok任务状态"""
+        """更新TikTok任务态"""
         valid_statuses = ['pending', 'running', 'completed', 'failed', 'paused']
         if status not in valid_statuses:
             raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
@@ -370,7 +370,7 @@ class MySQLDatabase:
                     logger.info(f"成功更新新的待处理视频状态：ID {video_id}, URL {video_url}")
                     return {'id': video_id, 'video_url': video_url, 'status': 'processing'}
                 else:
-                    logger.info(f"任务 {task_id} 没有更多待处理的视频")
+                    logger.info(f"任务 {task_id} 没有更多待���理的视频")
                     return None
 
         except pymysql.Error as e:
@@ -474,30 +474,33 @@ class MySQLDatabase:
 
     def get_tiktok_tasks_by_keyword(self, keyword):
         """获取指定关键词的TikTok任务"""
-        query = f"SELECT * FROM tiktok_tasks WHERE keyword LIKE '%{keyword}%' ORDER BY created_at DESC"
-        return self.execute_query(query)
+        query = "SELECT * FROM tiktok_tasks WHERE keyword LIKE %s ORDER BY created_at DESC"
+        params = (f"%{keyword}%",)
+        return self.execute_query(query, params)
 
     def get_tiktok_comments_by_keyword(self, keyword):
         """获取指定关键词的TikTok评论"""
-        query = f"""
+        query = """
         SELECT c.* FROM tiktok_comments c
         JOIN tiktok_videos v ON c.video_id = v.id
         JOIN tiktok_tasks t ON v.task_id = t.id
-        WHERE t.keyword LIKE '%{keyword}%'
+        WHERE t.keyword LIKE %s
         LIMIT 100
         """
-        return self.execute_query(query)
+        params = (f"%{keyword}%",)
+        return self.execute_query(query, params)
 
     def get_tiktok_task_logs_by_keyword(self, keyword):
         """获取指定关键词的任务日志"""
-        query = f"""
+        query = """
         SELECT l.* FROM tiktok_task_logs l
         JOIN tiktok_tasks t ON l.task_id = t.id
-        WHERE t.keyword LIKE '%{keyword}%'
+        WHERE t.keyword LIKE %s
         ORDER BY l.created_at DESC
         LIMIT 100
         """
-        return self.execute_query(query)
+        params = (f"%{keyword}%",)
+        return self.execute_query(query, params)
 
 # 使用示例
 if __name__ == "__main__":
