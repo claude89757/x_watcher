@@ -237,7 +237,7 @@ class MySQLDatabase:
         """更新TikTok任务的服务器IP列表"""
         query = """
         UPDATE tiktok_tasks 
-        SET server_ips = IF(server_ips IS NULL, %s, CONCAT(server_ips, ',%s'))
+        SET server_ips = IF(server_ips IS NULL OR server_ips = '', %s, CONCAT(server_ips, ',%s'))
         WHERE id = %s
         """
         return self.execute_update(query, (server_ip, server_ip, task_id))
