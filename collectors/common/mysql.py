@@ -30,8 +30,14 @@ class MySQLDatabase:
     def log_sql(self, query, params=None):
         """记录 SQL 查询"""
         if params:
-            query = query.replace('%s', '{}').format(*params)
-        logger.info(f"执行 SQL: {query}")
+            # 使用 pymysql.escape_string 来正确转义参数值
+            escaped_params = tuple(pymysql.escape_string(str(p)) for p in params)
+            # 使用 SQL 的格式化方法来插入参数
+            formatted_query = query % escaped_params
+        else:
+            formatted_query = query
+        
+        logger.info(f"执行 SQL: {formatted_query}")
 
     def connect(self):
         """建立数据库连接"""
