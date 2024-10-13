@@ -300,7 +300,7 @@ class MySQLDatabase:
         """获取可用的TikTok账号"""
         query = """
         SELECT * FROM tiktok_account_infos 
-        WHERE status = 'normal' AND FIND_IN_SET(%s, login_ips)
+        WHERE status = 'normal' AND FIND_IN_SET('%s', login_ips)
         ORDER BY today_collect_count ASC, total_collect_count ASC
         LIMIT 1
         """
