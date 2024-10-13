@@ -12,6 +12,7 @@ import os
 import pymysql
 import logging
 from pymysql.converters import escape_string
+import datetime
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -249,7 +250,7 @@ class MySQLDatabase:
 
         for key, value in kwargs.items():
             if key in allowed_fields:
-                if isinstance(value, str):
+                if isinstance(value, (str, datetime.datetime, datetime.date)):
                     update_fields.append(f"{key} = '{value}'")
                 else:
                     update_fields.append(f"{key} = {value}")
@@ -285,12 +286,12 @@ class MySQLDatabase:
 
     def get_pending_tiktok_task_by_keyword(self, keyword):
         """获取指定关键词的待处理TikTok任务"""
-        query = """
+        query = f"""
         SELECT * FROM tiktok_tasks 
-        WHERE status = 'pending' AND keyword = %s 
+        WHERE status = 'pending' AND keyword = '{keyword}' 
         ORDER BY created_at ASC LIMIT 1
         """
-        return self.execute_query(query, (keyword,))
+        return self.execute_query(query)
 
     def get_next_pending_video(self, task_id, server_ip):
         """获取下一个待处理的视频"""
@@ -397,13 +398,13 @@ if __name__ == "__main__":
     db.initialize_tables()  # 初始化表
 
     # 查询示例
-    results = db.execute_query("SELECT * FROM your_table WHERE condition = %s", ("value",))
+    results = db.execute_query("SELECT * FROM your_table WHERE condition = '%s'", ("value",))
     if results:
         for row in results:
             print(row)
 
     # 更新示例
-    affected_rows = db.execute_update("UPDATE your_table SET column = %s WHERE id = %s", ("new_value", 1))
+    affected_rows = db.execute_update("UPDATE your_table SET column = '%s' WHERE id = %s", ("new_value", 1))
     print(f"更新影响的行数: {affected_rows}")
 
     # 批量插入示例
