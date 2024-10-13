@@ -298,7 +298,7 @@ def search_tiktok_videos(driver, keyword):
         index += 1
     return video_links
 
-def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
+def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
     driver.get(video_url)
@@ -319,7 +319,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
     )
 
     comments_data = []
-    comments_batch = []  # 用于缓存要存储到数据库的评论
+    comments_batch = []
     scroll_attempts = 0
     max_scroll_attempts = 20
     consecutive_no_new_comments = 0
@@ -384,9 +384,14 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                                 inserted_count += 1
                         logger.info(f"尝试存储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
                         comments_batch.clear()  # 清空缓存
+                        
+                        # 检查任务状态
+                        task_status = db.get_tiktok_task_status(task_id)
+                        if task_status != 'running':
+                            logger.info(f"任务状态为 {task_status}，停止收集评论")
+                            return comments_data
                     except Exception as e:
                         logger.error(f"存储评论到数据库时发生错误: {str(e)}")
-                        # 错误发生时不清空缓存，等待下一次尝试
 
         # 滚动页面和其他逻辑保持不变
         if consecutive_no_new_comments >= max_consecutive_no_new:
@@ -512,7 +517,7 @@ def process_task(task_id, keyword, server_ip):
                 logger.info(f"开始处理新的视频：ID {video_id}, URL {video_url}")
 
             try:
-                comments = collect_comments(driver, video_url, video_id, keyword, db, user_id)
+                comments = collect_comments(driver, video_url, video_id, keyword, db, user_id, task_id)
                 db.mark_video_completed(video_id)
                 video_count += 1
                 db.update_task_progress(task_id, 1)
