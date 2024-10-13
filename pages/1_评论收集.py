@@ -195,7 +195,7 @@ with tab1:
                         )
                         task_num += 1
                         # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-                        # (todo(claudexie): 查询进度)等待数据收集��异等待
+                        # (todo(claudexie): 查询进度)等待数据收集��等待
                         st.success(data_collection_complete_message)
                         time.sleep(3)
                         st.rerun()
@@ -347,7 +347,7 @@ with tab2:
         st.metric("已收集评论数", stats['comment_count'])
  
     # 从环境变量获取API地址
-    TIKTOK_API_URL = os.environ.get('TIKTOK_WORKER_001_API_URL', 'http://localhost:5000')
+    TIKTOK_WORKER_001_API_URL = os.environ.get('TIKTOK_WORKER_001_API_URL', 'http://localhost:5000')
 
     # 定义缓存文件路径
     KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
@@ -376,7 +376,7 @@ with tab2:
     if submit_task:
         try:
             response = requests.post(
-                TIKTOK_API_URL,
+                f"{TIKTOK_WORKER_001_API_URL}/create_tiktok_task",
                 json={"keyword": search_keyword},
                 headers={"Content-Type": "application/json"}
             )
@@ -426,10 +426,17 @@ with tab2:
                             st.rerun()
                     elif task['status'] == 'paused':
                         if st.button('▶️ 继续', key=f'resume_{task["id"]}'):
-                            db.connect()
-                            db.update_tiktok_task_status(task['id'], 'running')
-                            db.disconnect()
-                            st.rerun()
+                            try:
+                                response = requests.post(
+                                    f"{TIKTOK_WORKER_001_API_URL}/resume_tiktok_task",
+                                    json={"task_id": task['id']},
+                                    headers={"Content-Type": "application/json"}
+                                )
+                                response.raise_for_status()
+                                st.success(f"成功恢复任务 ID: {task['id']}")
+                                st.rerun()
+                            except requests.RequestException as e:
+                                st.error(f"恢复任务失败: {str(e)}")
                 with col2:
                     if st.button('🗑️ 删除', key=f'delete_{task["id"]}'):
                         db.connect()

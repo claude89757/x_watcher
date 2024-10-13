@@ -35,6 +35,11 @@ def trigger_tiktok_task():
     db = MySQLDatabase()
     db.connect()
     try:
+        # 检查当前主机运行的任务数量
+        running_tasks = db.get_running_tiktok_task_by_ip(public_ip)
+        if len(running_tasks) >= 2:
+            return jsonify({"error": "Maximum number of concurrent tasks (2) reached for this host"}), 429
+
         # 检查是否有正在运行的任务
         running_tasks = db.get_running_tiktok_task_by_keyword(keyword)
         if running_tasks:
@@ -53,6 +58,37 @@ def trigger_tiktok_task():
         threading.Thread(target=process_task, args=(task_id, keyword, public_ip)).start()
 
         return jsonify({"message": "Task triggered successfully", "task_id": task_id}), 200
+    finally:
+        db.disconnect()
+
+@app.route('/resume_tiktok_task', methods=['POST'])
+def resume_tiktok_task():
+    task_id = request.json.get('task_id')
+    if not task_id:
+        return jsonify({"error": "Missing task_id parameter"}), 400
+
+    public_ip = get_public_ip()
+    if not public_ip:
+        return jsonify({"error": "Failed to get public IP"}), 500
+
+    db = MySQLDatabase()
+    db.connect()
+    try:
+        task = db.get_tiktok_task_by_id(task_id)
+        if not task:
+            return jsonify({"error": "Task not found"}), 404
+
+        if task['status'] != 'paused':
+            return jsonify({"error": "Task is not paused"}), 400
+
+        # 更新任务状态为running
+        db.update_tiktok_task_status(task_id, 'running')
+        db.update_tiktok_task_server_ip(task_id, public_ip)
+
+        # 在新线程中处理任务
+        threading.Thread(target=process_task, args=(task_id, task['keyword'], public_ip)).start()
+
+        return jsonify({"message": "Task resumed successfully", "task_id": task_id}), 200
     finally:
         db.disconnect()
 

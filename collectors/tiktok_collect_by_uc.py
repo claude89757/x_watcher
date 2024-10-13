@@ -497,9 +497,8 @@ def process_task(task_id, keyword, server_ip):
             # 检查任务状态
             task_status = db.get_tiktok_task_status(task_id)
             if task_status == 'paused':
-                logger.info(f"任务 {task_id} 已暂停,等待恢复...")
-                time.sleep(60)  # 每分钟检查一次状态
-                continue
+                logger.info(f"任务 {task_id} 已暂停, 先退出浏览器...")
+                break
             elif task_status in ['completed', 'failed']:
                 logger.info(f"任务 {task_id} 已结束,状态: {task_status}")
                 break
@@ -526,7 +525,8 @@ def process_task(task_id, keyword, server_ip):
                 db.update_tiktok_video_status(video_id, 'failed')
 
         logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
-        db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
+        if task_status == 'running':
+            db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
 
     except Exception as e:
         logger.error(f"处理任务时发生错误: {str(e)}")

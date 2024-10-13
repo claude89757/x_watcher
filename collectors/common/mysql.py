@@ -524,7 +524,7 @@ class MySQLDatabase:
         return stats
 
     def get_earliest_running_task_start_time(self):
-        """获取最早的运行中任务的开始时间"""
+        """获取最早的运行中任务的开时间"""
         query = """
         SELECT MIN(start_time) as earliest_start_time
         FROM tiktok_tasks
@@ -558,6 +558,12 @@ class MySQLDatabase:
         params = (f"%{keyword}%",)
         result = self.execute_query(query, params)
         return result[0]['processed_videos'] if result else 0
+
+    def get_tiktok_task_by_id(self, task_id):
+        """获取指定ID的TikTok任务"""
+        query = f"SELECT * FROM tiktok_tasks WHERE id = {task_id}"
+        result = self.execute_query(query)
+        return result[0] if result else None
 
 # 使用示例
 if __name__ == "__main__":
