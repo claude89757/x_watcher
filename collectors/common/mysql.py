@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 class MySQLDatabase:
     def __init__(self):
         self.host = os.environ['MYSQL_HOST']
+        self.port = int(os.environ.get('MYSQL_PORT', 29838))  # 添加端口配置，默认为29838
         self.user = os.environ['MYSQL_USER']
         self.password = os.environ['MYSQL_PASSWORD']
         self.database = os.environ['MYSQL_DATABASE']
@@ -31,12 +32,13 @@ class MySQLDatabase:
         try:
             self.connection = pymysql.connect(
                 host=self.host,
+                port=self.port,  # 添加端口参数
                 user=self.user,
                 password=self.password,
                 database=self.database,
                 cursorclass=pymysql.cursors.DictCursor
             )
-            logger.info("成功连接到MySQL数据库")
+            logger.info(f"成功连接到MySQL数据库，地址：{self.host}:{self.port}")
         except pymysql.Error as e:
             logger.error(f"连接数据库时出错: {e}")
 
