@@ -17,11 +17,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class MySQLDatabase:
-    def __init__(self, host, user, password, database):
-        self.host = os.environ.get('MYSQL_HOST', host)
-        self.user = os.environ.get('MYSQL_USER', user)
-        self.password = os.environ.get('MYSQL_PASSWORD', password)
-        self.database = os.environ.get('MYSQL_DATABASE', database)
+    def __init__(self):
+        self.host = os.environ['MYSQL_HOST']
+        self.user = os.environ['MYSQL_USER']
+        self.password = os.environ['MYSQL_PASSWORD']
+        self.database = os.environ['MYSQL_DATABASE']
+        if not all([self.host, self.user, self.password, self.database]):
+            raise ValueError("缺少必要的MySQL连接环境变量配置")
         self.connection = None
 
     def connect(self):
