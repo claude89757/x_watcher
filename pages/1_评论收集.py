@@ -425,16 +425,16 @@ with tab2:
         st.subheader("任务状态")
         tasks = db.get_tiktok_tasks_by_keyword(search_keyword)
         if tasks:
-            task_data = []
+            st.write(f"找到 {len(tasks)} 个相关任务")
             for task in tasks:
-                task_data.append({
-                    "任务ID": task['id'],
-                    "关键词": task['keyword'],
-                    "状态": task['status'],
-                    "创建时间": task['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
-                    "更新时间": task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
-                })
-            st.table(task_data)
+                with st.expander(f"任务ID: {task['id']} | 关键词: {task['keyword']} | 状态: {task['status']}"):
+                    st.write(f"创建时间: {task['created_at'].strftime('%Y-%m-%d %H:%M:%S')}")
+                    st.write(f"更新时间: {task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')}")
+                    st.write(f"处理视频数: {task['total_videos_processed']}")
+                    if task['start_time']:
+                        st.write(f"开始时间: {task['start_time'].strftime('%Y-%m-%d %H:%M:%S')}")
+                    if task['end_time']:
+                        st.write(f"结束时间: {task['end_time'].strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             st.write("未找到相关任务")
 
@@ -443,15 +443,13 @@ with tab2:
         comments = db.get_tiktok_comments_by_keyword(search_keyword)
         
         if comments:
-            comment_data = []
+            st.write(f"找到 {len(comments)} 条相关评论")
             for comment in comments:
-                comment_data.append({
-                    "用户ID": comment['user_id'],
-                    "评论内容": comment['reply_content'],
-                    "评论时间": comment['reply_time'],
-                    "视频URL": comment['video_url']
-                })
-            st.table(comment_data)
+                with st.expander(f"用户ID: {comment['user_id']} | 评论时间: {comment['reply_time']}"):
+                    st.write(f"评论内容: {comment['reply_content']}")
+                    st.write(f"视频URL: {comment['video_url']}")
+                    st.write(f"采集时间: {comment['collected_at'].strftime('%Y-%m-%d %H:%M:%S')}")
+                    st.write(f"采集者ID: {comment['collected_by']}")
         else:
             st.write("暂无相关评论")
 
@@ -459,14 +457,10 @@ with tab2:
         st.subheader("任务日志")
         logs = db.get_tiktok_task_logs_by_keyword(search_keyword)
         if logs:
-            log_data = []
+            st.write(f"找到 {len(logs)} 条相关日志")
             for log in logs:
-                log_data.append({
-                    "时间": log['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
-                    "类型": log['log_type'],
-                    "消息": log['message']
-                })
-            st.table(log_data)
+                with st.expander(f"{log['created_at'].strftime('%Y-%m-%d %H:%M:%S')} | 类型: {log['log_type']}"):
+                    st.write(f"消息: {log['message']}")
         else:
             st.write("暂无相关日志")
 
