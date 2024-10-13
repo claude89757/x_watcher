@@ -454,11 +454,14 @@ def process_task(task_id, keyword, server_ip):
 
         video_count = 0
         while True:
+            logger.info(f"正在获取任务 {task_id} 的下一个待处理视频")
             next_video = db.get_next_pending_video(task_id, server_ip)
             if not next_video:
+                logger.info(f"任务 {task_id} 没有更多待处理的视频，退出循环")
                 break  # 没有更多待处理的视频
 
             video_id, video_url = next_video['id'], next_video['video_url']
+            logger.info(f"获取到待处理视频：ID {video_id}, URL {video_url}")
             try:
                 comments = collect_comments(driver, video_url, video_id, keyword, db, user_id)
                 db.mark_video_completed(video_id)
