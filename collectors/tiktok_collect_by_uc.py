@@ -44,6 +44,7 @@ import platform
 import json
 from datetime import datetime, timedelta
 import requests
+import glob
 
 def setup_driver():
     """设置并返回一个Selenium WebDriver实例。"""
@@ -177,13 +178,6 @@ def check_login_status(driver):
         logger.info(f"登录状态检查失败: {str(e)}")
         return False
 
-def refresh_login(driver, username, password):
-    """刷新登录状态"""
-    logger.info("开始刷新登录状态")
-    login(driver, username, password)
-    save_cookies(driver, username)
-    update_last_login_time()
-
 def update_last_login_time():
     """更新最后登录时间"""
     with open("last_login.json", "w") as f:
@@ -198,91 +192,62 @@ def get_last_login_time():
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
         return None
 
-def login(driver, username, password):
-    """使用给定的用户名和密码登录TikTok。"""
+def login_by_local_cookies(driver):
+    """尝试使用本地cookies文件登录TikTok"""
     # 清理所有cookies
     driver.delete_all_cookies()
     logger.info("已清理所有cookies")
 
-    last_login = get_last_login_time()
-    if last_login and datetime.now() - last_login < timedelta(days=5):
-        if load_cookies(driver, username) and check_login_status(driver):
-            logger.info("使用有效的Cookies成功登录")
-            return
+    # 遍历当前目录查找cookies文件
+    cookie_files = glob.glob('*cookies.json')
     
-    logger.info("需要刷新登录状态")
-    if load_cookies(driver, username):
-        logger.info("用Cookies登录中...")
-        driver.get("https://www.tiktok.com/foryou")
-        logger.info("使用Cookies登录")
+    if not cookie_files:
+        error_message = "当前目录下没有找到cookies文件"
+        logger.error(error_message)
+        raise Exception(error_message)
+
+    for cookie_file in cookie_files:
+        logger.info(f"尝试加载cookies文件: {cookie_file}")
         try:
+            with open(cookie_file, 'r') as file:
+                cookies = json.load(file)
+            
+            # 导航到TikTok主页
+            driver.get("https://www.tiktok.com")
+            logger.info("已导航到TikTok主页")
+            
+            # 等待页面加载完成
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-            logger.info(f"当前页面URL: {driver.current_url}")
-            logger.info(f"当前页面标题: {driver.title}")
             
-            # 检查是否存在登录状态的元素
-            try:
-                profile_icon = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-e2e="profile-icon"]'))
-                )
-                logger.info("检测到用户头像，登录成功")
-                return
-            except TimeoutException:
-                logger.info("未检测到用户头像，可能登录失败")
+            # 添加cookies
+            for cookie in cookies:
+                # 移除可能导致问题的字段
+                cookie.pop('sameSite', None)
+                cookie.pop('storeId', None)
+                cookie.pop('origin', None)
+                
+                try:
+                    driver.add_cookie(cookie)
+                except Exception as e:
+                    logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
             
-            if "foryou" in driver.current_url or "For You" in driver.title:
-                logger.info("使用Cookies登录成功")
-                return
+            # 刷新页面以应用cookies
+            driver.refresh()
+            
+            # 检查登录状态
+            if check_login_status(driver):
+                logger.info(f"使用 {cookie_file} 成功登录")
+                return  # 登录成功,退出函数
             else:
-                logger.info("Cookies无效，页面未显示预期内容")
-                logger.info(f"页面源代码: {driver.page_source[:1000]}...")  # 打印前1000个字符的页面源代码
+                logger.info(f"{cookie_file} 登录失败")
+        
         except Exception as e:
-            logger.error(f"使Cookies登录时发生错误: {str(e)}")
-        
-        logger.info("Cookies无效，继续使用用户名和密码登录")
-    else:
-        logger.info("未找到Cookies，继续使用用户名和密码登录")
+            logger.error(f"使用 {cookie_file} 登录时发生错误: {str(e)}")
 
-    login_url = "https://www.tiktok.com/login/phone-or-email/email?lang=en"
-    driver.get(login_url)
-    logger.info("访问登录页面")
-
-    # 如果Cookies登录失败，继续使用用户名和密码登录的原有逻辑
-    try:
-        # 等待用户名输入框加载
-        username_input = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, 'username'))
-        )
-        password_input = driver.find_element(By.CSS_SELECTOR, 'input[type="password"]')
-        login_button = driver.find_element(By.CSS_SELECTOR, 'button[data-e2e="login-button"]')
-
-        # 模拟逐字输入用户名和密码
-        for char in username:
-            username_input.send_keys(char)
-            random_sleep(0.1, 0.3)
-        for char in password:
-            password_input.send_keys(char)
-            random_sleep(0.1, 0.3)
-        logger.info("输入用户名和密码")
-
-        # 这里需要人工介入处理登录过程
-        logger.info("请人工操作完成登录")
-        input("登录完成后请按回车键继续...")
-        
-        # 检查是否功登录到For You页面
-        if "foryou" in driver.current_url:
-            logger.info("登录成功，已跳转到For You页面")
-        else:
-            logger.warning("可能未成功登录,请检查当前页面")
-
-        # 保存Cookies
-        save_cookies(driver, username)
-    except Exception as e:
-        logger.error(f"登录失败: {traceback.format_exc()}")
-        raise
-
-    # 登录成功后更新最后登录时间
-    update_last_login_time()
+    # 如果所有cookies文件都尝试失败,抛出异常
+    error_message = "所有cookies文件都无法成功登录"
+    logger.error(error_message)
+    raise Exception(error_message)
 
 def search_tiktok_videos(driver, keyword):
     """在TikTok上搜索关键字并返回视频链接列表。"""
@@ -470,22 +435,14 @@ def process_task(task_id, keyword, server_ip):
     db.connect()
     driver = None
     try:
-        logger.info(f"开始处理任务 ID: {task_id}, 关键词: {keyword}, 服务器IP: {server_ip}")
+        logger.info(f"开始处理任务 ID: {task_id}, 关键��: {keyword}, 服务器IP: {server_ip}")
         db.update_tiktok_task_details(task_id, status='running', start_time=datetime.now())
         db.add_tiktok_task_log(task_id, 'info', f"开始处理TikTok任务: {keyword}")
 
-        account = db.get_available_tiktok_account(server_ip)
-        if not account:
-            raise ValueError("没有可用的TikTok账号")
-
-        username = account['username']
-        password = account['password']
-
         driver = setup_driver()
-        login(driver, username, password)
-        if not check_login_status(driver):
-            logger.info("登录状态无效，尝试刷新登录")
-            refresh_login(driver, username, password)
+
+        # 尝试使用本地cookies登录
+        login_by_local_cookies(driver)
 
         # 搜索视频并添加到数据库
         video_links = search_tiktok_videos(driver, keyword)
@@ -533,10 +490,8 @@ def main():
         driver.delete_all_cookies()
         logger.info("已清理所有cookies")
 
-        login(driver, username, password)
-        if not check_login_status(driver):
-            logger.info("登录状态无效，尝试刷新登录")
-            refresh_login(driver, username, password)
+        # 尝试使用本地cookies登录
+        login_by_local_cookies(driver)
         
         video_links = search_tiktok_videos(driver, keyword)
         all_comments = {}
