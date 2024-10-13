@@ -152,6 +152,7 @@ class MySQLDatabase:
                 is_pinned BOOLEAN DEFAULT FALSE,
                 parent_comment_id INT NULL,
                 collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                collected_by VARCHAR(255),
                 FOREIGN KEY (video_id) REFERENCES tiktok_videos(id),
                 FOREIGN KEY (parent_comment_id) REFERENCES tiktok_comments(id)
             )
@@ -217,11 +218,11 @@ class MySQLDatabase:
         query = f"INSERT INTO tiktok_videos (task_id, video_url, keyword) VALUES ({task_id}, '{video_url}', '{keyword}')"
         return self.execute_update(query)
 
-    def add_tiktok_comment(self, video_id, user_id, reply_content, reply_time, keyword):
+    def add_tiktok_comment(self, video_id, user_id, reply_content, reply_time, keyword, collected_by):
         """添加TikTok评论"""
         query = f"""
-        INSERT INTO tiktok_comments (video_id, user_id, reply_content, reply_time, keyword)
-        VALUES ({video_id}, '{user_id}', '{reply_content}', '{reply_time}', '{keyword}')
+        INSERT INTO tiktok_comments (video_id, user_id, reply_content, reply_time, keyword, collected_by)
+        VALUES ({video_id}, '{user_id}', '{reply_content}', '{reply_time}', '{keyword}', '{collected_by}')
         """
         return self.execute_update(query)
 
@@ -324,27 +325,6 @@ class MySQLDatabase:
     def mark_video_completed(self, video_id):
         """标记视频为已完成"""
         query = f"UPDATE tiktok_videos SET status = 'completed' WHERE id = {video_id}"
-        return self.execute_update(query)
-
-    def get_available_tiktok_account(self, ip):
-        """获取可用的TikTok账号"""
-        query = f"""
-        SELECT * FROM tiktok_account_infos 
-        WHERE status = 'normal' AND FIND_IN_SET('{ip}', login_ips)
-        ORDER BY today_collect_count ASC, total_collect_count ASC
-        LIMIT 1
-        """
-        result = self.execute_query(query)
-        return result[0] if result else None
-
-    def update_tiktok_account_collect_count(self, username):
-        """更新TikTok账号的收集次数"""
-        query = f"""
-        UPDATE tiktok_account_infos
-        SET today_collect_count = today_collect_count + 1,
-            total_collect_count = total_collect_count + 1
-        WHERE username = '{username}'
-        """
         return self.execute_update(query)
 
     def get_tiktok_videos_for_task(self, task_id, limit=100):

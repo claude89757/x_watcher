@@ -289,7 +289,7 @@ def search_tiktok_videos(driver, keyword):
         index += 1
     return video_links
 
-def collect_comments(driver, video_url, video_id, keyword, db):
+def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
     driver.get(video_url)
@@ -404,11 +404,12 @@ def collect_comments(driver, video_url, video_id, keyword, db):
                 # 批量插入评论到数据库
                 for batch_comment in comments_batch:
                     db.add_tiktok_comment(
-                        video_id=video_id,  # 假设你有video_id
+                        video_id=video_id,
                         user_id=batch_comment['user_id'],
                         reply_content=batch_comment['reply_content'],
                         reply_time=batch_comment['reply_time'],
-                        keyword=keyword  # 假设你有keyword
+                        keyword=keyword,
+                        collected_by=collected_by
                     )
                 logger.info("已将50条评论存储到数据库中")
                 comments_batch.clear()  # 清空缓存
@@ -421,7 +422,8 @@ def collect_comments(driver, video_url, video_id, keyword, db):
                 user_id=batch_comment['user_id'],
                 reply_content=batch_comment['reply_content'],
                 reply_time=batch_comment['reply_time'],
-                keyword=keyword
+                keyword=keyword,
+                collected_by=collected_by
             )
         logger.info(f"已将剩余的 {len(comments_batch)} 条评论存储到数据库中")
 
@@ -471,7 +473,7 @@ def process_task(task_id, keyword, server_ip):
 
             video_id, video_url = next_video['id'], next_video['video_url']
             try:
-                comments = collect_comments(driver, video_url, video_id, keyword, db)
+                comments = collect_comments(driver, video_url, video_id, keyword, db, user_id)
                 db.mark_video_completed(video_id)
                 video_count += 1
                 db.update_task_progress(task_id, 1)
