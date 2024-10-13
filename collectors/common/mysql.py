@@ -5,12 +5,11 @@
 @Author  : claude by cursor
 @File    : mysql.py
 @Software: PyCharm
-@Description: MySQL数据库操作的通用模块
+@Description: MySQL数据库操作的通用模块，使用pymysql库
 """
 
 import os
-import mysql.connector
-from mysql.connector import Error
+import pymysql
 import logging
 
 # 配置日志
@@ -28,72 +27,57 @@ class MySQLDatabase:
     def connect(self):
         """建立数据库连接"""
         try:
-            self.connection = mysql.connector.connect(
+            self.connection = pymysql.connect(
                 host=self.host,
                 user=self.user,
                 password=self.password,
-                database=self.database
+                database=self.database,
+                cursorclass=pymysql.cursors.DictCursor
             )
-            if self.connection.is_connected():
-                logger.info("成功连接到MySQL数据库")
-        except Error as e:
+            logger.info("成功连接到MySQL数据库")
+        except pymysql.Error as e:
             logger.error(f"连接数据库时出错: {e}")
 
     def disconnect(self):
         """关闭数据库连接"""
-        if self.connection and self.connection.is_connected():
+        if self.connection:
             self.connection.close()
             logger.info("数据库连接已关闭")
 
     def execute_query(self, query, params=None):
         """执行查询操作"""
         try:
-            cursor = self.connection.cursor(dictionary=True)
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            result = cursor.fetchall()
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, params or ())
+                result = cursor.fetchall()
             return result
-        except Error as e:
+        except pymysql.Error as e:
             logger.error(f"执行查询时出错: {e}")
             return None
-        finally:
-            if cursor:
-                cursor.close()
 
     def execute_update(self, query, params=None):
         """执行更新操作（插入、更新、删除）"""
         try:
-            cursor = self.connection.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, params or ())
             self.connection.commit()
             return cursor.rowcount
-        except Error as e:
+        except pymysql.Error as e:
             logger.error(f"执行更新时出错: {e}")
             self.connection.rollback()
             return -1
-        finally:
-            if cursor:
-                cursor.close()
 
     def insert_many(self, query, data):
         """批量插入数据"""
         try:
-            cursor = self.connection.cursor()
-            cursor.executemany(query, data)
+            with self.connection.cursor() as cursor:
+                cursor.executemany(query, data)
             self.connection.commit()
             return cursor.rowcount
-        except Error as e:
+        except pymysql.Error as e:
             logger.error(f"批量插入数据时出错: {e}")
             self.connection.rollback()
             return -1
-        finally:
-            if cursor:
-                cursor.close()
 
     def initialize_tables(self):
         """初始化并创建所需的表"""
@@ -329,6 +313,28 @@ class MySQLDatabase:
         data = [(task_id, url, keyword) for url in video_urls]
         return self.insert_many(query, data)
 
+    def get_and_lock_pending_task(self, server_ip):
+        """获取并锁定一个待处理的任务"""
+        query = """
+        UPDATE tiktok_tasks
+        SET status = 'running', server_ips = %s
+        WHERE id = (
+            SELECT id FROM (
+                SELECT id FROM tiktok_tasks
+                WHERE status = 'pending'
+                ORDER BY created_at ASC
+                LIMIT 1
+                FOR UPDATE SKIP LOCKED
+            ) AS subquery
+        )
+        """
+        with self.connection.cursor() as cursor:
+            cursor.execute(query, (server_ip,))
+            if cursor.rowcount > 0:
+                cursor.execute("SELECT id, keyword FROM tiktok_tasks WHERE id = LAST_INSERT_ID()")
+                return cursor.fetchone()
+        return None
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
@@ -350,4 +356,3 @@ if __name__ == "__main__":
     inserted_rows = db.insert_many("INSERT INTO your_table (column1, column2) VALUES (%s, %s)", data)
     print(f"插入的行数: {inserted_rows}")
     db.disconnect()
-
