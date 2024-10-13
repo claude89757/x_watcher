@@ -490,7 +490,7 @@ class MySQLDatabase:
         JOIN tiktok_videos v ON c.video_id = v.id
         JOIN tiktok_tasks t ON v.task_id = t.id
         WHERE t.keyword LIKE %s
-        LIMIT 100
+        LIMIT 99999
         """
         params = (f"%{keyword}%",)
         return self.execute_query(query, params)
@@ -534,6 +534,30 @@ class MySQLDatabase:
         if result and result[0]['earliest_start_time']:
             return result[0]['earliest_start_time']
         return None
+
+    def get_total_videos_for_keyword(self, keyword):
+        """获取指定关键词的总视频数"""
+        query = """
+        SELECT COUNT(*) as total_videos
+        FROM tiktok_videos v
+        JOIN tiktok_tasks t ON v.task_id = t.id
+        WHERE t.keyword LIKE %s
+        """
+        params = (f"%{keyword}%",)
+        result = self.execute_query(query, params)
+        return result[0]['total_videos'] if result else 0
+
+    def get_processed_videos_for_keyword(self, keyword):
+        """获取指定关键词的已处理视频数"""
+        query = """
+        SELECT COUNT(*) as processed_videos
+        FROM tiktok_videos v
+        JOIN tiktok_tasks t ON v.task_id = t.id
+        WHERE t.keyword LIKE %s AND v.status IN ('completed', 'failed')
+        """
+        params = (f"%{keyword}%",)
+        result = self.execute_query(query, params)
+        return result[0]['processed_videos'] if result else 0
 
 # 使用示例
 if __name__ == "__main__":

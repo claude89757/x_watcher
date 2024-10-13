@@ -195,7 +195,7 @@ with tab1:
                         )
                         task_num += 1
                         # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-                        # (todo(claudexie): 查询进度)等待数据收集��成，异等待
+                        # (todo(claudexie): 查询进度)等待数据收集��，异等待
                         st.success(data_collection_complete_message)
                         time.sleep(3)
                         st.rerun()
@@ -444,9 +444,15 @@ with tab2:
         db = MySQLDatabase()
         db.connect()
 
+        # 获取任务总视频数
+        total_videos = db.get_total_videos_for_keyword(search_keyword)
+
         # 动态展示评论数据
         st.subheader("实时评论数据")
         comments_placeholder = st.empty()
+        
+        # 添加进度条
+        progress_bar = st.progress(0)
         
         # 任务日志
         st.subheader("任务日志")
@@ -465,6 +471,11 @@ with tab2:
                 comments_placeholder.dataframe(comment_df, use_container_width=True)
             else:
                 comments_placeholder.write("暂无相关评论")
+
+            # 更新进度条
+            processed_videos = db.get_processed_videos_for_keyword(search_keyword)
+            progress = processed_videos / total_videos if total_videos > 0 else 0
+            progress_bar.progress(progress)
 
             # 获取任务日志
             logs = db.get_tiktok_task_logs_by_keyword(search_keyword)
