@@ -15,6 +15,7 @@ import random
 
 import pandas as pd
 import streamlit as st
+import requests
 
 from common.config import CONFIG
 from common.cos import list_latest_files
@@ -328,20 +329,30 @@ with tab1:
 with tab2:
     st.header("TikTok评论收集")
     
+    # 从环境变量获取API地址
+    TIKTOK_API_URL = os.environ.get('TIKTOK_API_URL', 'http://localhost:5000')
+
     # 创建任务表单
     with st.form("create_tiktok_task"):
         keyword = st.text_input("搜索关键词")
         submit_task = st.form_submit_button("创建任务")
 
     if submit_task:
-        db = MySQLDatabase()
-        db.connect()
-        task_id = db.create_tiktok_task(keyword)
-        if task_id:
-            st.success(f"成功创建任务,ID: {task_id}")
-        else:
-            st.error("创建任务失败")
-        db.disconnect()
+        try:
+            response = requests.post(
+                TIKTOK_API_URL,
+                json={"keyword": keyword},
+                headers={"Content-Type": "application/json"}
+            )
+            response.raise_for_status()  # 如果请求失败,会抛出异常
+            result = response.json()
+            task_id = result.get("task_id")
+            if task_id:
+                st.success(f"成功创建任务,ID: {task_id}")
+            else:
+                st.error("创建任务失败: 未返回任务ID")
+        except requests.RequestException as e:
+            st.error(f"创建任务失败: {str(e)}")
 
     # 任务管理
     st.subheader("任务管理")
