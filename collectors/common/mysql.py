@@ -153,6 +153,7 @@ class MySQLDatabase:
                 parent_comment_id INT NULL,
                 collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 collected_by VARCHAR(255),
+                video_url VARCHAR(255),
                 FOREIGN KEY (video_id) REFERENCES tiktok_videos(id),
                 FOREIGN KEY (parent_comment_id) REFERENCES tiktok_comments(id)
             )
@@ -218,13 +219,13 @@ class MySQLDatabase:
         query = f"INSERT INTO tiktok_videos (task_id, video_url, keyword) VALUES ({task_id}, '{video_url}', '{keyword}')"
         return self.execute_update(query)
 
-    def add_tiktok_comment(self, video_id, user_id, reply_content, reply_time, keyword, collected_by):
+    def add_tiktok_comment(self, video_id, user_id, reply_content, reply_time, keyword, collected_by, video_url):
         """添加TikTok评论"""
         query = """
-        INSERT INTO tiktok_comments (video_id, user_id, reply_content, reply_time, keyword, collected_by)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO tiktok_comments (video_id, user_id, reply_content, reply_time, keyword, collected_by, video_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        params = (video_id, user_id, reply_content, reply_time, keyword, collected_by)
+        params = (video_id, user_id, reply_content, reply_time, keyword, collected_by, video_url)
         return self.execute_update(query, params)
 
     def add_tiktok_task_log(self, task_id, log_type, message):

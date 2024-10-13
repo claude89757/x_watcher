@@ -362,7 +362,8 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                     'reply_content': reply_content,
                     'reply_time': reply_time,
                     'keyword': keyword,
-                    'collected_by': collected_by
+                    'collected_by': collected_by,
+                    'video_url': video_url
                 })
                 
                 # 如果缓存批次达到50条，尝试存储到数据库
@@ -375,7 +376,8 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                                 reply_content=batch_comment['reply_content'],
                                 reply_time=batch_comment['reply_time'],
                                 keyword=batch_comment['keyword'],
-                                collected_by=batch_comment['collected_by']
+                                collected_by=batch_comment['collected_by'],
+                                video_url=batch_comment['video_url']
                             )
                         logger.info(f"成功存储50条评论到数据库")
                         comments_batch.clear()  # 清空缓存
@@ -434,7 +436,8 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                     reply_content=batch_comment['reply_content'],
                     reply_time=batch_comment['reply_time'],
                     keyword=batch_comment['keyword'],
-                    collected_by=batch_comment['collected_by']
+                    collected_by=batch_comment['collected_by'],
+                    video_url=batch_comment['video_url']
                 )
             logger.info(f"成功存储剩余的 {len(comments_batch)} 条评论到数据库")
         except Exception as e:
