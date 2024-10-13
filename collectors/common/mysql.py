@@ -27,6 +27,12 @@ class MySQLDatabase:
             raise ValueError("缺少必要的MySQL连接环境变量配置")
         self.connection = None
 
+    def log_sql(self, query, params=None):
+        """记录 SQL 查询"""
+        if params:
+            query = query.replace('%s', '{}').format(*params)
+        logger.info(f"执行 SQL: {query}")
+
     def connect(self):
         """建立数据库连接"""
         try:
@@ -50,6 +56,7 @@ class MySQLDatabase:
 
     def execute_query(self, query, params=None):
         """执行查询操作"""
+        self.log_sql(query, params)
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute(query, params or ())
@@ -61,6 +68,7 @@ class MySQLDatabase:
 
     def execute_update(self, query, params=None):
         """执行更新操作（插入、更新、删除）"""
+        self.log_sql(query, params)
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute(query, params or ())
@@ -73,6 +81,7 @@ class MySQLDatabase:
 
     def insert_many(self, query, data):
         """批量插入数据"""
+        self.log_sql(query, f"(批量插入 {len(data)} 条记录)")
         try:
             with self.connection.cursor() as cursor:
                 cursor.executemany(query, data)
@@ -332,6 +341,7 @@ class MySQLDatabase:
             ) AS subquery
         )
         """
+        self.log_sql(query, (server_ip,))
         with self.connection.cursor() as cursor:
             cursor.execute(query, (server_ip,))
             if cursor.rowcount > 0:
