@@ -220,11 +220,12 @@ class MySQLDatabase:
 
     def add_tiktok_comment(self, video_id, user_id, reply_content, reply_time, keyword, collected_by):
         """添加TikTok评论"""
-        query = f"""
+        query = """
         INSERT INTO tiktok_comments (video_id, user_id, reply_content, reply_time, keyword, collected_by)
-        VALUES ({video_id}, '{user_id}', '{reply_content}', '{reply_time}', '{keyword}', '{collected_by}')
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
-        return self.execute_update(query)
+        params = (video_id, user_id, reply_content, reply_time, keyword, collected_by)
+        return self.execute_update(query, params)
 
     def add_tiktok_task_log(self, task_id, log_type, message):
         """添加TikTok任务日志"""

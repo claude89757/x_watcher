@@ -46,6 +46,15 @@ from datetime import datetime, timedelta
 import requests
 import glob
 
+def preprocess_comment(comment):
+    """预处理评论数据"""
+    # 只保留字母、数字、空格和部分标点符号
+    comment = re.sub(r'[^\w\s.,!?]', '', comment)
+    # 移除多余的空白字符
+    comment = ' '.join(comment.split())
+    # 截断过长的评论
+    return comment[:500] if len(comment) > 500 else comment
+
 def setup_driver():
     """设置并返回一个Selenium WebDriver实例。"""
     options = uc.ChromeOptions()
@@ -249,7 +258,7 @@ def login_by_local_cookies(driver):
             # 检查登录状态
             user_id = check_login_status(driver)
             if user_id:
-                logger.info(f"使用 {cookie_file} 成功登录，用户ID: {user_id}")
+                logger.info(f"使用 {cookie_file} 成功登录，用ID: {user_id}")
                 return user_id  # 登录成功,返回用户ID
             else:
                 logger.info(f"{cookie_file} 登录失败")
@@ -328,6 +337,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
             reply_content_span = comment_div.select_one('span[data-e2e="comment-level-1"]')
             reply_content = reply_content_span.get_text(strip=True) if reply_content_span else ''
             
+            # 预处理评论内容
+            reply_content = preprocess_comment(reply_content)
+            
             reply_time = ''
             time_span = comment_div.select_one('div.css-2c97me-DivCommentSubContentWrapper span')
             if time_span:
@@ -357,7 +369,14 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                 if len(comments_batch) >= 50:
                     try:
                         for batch_comment in comments_batch:
-                            db.add_tiktok_comment(**batch_comment)
+                            db.add_tiktok_comment(
+                                video_id=batch_comment['video_id'],
+                                user_id=batch_comment['user_id'],
+                                reply_content=batch_comment['reply_content'],
+                                reply_time=batch_comment['reply_time'],
+                                keyword=batch_comment['keyword'],
+                                collected_by=batch_comment['collected_by']
+                            )
                         logger.info(f"成功存储50条评论到数据库")
                         comments_batch.clear()  # 清空缓存
                     except Exception as e:
@@ -409,7 +428,14 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
     if comments_batch:
         try:
             for batch_comment in comments_batch:
-                db.add_tiktok_comment(**batch_comment)
+                db.add_tiktok_comment(
+                    video_id=batch_comment['video_id'],
+                    user_id=batch_comment['user_id'],
+                    reply_content=batch_comment['reply_content'],
+                    reply_time=batch_comment['reply_time'],
+                    keyword=batch_comment['keyword'],
+                    collected_by=batch_comment['collected_by']
+                )
             logger.info(f"成功存储剩余的 {len(comments_batch)} 条评论到数据库")
         except Exception as e:
             logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
