@@ -82,7 +82,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 tab1, tab2 = st.tabs(["Twitter评论收集", "TikTok评论收集"])
 
 with tab1:
-    st.header("Twitter评论集")
+    st.header("Twitter���论集")
     # 原有的Twitter评论收集代码
     # 根据选择的语言设置文本
     if st.session_state.language == "CN":
@@ -421,35 +421,15 @@ with tab2:
         db = MySQLDatabase()
         db.connect()
 
-        # 查询任务状态
-        st.subheader("任务状态")
-        tasks = db.get_tiktok_tasks_by_keyword(search_keyword)
-        if tasks:
-            st.write(f"找到 {len(tasks)} 个相关任务")
-            for task in tasks:
-                with st.expander(f"任务ID: {task['id']} | 关键词: {task['keyword']} | 状态: {task['status']}"):
-                    st.write(f"创建时间: {task['created_at'].strftime('%Y-%m-%d %H:%M:%S')}")
-                    st.write(f"更新时间: {task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')}")
-                    st.write(f"处理视频数: {task['total_videos_processed']}")
-                    if task['start_time']:
-                        st.write(f"开始时间: {task['start_time'].strftime('%Y-%m-%d %H:%M:%S')}")
-                    if task['end_time']:
-                        st.write(f"结束时间: {task['end_time'].strftime('%Y-%m-%d %H:%M:%S')}")
-        else:
-            st.write("未找到相关任务")
-
         # 动态展示评论数据
         st.subheader("实时评论数据")
         comments = db.get_tiktok_comments_by_keyword(search_keyword)
         
         if comments:
-            st.write(f"找到 {len(comments)} 条相关评论")
-            for comment in comments:
-                with st.expander(f"用户ID: {comment['user_id']} | 评论时间: {comment['reply_time']}"):
-                    st.write(f"评论内容: {comment['reply_content']}")
-                    st.write(f"视频URL: {comment['video_url']}")
-                    st.write(f"采集时间: {comment['collected_at'].strftime('%Y-%m-%d %H:%M:%S')}")
-                    st.write(f"采集者ID: {comment['collected_by']}")
+            comment_df = pd.DataFrame(comments)
+            comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            comment_df = comment_df[['user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
+            st.dataframe(comment_df, use_container_width=True)
         else:
             st.write("暂无相关评论")
 
@@ -457,10 +437,10 @@ with tab2:
         st.subheader("任务日志")
         logs = db.get_tiktok_task_logs_by_keyword(search_keyword)
         if logs:
-            st.write(f"找到 {len(logs)} 条相关日志")
-            for log in logs:
-                with st.expander(f"{log['created_at'].strftime('%Y-%m-%d %H:%M:%S')} | 类型: {log['log_type']}"):
-                    st.write(f"消息: {log['message']}")
+            log_df = pd.DataFrame(logs)
+            log_df['created_at'] = pd.to_datetime(log_df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            log_df = log_df[['created_at', 'log_type', 'message']]
+            st.dataframe(log_df, use_container_width=True)
         else:
             st.write("暂无相关日志")
 
