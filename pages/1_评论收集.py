@@ -13,7 +13,7 @@ import datetime
 import urllib.parse
 import random
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pandas as pd
 import streamlit as st
@@ -347,8 +347,8 @@ with tab2:
         st.metric("已收集评论数", stats['comment_count'])
     with col3:
         if 'collection_start_time' not in st.session_state:
-            st.session_state.collection_start_time = datetime.now()
-        running_time = datetime.now() - st.session_state.collection_start_time
+            st.session_state.collection_start_time = datetime.datetime.now()
+        running_time = datetime.datetime.now() - st.session_state.collection_start_time
         st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
 
     # 从环境变量获取API地址
@@ -498,7 +498,7 @@ with tab2:
                 with col2:
                     st.metric("已收集评论数", stats['comment_count'])
                 with col3:
-                    running_time = datetime.now() - st.session_state.collection_start_time
+                    running_time = datetime.datetime.now() - st.session_state.collection_start_time
                     st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
             
             time.sleep(1)  # 每秒更新一次
