@@ -195,7 +195,7 @@ with tab1:
                         )
                         task_num += 1
                         # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-                        # (todo(claudexie): 查询进度)等待数据收集��，异等待
+                        # (todo(claudexie): 查询进度)等待数据收集��异等待
                         st.success(data_collection_complete_message)
                         time.sleep(3)
                         st.rerun()
@@ -339,6 +339,7 @@ with tab2:
     db = MySQLDatabase()
     db.connect()
     stats = db.get_tiktok_collection_stats()
+    db.disconnect()
 
     with col1:
         st.metric("已收集关键字", stats['keyword_count'])
@@ -447,47 +448,35 @@ with tab2:
         # 获取任务总视频数
         total_videos = db.get_total_videos_for_keyword(search_keyword)
 
-        # 动态展示评论数据
-        st.subheader("实时评论数据")
-        comments_placeholder = st.empty()
-        
         # 添加进度条
-        progress_bar = st.progress(0)
+        processed_videos = db.get_processed_videos_for_keyword(search_keyword)
+        progress = processed_videos / total_videos if total_videos > 0 else 0
+        st.progress(progress)
         
+        # 动态展示评论数据
+        st.subheader("评论数据")
+        comments = db.get_tiktok_comments_by_keyword(search_keyword)
+        if comments:
+            comment_df = pd.DataFrame(comments)
+            comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            comment_df = comment_df[['user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
+            st.dataframe(comment_df, use_container_width=True)
+        else:
+            st.write("暂无相关评论")
+
         # 任务日志
         st.subheader("任务日志")
-        logs_placeholder = st.empty()
-
-        # 添加一个停止按钮
-        stop_button = st.button("停止刷新")
-
-        while not stop_button:
-            # 获取评论数据
-            comments = db.get_tiktok_comments_by_keyword(search_keyword)
-            if comments:
-                comment_df = pd.DataFrame(comments)
-                comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-                comment_df = comment_df[['user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
-                comments_placeholder.dataframe(comment_df, use_container_width=True)
-            else:
-                comments_placeholder.write("暂无相关评论")
-
-            # 更新进度条
-            processed_videos = db.get_processed_videos_for_keyword(search_keyword)
-            progress = processed_videos / total_videos if total_videos > 0 else 0
-            progress_bar.progress(progress)
-
-            # 获取任务日志
-            logs = db.get_tiktok_task_logs_by_keyword(search_keyword)
-            if logs:
-                log_df = pd.DataFrame(logs)
-                log_df['created_at'] = pd.to_datetime(log_df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-                log_df = log_df[['created_at', 'log_type', 'message']]
-                logs_placeholder.dataframe(log_df, use_container_width=True)
-            else:
-                logs_placeholder.write("暂无相关日志")
-
-            # 等待一段时间后刷新
-            time.sleep(10)  # 每10秒刷新一次
+        logs = db.get_tiktok_task_logs_by_keyword(search_keyword)
+        if logs:
+            log_df = pd.DataFrame(logs)
+            log_df['created_at'] = pd.to_datetime(log_df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            log_df = log_df[['created_at', 'log_type', 'message']]
+            st.dataframe(log_df, use_container_width=True)
+        else:
+            st.write("暂无相关日志")
 
         db.disconnect()
+
+    # 添加刷新按钮
+    if st.button("刷新数据"):
+        st.rerun()
