@@ -27,7 +27,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 import undetected_chromedriver as uc
 from selenium.common.exceptions import TimeoutException
 
-# from common.cos import process_and_upload_csv_to_cospy
+from common.mysql import MySQLDatabase
 
 CHROME_DRIVER = '/usr/local/bin/chromedriver'
 
@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 import platform
 import json
 from datetime import datetime, timedelta
+import requests
 
 def setup_driver():
     """设置并返回一个Selenium WebDriver实例。"""
@@ -71,11 +72,11 @@ def setup_driver():
     logger.info("正在设置WebDriver选项")
     
     driver = uc.Chrome(options=options)
-    logger.info("WebDriver已设置完成")
+    logger.info("WebDriver已设置成")
 
     # 设置浏览器全屏
     driver.maximize_window()
-    logger.info("浏览器已设置为全屏模式")
+    logger.info("浏器已设置为全屏模式")
 
     return driver
 
@@ -211,7 +212,7 @@ def login(driver, username, password):
     
     logger.info("需要刷新登录状态")
     if load_cookies(driver, username):
-        logger.info("使用Cookies登录中...")
+        logger.info("用Cookies登录中...")
         driver.get("https://www.tiktok.com/foryou")
         logger.info("使用Cookies登录")
         try:
@@ -236,7 +237,7 @@ def login(driver, username, password):
                 logger.info("Cookies无效，页面未显示预期内容")
                 logger.info(f"页面源代码: {driver.page_source[:1000]}...")  # 打印前1000个字符的页面源代码
         except Exception as e:
-            logger.error(f"使用Cookies登录时发生错误: {str(e)}")
+            logger.error(f"使Cookies登录时发生错误: {str(e)}")
         
         logger.info("Cookies无效，继续使用用户名和密码登录")
     else:
@@ -264,19 +265,15 @@ def login(driver, username, password):
             random_sleep(0.1, 0.3)
         logger.info("输入用户名和密码")
 
-        # 点击登录按钮
-        login_button.click()
-        logger.info("点击登录按钮")
-
-        # 检查是否出现验证码
-        if is_captcha_present(driver):
-            solve_captcha(driver)
-
-        # 等待页面跳转并检查URL
-        WebDriverWait(driver, 180).until(
-            lambda d: "foryou" in d.current_url
-        )
-        logger.info("登录成功，已跳转到For You页面")
+        # 这里需要人工介入处理登录过程
+        logger.info("请人工操作完成登录")
+        input("登录完成后请按回车键继续...")
+        
+        # 检查是否功登录到For You页面
+        if "foryou" in driver.current_url:
+            logger.info("登录成功，已跳转到For You页面")
+        else:
+            logger.warning("可能未成功登录,请检查当前页面")
 
         # 保存Cookies
         save_cookies(driver, username)
@@ -307,14 +304,14 @@ def search_tiktok_videos(driver, keyword):
         if '/video/' in link['href']:
             video_links.append(link['href'])
     
-    logger.info(f"找到 {len(video_links)} 个视频链接")
+    logger.info(f"找到 {len(video_links)} 个视频接")
     index = 1
     for link in video_links:
         logger.info(f"第{index}个视频链接: {link}")
         index += 1
     return video_links
 
-def collect_comments(driver, video_url):
+def collect_comments(driver, video_url, video_id, keyword, db):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
     driver.get(video_url)
@@ -335,6 +332,7 @@ def collect_comments(driver, video_url):
     )
 
     comments_data = []
+    comments_batch = []  # 用于缓存要存储到数据库的评论
     scroll_attempts = 0
     max_scroll_attempts = 20  # 增加最大尝试次数
     consecutive_no_new_comments = 0
@@ -395,7 +393,7 @@ def collect_comments(driver, video_url):
             if new_comments:
                 logger.info(f"本轮新收集到 {len(new_comments)} 条评论，累计收集 {len(comments_data)} 条评论:")
                 for idx, comment in enumerate(new_comments, 1):
-                    logger.info(f"{idx}. 用户: {comment['user_id']}, 内容: {comment['reply_content'][:30]}..., 时间: {comment['reply_time']}")
+                    logger.info(f"{idx} : {comment['user_id']}, 内容: {comment['reply_content'][:30]}..., 时间: {comment['reply_time']}")
             else:
                 pass
         else:
@@ -422,6 +420,33 @@ def collect_comments(driver, video_url):
             logger.info(f"随机暂停 {pause_time:.2f} 秒")
             time.sleep(pause_time)
 
+        for comment in comments_data[last_comments_count:]:
+            comments_batch.append(comment)
+            if len(comments_batch) >= 50:
+                # 批量插入评论到数据库
+                for batch_comment in comments_batch:
+                    db.add_tiktok_comment(
+                        video_id=video_id,  # 假设你有video_id
+                        user_id=batch_comment['user_id'],
+                        reply_content=batch_comment['reply_content'],
+                        reply_time=batch_comment['reply_time'],
+                        keyword=keyword  # 假设你有keyword
+                    )
+                logger.info("已将50条评论存储到数据库中")
+                comments_batch.clear()  # 清空缓存
+
+    # 在循环结束后，插入剩余的评论
+    if comments_batch:
+        for batch_comment in comments_batch:
+            db.add_tiktok_comment(
+                video_id=video_id,
+                user_id=batch_comment['user_id'],
+                reply_content=batch_comment['reply_content'],
+                reply_time=batch_comment['reply_time'],
+                keyword=keyword
+            )
+        logger.info(f"已将剩余的 {len(comments_batch)} 条评论存储到数据库中")
+
     logger.info(f"评论收集完成，共收集 {len(comments_data)} 条评论")
     return comments_data
 
@@ -431,6 +456,72 @@ def take_screenshot(driver, prefix="screenshot"):
     filename = f"{prefix}_{timestamp}.png"
     driver.save_screenshot(filename)
     logger.info(f"截图已保存: {filename}")
+
+def get_public_ip():
+    try:
+        response = requests.get('https://api.ipify.org')
+        return response.text
+    except Exception as e:
+        logger.error(f"获取公网IP失败: {str(e)}")
+        return None
+
+def process_task(task_id, keyword, server_ip):
+    db = MySQLDatabase()
+    db.connect()
+    driver = None
+    try:
+        logger.info(f"开始处理任务 ID: {task_id}, 关键词: {keyword}, 服务器IP: {server_ip}")
+        db.update_tiktok_task_details(task_id, status='running', start_time=datetime.now())
+        db.add_tiktok_task_log(task_id, 'info', f"开始处理TikTok任务: {keyword}")
+
+        account = db.get_available_tiktok_account(server_ip)
+        if not account:
+            raise ValueError("没有可用的TikTok账号")
+
+        username = account['username']
+        password = account['password']
+
+        driver = setup_driver()
+        login(driver, username, password)
+        if not check_login_status(driver):
+            logger.info("登录状态无效，尝试刷新登录")
+            refresh_login(driver, username, password)
+
+        # 搜索视频并添加到数据库
+        video_links = search_tiktok_videos(driver, keyword)
+        db.add_tiktok_videos_batch(task_id, video_links, keyword)
+        logger.info(f"为任务 {task_id} 添加了 {len(video_links)} 个视频")
+
+        video_count = 0
+        while True:
+            next_video = db.get_next_pending_video(task_id, server_ip)
+            if not next_video:
+                break  # 没有更多待处理的视频
+
+            video_id, video_url = next_video['id'], next_video['video_url']
+            try:
+                comments = collect_comments(driver, video_url, video_id, keyword, db)
+                db.mark_video_completed(video_id)
+                video_count += 1
+                db.update_task_progress(task_id, 1)
+            except Exception as e:
+                logger.error(f"处理视频 {video_url} 时出错: {str(e)}")
+                db.update_tiktok_video_status(video_id, 'failed')
+
+        logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
+        db.update_tiktok_account_collect_count(username)
+        db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
+
+    except Exception as e:
+        logger.error(f"处理任务时发生错误: {str(e)}")
+        db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
+        db.add_tiktok_task_log(task_id, 'error', str(e))
+        if driver:
+            take_screenshot(driver, f"error_task_{task_id}")
+    finally:
+        if driver:
+            driver.quit()
+        db.disconnect()
 
 def main():
     username = "claudexie1"
@@ -462,5 +553,6 @@ def main():
     finally:
         driver.quit()
 
+# for local test
 if __name__ == '__main__':
     main()
