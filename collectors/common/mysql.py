@@ -239,15 +239,14 @@ class MySQLDatabase:
         UPDATE tiktok_tasks 
         SET server_ips = 
             CASE 
-                WHEN server_ips IS NULL OR server_ips = '' THEN %s
-                WHEN FIND_IN_SET(%s, server_ips) > 0 THEN server_ips
+                WHEN server_ips IS NULL OR server_ips = '' THEN '%s'
+                WHEN FIND_IN_SET('%s', server_ips) > 0 THEN server_ips
                 ELSE CONCAT(server_ips, ',%s')
             END
         WHERE id = %s
         """
         # 使用单引号包裹IP地址
-        quoted_ip = f"'{server_ip}'"
-        return self.execute_update(query, (quoted_ip, quoted_ip, quoted_ip, task_id))
+        return self.execute_update(query, (server_ip, server_ip, server_ip, task_id))
 
     def get_running_tiktok_task_by_ip(self, server_ip):
         """获取指定IP上正在运行的TikTok任务"""
