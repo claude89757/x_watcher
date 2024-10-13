@@ -497,7 +497,7 @@ class MySQLDatabase:
         JOIN tiktok_tasks t ON l.task_id = t.id
         WHERE t.keyword LIKE %s
         ORDER BY l.created_at DESC
-        LIMIT 100
+        LIMIT 99999
         """
         params = (f"%{keyword}%",)
         return self.execute_query(query, params)
