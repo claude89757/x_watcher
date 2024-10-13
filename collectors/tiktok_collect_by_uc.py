@@ -165,18 +165,30 @@ def solve_captcha(driver):
     input("解决验证码后按Enter继续...")
 
 def check_login_status(driver):
-    """检查当前的登录状"""
+    """检查当前的登录状态并返回用户ID"""
     try:
         driver.get("https://www.tiktok.com/foryou")
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        
+        # 检查用户头像元素
         profile_icon = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-e2e="profile-icon"]'))
         )
         logger.info("检测到用户头像，登录状态有效")
-        return True
+        
+        # 检查并提取用户ID
+        profile_link = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'a[data-e2e="nav-profile"]'))
+        )
+        
+        href = profile_link.get_attribute('href')
+        user_id = href.split('/')[-1]  # 提取用户ID
+        
+        logger.info(f"成功提取用户ID: {user_id}")
+        return user_id
     except Exception as e:
         logger.info(f"登录状态检查失败: {str(e)}")
-        return False
+        return None
 
 def update_last_login_time():
     """更新最后登录时间"""
@@ -193,7 +205,7 @@ def get_last_login_time():
         return None
 
 def login_by_local_cookies(driver):
-    """尝试使用本地cookies文件登录TikTok"""
+    """尝试使用本地cookies文件登录TikTok，成功则返回用户ID"""
     # 清理所有cookies
     driver.delete_all_cookies()
     logger.info("已清理所有cookies")
@@ -235,9 +247,10 @@ def login_by_local_cookies(driver):
             driver.refresh()
             
             # 检查登录状态
-            if check_login_status(driver):
-                logger.info(f"使用 {cookie_file} 成功登录")
-                return  # 登录成功,退出函数
+            user_id = check_login_status(driver)
+            if user_id:
+                logger.info(f"使用 {cookie_file} 成功登录，用户ID: {user_id}")
+                return user_id  # 登录成功,返回用户ID
             else:
                 logger.info(f"{cookie_file} 登录失败")
         
@@ -435,14 +448,15 @@ def process_task(task_id, keyword, server_ip):
     db.connect()
     driver = None
     try:
-        logger.info(f"开始处理任务 ID: {task_id}, 关键��: {keyword}, 服务器IP: {server_ip}")
+        logger.info(f"开始处理任务 ID: {task_id}, 关键词: {keyword}, 服务器IP: {server_ip}")
         db.update_tiktok_task_details(task_id, status='running', start_time=datetime.now())
         db.add_tiktok_task_log(task_id, 'info', f"开始处理TikTok任务: {keyword}")
 
         driver = setup_driver()
 
         # 尝试使用本地cookies登录
-        login_by_local_cookies(driver)
+        user_id = login_by_local_cookies(driver)
+        logger.info(f"成功登录，用户ID: {user_id}")
 
         # 搜索视频并添加到数据库
         video_links = search_tiktok_videos(driver, keyword)
@@ -466,7 +480,6 @@ def process_task(task_id, keyword, server_ip):
                 db.update_tiktok_video_status(video_id, 'failed')
 
         logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
-        db.update_tiktok_account_collect_count(username)
         db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
 
     except Exception as e:
