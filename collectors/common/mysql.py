@@ -11,6 +11,7 @@
 import os
 import pymysql
 import logging
+from pymysql.converters import escape_string
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -30,8 +31,8 @@ class MySQLDatabase:
     def log_sql(self, query, params=None):
         """记录 SQL 查询"""
         if params:
-            # 使用 pymysql.escape_string 来正确转义参数值
-            escaped_params = tuple(pymysql.escape_string(str(p)) for p in params)
+            # 使用 pymysql.converters.escape_string 来正确转义参数值
+            escaped_params = tuple(escape_string(str(p)) for p in params)
             # 使用 SQL 的格式化方法来插入参数
             formatted_query = query % escaped_params
         else:
