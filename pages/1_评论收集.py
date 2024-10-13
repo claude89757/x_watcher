@@ -12,6 +12,7 @@ import time
 import datetime
 import urllib.parse
 import random
+import json
 
 import pandas as pd
 import streamlit as st
@@ -325,16 +326,34 @@ with tab1:
         else:
             pass
 
+# 定义缓存文件路径
+KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
+
+def save_keyword_to_cache(keyword):
+    """保存关键字到缓存文件"""
+    with open(KEYWORD_CACHE_FILE, 'w') as f:
+        json.dump({'keyword': keyword}, f)
+
+def load_keyword_from_cache():
+    """从缓存文件加载关键字"""
+    if os.path.exists(KEYWORD_CACHE_FILE):
+        with open(KEYWORD_CACHE_FILE, 'r') as f:
+            data = json.load(f)
+            return data.get('keyword', '')
+    return ''
 
 with tab2:
     st.header("TikTok评论收集")
     
     # 从环境变量获取API地址
-    TIKTOK_API_URL = os.environ.get('TIKTOK_API_URL', 'http://localhost:5000')
+    TIKTOK_API_URL = os.environ.get('TIKTOK_WORKER_001_API_URL', 'http://localhost:5000')
+
+    # 从缓存加载默认关键字
+    default_keyword = load_keyword_from_cache()
 
     # 创建任务表单
     with st.form("create_tiktok_task"):
-        keyword = st.text_input("搜索关键词")
+        keyword = st.text_input("搜索关键词", value=default_keyword)
         submit_task = st.form_submit_button("创建任务")
 
     if submit_task:
@@ -349,6 +368,8 @@ with tab2:
             task_id = result.get("task_id")
             if task_id:
                 st.success(f"成功创建任务,ID: {task_id}")
+                # 保存关键字到缓存
+                save_keyword_to_cache(keyword)
             else:
                 st.error("创建任务失败: 未返回任务ID")
         except requests.RequestException as e:
@@ -363,41 +384,40 @@ with tab2:
 
     if tasks:
         for task in tasks:
-            col1, col2, col3, col4, col5 = st.columns(5)
-            with col1:
-                st.write(f"任务ID: {task['id']}")
-            with col2:
-                st.write(f"关键词: {task['keyword']}")
-            with col3:
-                st.write(f"状态: {task['status']}")
-            with col4:
-                if task['status'] == 'pending':
-                    if st.button('开始', key=f'start_{task["id"]}'):
+            with st.expander(f"任务ID: {task['id']} | 关键词: {task['keyword']} | 状态: {task['status']} | 触发时间: {task['created_at'].strftime('%Y-%m-%d %H:%M:%S')}"):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    if task['status'] == 'pending':
+                        if st.button('开始', key=f'start_{task["id"]}'):
+                            db.connect()
+                            db.update_tiktok_task_status(task['id'], 'running')
+                            db.disconnect()
+                            st.rerun()
+                    elif task['status'] == 'running':
+                        if st.button('暂停', key=f'pause_{task["id"]}'):
+                            db.connect()
+                            db.update_tiktok_task_status(task['id'], 'paused')
+                            db.disconnect()
+                            st.rerun()
+                    elif task['status'] == 'paused':
+                        if st.button('继续', key=f'resume_{task["id"]}'):
+                            db.connect()
+                            db.update_tiktok_task_status(task['id'], 'running')
+                            db.disconnect()
+                            st.rerun()
+                with col2:
+                    if st.button('删除', key=f'delete_{task["id"]}'):
                         db.connect()
-                        db.update_tiktok_task_status(task['id'], 'running')
+                        db.delete_tiktok_task(task['id'])
                         db.disconnect()
                         st.rerun()
-                elif task['status'] == 'running':
-                    if st.button('暂停', key=f'pause_{task["id"]}'):
-                        db.connect()
-                        db.update_tiktok_task_status(task['id'], 'paused')
-                        db.disconnect()
-                        st.rerun()
-                elif task['status'] == 'paused':
-                    if st.button('继续', key=f'resume_{task["id"]}'):
-                        db.connect()
-                        db.update_tiktok_task_status(task['id'], 'running')
-                        db.disconnect()
-                        st.rerun()
-            with col5:
-                if st.button('删除', key=f'delete_{task["id"]}'):
-                    db.connect()
-                    db.delete_tiktok_task(task['id'])
-                    db.disconnect()
-                    st.rerun()
+                with col3:
+                    st.write(f"更新时间: {task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')}")
+    else:
+        st.write("暂无任务")
 
     # 查询关键词输入
-    search_keyword = st.text_input("输入关键词查看任务状态和评论")
+    search_keyword = st.text_input("输入关键词查看任务状态和评论", value=default_keyword)
 
     if search_keyword:
         db = MySQLDatabase()
