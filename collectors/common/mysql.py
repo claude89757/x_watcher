@@ -337,10 +337,24 @@ class MySQLDatabase:
         return self.execute_query(query)
 
     def add_tiktok_videos_batch(self, task_id, video_urls, keyword):
-        """批量添加TikTok视频到任务"""
-        query = "INSERT INTO tiktok_videos (task_id, video_url, keyword) VALUES (%s, %s, %s)"
+        """批量添加TikTok视频到任务，忽略重复的视频链接"""
+        query = """
+        INSERT IGNORE INTO tiktok_videos (task_id, video_url, keyword) 
+        VALUES (%s, %s, %s)
+        """
         data = [(task_id, url, keyword) for url in video_urls]
-        return self.insert_many(query, data)
+        
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.executemany(query, data)
+            self.connection.commit()
+            affected_rows = cursor.rowcount
+            logger.info(f"成功插入 {affected_rows} 条新视频记录，忽略了 {len(data) - affected_rows} 条重复记录")
+            return affected_rows
+        except pymysql.Error as e:
+            logger.error(f"批量插入视频数据时出错: {e}")
+            self.connection.rollback()
+            return -1
 
     def get_and_lock_pending_task(self, server_ip):
         """获取并锁定一个待处理的任务"""
