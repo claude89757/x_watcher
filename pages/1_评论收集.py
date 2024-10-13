@@ -326,23 +326,24 @@ with tab1:
         else:
             pass
 
-# 定义缓存文件路径
-KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
-
-def save_keyword_to_cache(keyword):
-    """保存关键字到缓存文件"""
-    with open(KEYWORD_CACHE_FILE, 'w') as f:
-        json.dump({'keyword': keyword}, f)
-
-def load_keyword_from_cache():
-    """从缓存文件加载关键字"""
-    if os.path.exists(KEYWORD_CACHE_FILE):
-        with open(KEYWORD_CACHE_FILE, 'r') as f:
-            data = json.load(f)
-            return data.get('keyword', '')
-    return ''
 
 with tab2:
+    # 定义缓存文件路径
+    KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
+
+    def save_keyword_to_cache(keyword):
+        """保存关键字到缓存文件"""
+        with open(KEYWORD_CACHE_FILE, 'w') as f:
+            json.dump({'keyword': keyword}, f)
+
+    def load_keyword_from_cache():
+        """从缓存文件加载关键字"""
+        if os.path.exists(KEYWORD_CACHE_FILE):
+            with open(KEYWORD_CACHE_FILE, 'r') as f:
+                data = json.load(f)
+                return data.get('keyword', '')
+        return ''
+
     st.header("TikTok评论收集")
     
     # 从环境变量获取API地址
