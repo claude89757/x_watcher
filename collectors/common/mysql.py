@@ -211,13 +211,18 @@ class MySQLDatabase:
             return None
 
     def update_tiktok_task_status(self, task_id, status):
-        """更新TikTok任务态"""
+        """更新TikTok任务状态"""
         valid_statuses = ['pending', 'running', 'completed', 'failed', 'paused']
         if status not in valid_statuses:
             raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
         
-        query = f"UPDATE tiktok_tasks SET status = %s WHERE id = %s"
-        return self.execute_update(query, (status, task_id))
+        query = """
+        UPDATE tiktok_tasks 
+        SET status = %s, 
+            start_time = CASE WHEN %s = 'running' AND start_time IS NULL THEN NOW() ELSE start_time END
+        WHERE id = %s
+        """
+        return self.execute_update(query, (status, status, task_id))
 
     def delete_tiktok_task(self, task_id):
         """删除TikTok任务及相关数据"""
@@ -517,6 +522,18 @@ class MySQLDatabase:
         stats['comment_count'] = result[0]['comment_count'] if result else 0
         
         return stats
+
+    def get_earliest_running_task_start_time(self):
+        """获取最早的运行中任务的开始时间"""
+        query = """
+        SELECT MIN(start_time) as earliest_start_time
+        FROM tiktok_tasks
+        WHERE status = 'running'
+        """
+        result = self.execute_query(query)
+        if result and result[0]['earliest_start_time']:
+            return result[0]['earliest_start_time']
+        return None
 
 # 使用示例
 if __name__ == "__main__":

@@ -195,7 +195,7 @@ with tab1:
                         )
                         task_num += 1
                         # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-                        # (todo(claudexie): 查询进度)等待数据收集完成，异等待
+                        # (todo(claudexie): 查询进度)等待数据收集��成，异等待
                         st.success(data_collection_complete_message)
                         time.sleep(3)
                         st.rerun()
@@ -339,18 +339,12 @@ with tab2:
     db = MySQLDatabase()
     db.connect()
     stats = db.get_tiktok_collection_stats()
-    db.disconnect()
-    
+
     with col1:
         st.metric("已收集关键字", stats['keyword_count'])
     with col2:
         st.metric("已收集评论数", stats['comment_count'])
-    with col3:
-        if 'collection_start_time' not in st.session_state:
-            st.session_state.collection_start_time = datetime.datetime.now()
-        running_time = datetime.datetime.now() - st.session_state.collection_start_time
-        st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
-
+ 
     # 从环境变量获取API地址
     TIKTOK_API_URL = os.environ.get('TIKTOK_WORKER_001_API_URL', 'http://localhost:5000')
 
@@ -498,8 +492,11 @@ with tab2:
                 with col2:
                     st.metric("已收集评论数", stats['comment_count'])
                 with col3:
-                    running_time = datetime.datetime.now() - st.session_state.collection_start_time
-                    st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
+                    if earliest_start_time:
+                        running_time = datetime.datetime.now() - earliest_start_time
+                        st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
+                    else:
+                        st.metric("运行时间", "无运行中任务")
             
             time.sleep(1)  # 每秒更新一次
             
