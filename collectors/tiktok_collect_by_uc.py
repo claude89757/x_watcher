@@ -312,9 +312,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
     comments_data = []
     comments_batch = []  # 用于缓存要存储到数据库的评论
     scroll_attempts = 0
-    max_scroll_attempts = 20  # 增加最大尝试次数
+    max_scroll_attempts = 20
     consecutive_no_new_comments = 0
-    max_consecutive_no_new = 5  # 增加连续无新评论的最大次数
+    max_consecutive_no_new = 5
 
     last_comments_count = 0
     seen_comments = set()
@@ -328,7 +328,6 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
             reply_content_span = comment_div.select_one('span[data-e2e="comment-level-1"]')
             reply_content = reply_content_span.get_text(strip=True) if reply_content_span else ''
             
-            # 更新获取评论时间的逻辑
             reply_time = ''
             time_span = comment_div.select_one('div.css-2c97me-DivCommentSubContentWrapper span')
             if time_span:
@@ -343,7 +342,29 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                     'reply_video_url': video_url
                 })
                 seen_comments.add(comment_key)
-        
+                
+                # 将新收集的评论添加到缓存批次
+                comments_batch.append({
+                    'video_id': video_id,
+                    'user_id': user_id,
+                    'reply_content': reply_content,
+                    'reply_time': reply_time,
+                    'keyword': keyword,
+                    'collected_by': collected_by
+                })
+                
+                # 如果缓存批次达到50条，尝试存储到数据库
+                if len(comments_batch) >= 50:
+                    try:
+                        for batch_comment in comments_batch:
+                            db.add_tiktok_comment(**batch_comment)
+                        logger.info(f"成功存储50条评论到数据库")
+                        comments_batch.clear()  # 清空缓存
+                    except Exception as e:
+                        logger.error(f"存储评论到数据库时发生错误: {str(e)}")
+                        # 错误发生时不清空缓存，等待下一次尝试
+
+        # 滚动页面和其他逻辑保持不变
         if consecutive_no_new_comments >= max_consecutive_no_new:
             logger.info("连续多次未加载新评论，尝试向上滚动")
             up_scroll_distance = random.randint(100, 300)
@@ -353,79 +374,45 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
             ActionChains(driver).scroll_by_amount(0, down_scroll_distance).perform()
             consecutive_no_new_comments = 0
         else:
-            scroll_distance = random.randint(300, 500)  # 减少滚动距离
+            scroll_distance = random.randint(300, 500)
             ActionChains(driver).scroll_by_amount(0, scroll_distance).perform()
         
         logger.info(f"页面滚动完成，滚动距离: {scroll_distance if 'scroll_distance' in locals() else down_scroll_distance} 像素")
         
-        # 增加滚动后的等待时间，并添加随机性
         random_sleep(3, 7)
         
-        # 检查新内容是否加载
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
         )
         
-        if comments_data:
+        if len(comments_data) > last_comments_count:
             new_comments = comments_data[last_comments_count:]
-            if new_comments:
-                logger.info(f"本轮新收集到 {len(new_comments)} 条评论，累计收集 {len(comments_data)} 条评论:")
-                for idx, comment in enumerate(new_comments, 1):
-                    logger.info(f"{idx} : {comment['user_id']}, 内容: {comment['reply_content'][:30]}..., 时间: {comment['reply_time']}")
-            else:
-                pass
+            logger.info(f"本轮新收集到 {len(new_comments)} 条评论，累计收集 {len(comments_data)} 条评论")
+            consecutive_no_new_comments = 0
+            scroll_attempts = 0
         else:
-            logger.info("当前还未收集到评论")
-
-        if last_comments_count == len(comments_data):
             consecutive_no_new_comments += 1
             scroll_attempts += 1
             logger.info(f"未加载新评论，连续未加载次数: {consecutive_no_new_comments}, 总滚动尝试次数: {scroll_attempts}")
-        else:
-            consecutive_no_new_comments = 0
-            scroll_attempts = 0
-            new_comments_count = len(comments_data) - last_comments_count
-            logger.info(f"加载了 {new_comments_count} 条新评论，重置滚动尝试次数")
         
         last_comments_count = len(comments_data)
 
         if is_captcha_present(driver):
             solve_captcha(driver)
 
-        # 随机暂停，模拟人类行为
-        if random.random() < 0.2:  # 20%的概率
+        if random.random() < 0.3:
             pause_time = random.uniform(5, 15)
             logger.info(f"随机暂停 {pause_time:.2f} 秒")
             time.sleep(pause_time)
 
-        for comment in comments_data[last_comments_count:]:
-            comments_batch.append(comment)
-            if len(comments_batch) >= 50:
-                # 批量插入评论到数据库
-                for batch_comment in comments_batch:
-                    db.add_tiktok_comment(
-                        video_id=video_id,
-                        user_id=batch_comment['user_id'],
-                        reply_content=batch_comment['reply_content'],
-                        reply_time=batch_comment['reply_time'],
-                        keyword=keyword,
-                        collected_by=collected_by
-                    )
-                logger.info("已将50条评论存储到数据库中")
-                comments_batch.clear()  # 清空缓存
-
-    # 在循环结束后，插入剩余的评论
+    # 循环结束后，存储剩余的评论
     if comments_batch:
-        for batch_comment in comments_batch:
-            db.add_tiktok_comment(
-                video_id=video_id,
-                user_id=batch_comment['user_id'],
-                reply_content=batch_comment['reply_content'],
-                reply_time=batch_comment['reply_time'],
-                keyword=keyword,
-                collected_by=collected_by
-            )
-        logger.info(f"已将剩余的 {len(comments_batch)} 条评论存储到数据库中")
+        try:
+            for batch_comment in comments_batch:
+                db.add_tiktok_comment(**batch_comment)
+            logger.info(f"成功存储剩余的 {len(comments_batch)} 条评论到数据库")
+        except Exception as e:
+            logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
 
     logger.info(f"评论收集完成，共收集 {len(comments_data)} 条评论")
     return comments_data
