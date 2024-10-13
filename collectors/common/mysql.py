@@ -173,37 +173,37 @@ class MySQLDatabase:
 
     def create_tiktok_task(self, keyword):
         """创建新的TikTok任务"""
-        query = "INSERT INTO tiktok_tasks (keyword) VALUES (%s)"
-        return self.execute_update(query, (keyword,))
+        query = f"INSERT INTO tiktok_tasks (keyword) VALUES ('{keyword}')"
+        return self.execute_update(query)
 
     def update_tiktok_task_status(self, task_id, status):
         """更新TikTok任务状态"""
-        query = "UPDATE tiktok_tasks SET status = %s WHERE id = %s"
-        return self.execute_update(query, (status, task_id))
+        query = f"UPDATE tiktok_tasks SET status = '{status}' WHERE id = {task_id}"
+        return self.execute_update(query)
 
     def get_tiktok_task_status(self, task_id):
         """获取TikTok任务状态"""
-        query = "SELECT status FROM tiktok_tasks WHERE id = %s"
-        result = self.execute_query(query, (task_id,))
+        query = f"SELECT status FROM tiktok_tasks WHERE id = {task_id}"
+        result = self.execute_query(query)
         return result[0]['status'] if result else None
 
     def add_tiktok_video(self, task_id, video_url, keyword):
         """添加TikTok视频"""
-        query = "INSERT INTO tiktok_videos (task_id, video_url, keyword) VALUES (%s, %s, %s)"
-        return self.execute_update(query, (task_id, video_url, keyword))
+        query = f"INSERT INTO tiktok_videos (task_id, video_url, keyword) VALUES ({task_id}, '{video_url}', '{keyword}')"
+        return self.execute_update(query)
 
     def add_tiktok_comment(self, video_id, user_id, reply_content, reply_time, keyword):
         """添加TikTok评论"""
-        query = """
+        query = f"""
         INSERT INTO tiktok_comments (video_id, user_id, reply_content, reply_time, keyword)
-        VALUES (%s, %s, %s, %s, %s)
+        VALUES ({video_id}, '{user_id}', '{reply_content}', '{reply_time}', '{keyword}')
         """
-        return self.execute_update(query, (video_id, user_id, reply_content, reply_time, keyword))
+        return self.execute_update(query)
 
     def add_tiktok_task_log(self, task_id, log_type, message):
         """添加TikTok任务日志"""
-        query = "INSERT INTO tiktok_task_logs (task_id, log_type, message) VALUES (%s, %s, %s)"
-        return self.execute_update(query, (task_id, log_type, message))
+        query = f"INSERT INTO tiktok_task_logs (task_id, log_type, message) VALUES ({task_id}, '{log_type}', '{message}')"
+        return self.execute_update(query)
 
     def get_pending_tiktok_tasks(self):
         """获取待处理的TikTok任务"""
@@ -212,55 +212,54 @@ class MySQLDatabase:
 
     def get_tiktok_task_videos(self, task_id):
         """获取TikTok任务相关的视频"""
-        query = "SELECT * FROM tiktok_videos WHERE task_id = %s"
-        return self.execute_query(query, (task_id,))
+        query = f"SELECT * FROM tiktok_videos WHERE task_id = {task_id}"
+        return self.execute_query(query)
 
     def get_tiktok_video_comments(self, video_id):
         """获取TikTok视频的评论"""
-        query = "SELECT * FROM tiktok_comments WHERE video_id = %s"
-        return self.execute_query(query, (video_id,))
+        query = f"SELECT * FROM tiktok_comments WHERE video_id = {video_id}"
+        return self.execute_query(query)
 
     def update_tiktok_task_details(self, task_id, **kwargs):
         """更新TikTok任务的详细信息"""
         allowed_fields = ['status', 'max_videos', 'max_comments_per_video', 'start_time', 'end_time', 'retry_count']
         update_fields = []
-        update_values = []
 
         for key, value in kwargs.items():
             if key in allowed_fields:
-                update_fields.append(f"{key} = %s")
-                update_values.append(value)
+                if isinstance(value, str):
+                    update_fields.append(f"{key} = '{value}'")
+                else:
+                    update_fields.append(f"{key} = {value}")
 
         if not update_fields:
             logger.warning("没有提供有效的更新字段")
             return 0
 
-        query = f"UPDATE tiktok_tasks SET {', '.join(update_fields)} WHERE id = %s"
-        update_values.append(task_id)
-
-        return self.execute_update(query, tuple(update_values))
+        query = f"UPDATE tiktok_tasks SET {', '.join(update_fields)} WHERE id = {task_id}"
+        return self.execute_update(query)
 
     def update_tiktok_task_server_ip(self, task_id, server_ip):
         """更新TikTok任务的服务器IP列表"""
-        query = """
+        query = f"""
         UPDATE tiktok_tasks 
         SET server_ips = 
             CASE 
-                WHEN server_ips IS NULL OR server_ips = '' THEN %s
-                WHEN FIND_IN_SET(%s, server_ips) > 0 THEN server_ips
-                ELSE CONCAT(server_ips, ',%s')
+                WHEN server_ips IS NULL OR server_ips = '' THEN '{server_ip}'
+                WHEN FIND_IN_SET('{server_ip}', server_ips) > 0 THEN server_ips
+                ELSE CONCAT(server_ips, ',{server_ip}')
             END
-        WHERE id = %s
+        WHERE id = {task_id}
         """
-        return self.execute_update(query, (server_ip, server_ip, server_ip, task_id))
+        return self.execute_update(query)
 
     def get_running_tiktok_task_by_ip(self, server_ip):
         """获取指定IP上正在运行的TikTok任务"""
-        query = """
+        query = f"""
         SELECT * FROM tiktok_tasks 
-        WHERE status = 'running' AND FIND_IN_SET(%s, server_ips)
+        WHERE status = 'running' AND FIND_IN_SET('{server_ip}', server_ips)
         """
-        return self.execute_query(query, (server_ip,))
+        return self.execute_query(query)
 
     def get_pending_tiktok_task_by_keyword(self, keyword):
         """获取指定关键词的待处理TikTok任务"""
@@ -272,65 +271,65 @@ class MySQLDatabase:
         return self.execute_query(query, (keyword,))
 
     def get_next_pending_video(self, task_id, server_ip):
-        """获取取下一个待处理的视频"""
-        query = """
+        """获取下一个待处理的视频"""
+        query = f"""
         UPDATE tiktok_videos
-        SET status = 'processing', processing_server_ip = %s
+        SET status = 'processing', processing_server_ip = '{server_ip}'
         WHERE id = (
             SELECT id FROM (
                 SELECT id FROM tiktok_videos
-                WHERE task_id = %s AND status = 'pending'
+                WHERE task_id = {task_id} AND status = 'pending'
                 LIMIT 1
             ) AS subquery
         )
         RETURNING id, video_url
         """
-        result = self.execute_query(query, (server_ip, task_id))
+        result = self.execute_query(query)
         return result[0] if result else None
 
     def update_task_progress(self, task_id, videos_processed):
         """更新任务进度"""
-        query = """
+        query = f"""
         UPDATE tiktok_tasks
-        SET total_videos_processed = total_videos_processed + %s
-        WHERE id = %s
+        SET total_videos_processed = total_videos_processed + {videos_processed}
+        WHERE id = {task_id}
         """
-        return self.execute_update(query, (videos_processed, task_id))
+        return self.execute_update(query)
 
     def mark_video_completed(self, video_id):
         """标记视频为已完成"""
-        query = "UPDATE tiktok_videos SET status = 'completed' WHERE id = %s"
-        return self.execute_update(query, (video_id,))
+        query = f"UPDATE tiktok_videos SET status = 'completed' WHERE id = {video_id}"
+        return self.execute_update(query)
 
     def get_available_tiktok_account(self, ip):
         """获取可用的TikTok账号"""
-        query = """
+        query = f"""
         SELECT * FROM tiktok_account_infos 
-        WHERE status = 'normal' AND FIND_IN_SET('%s', login_ips)
+        WHERE status = 'normal' AND FIND_IN_SET('{ip}', login_ips)
         ORDER BY today_collect_count ASC, total_collect_count ASC
         LIMIT 1
         """
-        result = self.execute_query(query, (ip,))
+        result = self.execute_query(query)
         return result[0] if result else None
 
     def update_tiktok_account_collect_count(self, username):
-        """更新TikTok账号的收集次"""
-        query = """
+        """更新TikTok账号的收集次数"""
+        query = f"""
         UPDATE tiktok_account_infos
         SET today_collect_count = today_collect_count + 1,
             total_collect_count = total_collect_count + 1
-        WHERE username = %s
+        WHERE username = '{username}'
         """
-        return self.execute_update(query, (username,))
+        return self.execute_update(query)
 
     def get_tiktok_videos_for_task(self, task_id, limit=100):
         """获取指定任务的待处理视频列表"""
-        query = """
+        query = f"""
         SELECT id, video_url FROM tiktok_videos
-        WHERE task_id = %s AND status = 'pending'
-        LIMIT %s
+        WHERE task_id = {task_id} AND status = 'pending'
+        LIMIT {limit}
         """
-        return self.execute_query(query, (task_id, limit))
+        return self.execute_query(query)
 
     def add_tiktok_videos_batch(self, task_id, video_urls, keyword):
         """批量添加TikTok视频到任务"""
@@ -340,9 +339,9 @@ class MySQLDatabase:
 
     def get_and_lock_pending_task(self, server_ip):
         """获取并锁定一个待处理的任务"""
-        query = """
+        query = f"""
         UPDATE tiktok_tasks
-        SET status = 'running', server_ips = %s
+        SET status = 'running', server_ips = '{server_ip}'
         WHERE id = (
             SELECT id FROM (
                 SELECT id FROM tiktok_tasks
@@ -353,9 +352,9 @@ class MySQLDatabase:
             ) AS subquery
         )
         """
-        self.log_sql(query, (server_ip,))
+        self.log_sql(query)
         with self.connection.cursor() as cursor:
-            cursor.execute(query, (server_ip,))
+            cursor.execute(query)
             if cursor.rowcount > 0:
                 cursor.execute("SELECT id, keyword FROM tiktok_tasks WHERE id = LAST_INSERT_ID()")
                 return cursor.fetchone()
@@ -363,11 +362,11 @@ class MySQLDatabase:
 
     def get_running_tiktok_task_by_keyword(self, keyword):
         """获取指定关键词的正在运行的TikTok任务"""
-        query = """
+        query = f"""
         SELECT * FROM tiktok_tasks 
-        WHERE status = 'running' AND keyword = %s
+        WHERE status = 'running' AND keyword = '{keyword}'
         """
-        return self.execute_query(query, (keyword,))
+        return self.execute_query(query)
 
 # 使用示例
 if __name__ == "__main__":
