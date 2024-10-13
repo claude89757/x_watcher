@@ -298,20 +298,40 @@ class MySQLDatabase:
 
     def get_next_pending_video(self, task_id, server_ip):
         """获取下一个待处理的视频"""
-        query = f"""
-        UPDATE tiktok_videos
-        SET status = 'processing', processing_server_ip = '{server_ip}'
-        WHERE id = (
-            SELECT id FROM (
-                SELECT id FROM tiktok_videos
+        try:
+            with self.connection.cursor() as cursor:
+                # 步骤1：查找下一个待处理的视频
+                select_query = f"""
+                SELECT id, video_url FROM tiktok_videos
                 WHERE task_id = {task_id} AND status = 'pending'
                 LIMIT 1
-            ) AS subquery
-        )
-        RETURNING id, video_url
-        """
-        result = self.execute_query(query)
-        return result[0] if result else None
+                FOR UPDATE
+                """
+                cursor.execute(select_query)
+                result = cursor.fetchone()
+
+                if result:
+                    video_id, video_url = result['id'], result['video_url']
+                    
+                    # 步骤2：更新视频状态
+                    update_query = f"""
+                    UPDATE tiktok_videos
+                    SET status = 'processing', processing_server_ip = '{server_ip}'
+                    WHERE id = {video_id}
+                    """
+                    cursor.execute(update_query)
+                    self.connection.commit()
+
+                    logger.info(f"成功更新视频状态：ID {video_id}, URL {video_url}")
+                    return {'id': video_id, 'video_url': video_url}
+                else:
+                    logger.info(f"任务 {task_id} 没有更多待处理的视频")
+                    return None
+
+        except pymysql.Error as e:
+            logger.error(f"获取下一个待处理视频时出错: {e}")
+            self.connection.rollback()
+            return None
 
     def update_task_progress(self, task_id, videos_processed):
         """更新任务进度"""
