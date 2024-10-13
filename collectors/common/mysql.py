@@ -246,8 +246,8 @@ class MySQLDatabase:
         UPDATE tiktok_tasks 
         SET server_ips = 
             CASE 
-                WHEN server_ips IS NULL OR server_ips = '' THEN '%s'
-                WHEN FIND_IN_SET('%s', server_ips) > 0 THEN server_ips
+                WHEN server_ips IS NULL OR server_ips = '' THEN %s
+                WHEN FIND_IN_SET(%s, server_ips) > 0 THEN server_ips
                 ELSE CONCAT(server_ips, ',%s')
             END
         WHERE id = %s
