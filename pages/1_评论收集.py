@@ -480,25 +480,3 @@ with tab2:
             time.sleep(10)  # 每10秒刷新一次
 
         db.disconnect()
-
-    # 动态更新运行时间
-    if search_keyword:
-        placeholder = st.empty()
-        while True:
-            with placeholder.container():
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("已收集关键字", stats['keyword_count'])
-                with col2:
-                    st.metric("已收集评论数", stats['comment_count'])
-                with col3:
-                    if earliest_start_time:
-                        running_time = datetime.datetime.now() - earliest_start_time
-                        st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
-                    else:
-                        st.metric("运行时间", "无运行中任务")
-            
-            time.sleep(1)  # 每秒更新一次
-            
-            if st.button("停止更新"):
-                break
