@@ -13,6 +13,7 @@ import datetime
 import urllib.parse
 import random
 import json
+from datetime import datetime, timedelta
 
 import pandas as pd
 import streamlit as st
@@ -328,6 +329,31 @@ with tab1:
 
 
 with tab2:
+    st.header("TikTok评论收集")
+    
+    # 全局面板
+    st.subheader("收集统计")
+    col1, col2, col3 = st.columns(3)
+    
+    # 从数据库获取统计信息
+    db = MySQLDatabase()
+    db.connect()
+    stats = db.get_tiktok_collection_stats()
+    db.disconnect()
+    
+    with col1:
+        st.metric("已收集关键字", stats['keyword_count'])
+    with col2:
+        st.metric("已收集评论数", stats['comment_count'])
+    with col3:
+        if 'collection_start_time' not in st.session_state:
+            st.session_state.collection_start_time = datetime.now()
+        running_time = datetime.now() - st.session_state.collection_start_time
+        st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
+
+    # 从环境变量获取API地址
+    TIKTOK_API_URL = os.environ.get('TIKTOK_WORKER_001_API_URL', 'http://localhost:5000')
+
     # 定义缓存文件路径
     KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
 
@@ -343,11 +369,6 @@ with tab2:
                 data = json.load(f)
                 return data.get('keyword', '')
         return ''
-
-    st.header("TikTok评论收集")
-    
-    # 从环境变量获取API地址
-    TIKTOK_API_URL = os.environ.get('TIKTOK_WORKER_001_API_URL', 'http://localhost:5000')
 
     # 从缓存加载默认关键字
     default_keyword = load_keyword_from_cache()
@@ -431,25 +452,56 @@ with tab2:
 
         # 动态展示评论数据
         st.subheader("实时评论数据")
-        comments = db.get_tiktok_comments_by_keyword(search_keyword)
+        comments_placeholder = st.empty()
         
-        if comments:
-            comment_df = pd.DataFrame(comments)
-            comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-            comment_df = comment_df[['user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
-            st.dataframe(comment_df, use_container_width=True)
-        else:
-            st.write("暂无相关评论")
-
-        # 查询任务日志
+        # 任务日志
         st.subheader("任务日志")
-        logs = db.get_tiktok_task_logs_by_keyword(search_keyword)
-        if logs:
-            log_df = pd.DataFrame(logs)
-            log_df['created_at'] = pd.to_datetime(log_df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-            log_df = log_df[['created_at', 'log_type', 'message']]
-            st.dataframe(log_df, use_container_width=True)
-        else:
-            st.write("暂无相关日志")
+        logs_placeholder = st.empty()
+
+        # 添加一个停止按钮
+        stop_button = st.button("停止刷新")
+
+        while not stop_button:
+            # 获取评论数据
+            comments = db.get_tiktok_comments_by_keyword(search_keyword)
+            if comments:
+                comment_df = pd.DataFrame(comments)
+                comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                comment_df = comment_df[['user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
+                comments_placeholder.dataframe(comment_df, use_container_width=True)
+            else:
+                comments_placeholder.write("暂无相关评论")
+
+            # 获取任务日志
+            logs = db.get_tiktok_task_logs_by_keyword(search_keyword)
+            if logs:
+                log_df = pd.DataFrame(logs)
+                log_df['created_at'] = pd.to_datetime(log_df['created_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                log_df = log_df[['created_at', 'log_type', 'message']]
+                logs_placeholder.dataframe(log_df, use_container_width=True)
+            else:
+                logs_placeholder.write("暂无相关日志")
+
+            # 等待一段时间后刷新
+            time.sleep(10)  # 每10秒刷新一次
 
         db.disconnect()
+
+    # 动态更新运行时间
+    if search_keyword:
+        placeholder = st.empty()
+        while True:
+            with placeholder.container():
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("已收集关键字", stats['keyword_count'])
+                with col2:
+                    st.metric("已收集评论数", stats['comment_count'])
+                with col3:
+                    running_time = datetime.now() - st.session_state.collection_start_time
+                    st.metric("运行时间", str(timedelta(seconds=int(running_time.total_seconds()))))
+            
+            time.sleep(1)  # 每秒更新一次
+            
+            if st.button("停止更新"):
+                break

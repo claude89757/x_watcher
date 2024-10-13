@@ -370,7 +370,7 @@ class MySQLDatabase:
                     logger.info(f"成功更新新的待处理视频状态：ID {video_id}, URL {video_url}")
                     return {'id': video_id, 'video_url': video_url, 'status': 'processing'}
                 else:
-                    logger.info(f"任务 {task_id} 没有更多待���理的视频")
+                    logger.info(f"任务 {task_id} 没有更多待理的视频")
                     return None
 
         except pymysql.Error as e:
@@ -501,6 +501,22 @@ class MySQLDatabase:
         """
         params = (f"%{keyword}%",)
         return self.execute_query(query, params)
+
+    def get_tiktok_collection_stats(self):
+        """获取TikTok收集统计信息"""
+        stats = {}
+        
+        # 获取已收集的关键字数量
+        query = "SELECT COUNT(DISTINCT keyword) as keyword_count FROM tiktok_tasks"
+        result = self.execute_query(query)
+        stats['keyword_count'] = result[0]['keyword_count'] if result else 0
+        
+        # 获取已收集的评论数量
+        query = "SELECT COUNT(*) as comment_count FROM tiktok_comments"
+        result = self.execute_query(query)
+        stats['comment_count'] = result[0]['comment_count'] if result else 0
+        
+        return stats
 
 # 使用示例
 if __name__ == "__main__":
