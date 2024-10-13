@@ -24,9 +24,7 @@ from common.collector_sdk import call_collect_data_from_x
 from sidebar import sidebar
 from sidebar import cache_file_counts
 from common.redis_client import RedisClient
-from collectors.common.mysql import MySQLDatabase  # 修改这行
-from datetime import datetime
-
+from collectors.common.mysql import MySQLDatabase
 
 # Configure logger
 logger = setup_logger(__name__)
