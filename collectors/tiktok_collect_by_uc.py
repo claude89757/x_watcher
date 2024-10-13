@@ -115,7 +115,7 @@ def save_cookies(driver, username):
 def load_cookies(driver, username):
     """从文件加载Cookies到当前会话。"""
     try:
-        # 首先导航到TikTok主页
+        # 首先导航到TikTok页
         driver.get("https://www.tiktok.com")
         logger.info("已导航到TikTok页")
         
@@ -369,8 +369,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                 # 如果缓存批次达到50条，尝试存储到数据库
                 if len(comments_batch) >= 50:
                     try:
+                        inserted_count = 0
                         for batch_comment in comments_batch:
-                            db.add_tiktok_comment(
+                            result = db.add_tiktok_comment(
                                 video_id=batch_comment['video_id'],
                                 user_id=batch_comment['user_id'],
                                 reply_content=batch_comment['reply_content'],
@@ -379,7 +380,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                                 collected_by=batch_comment['collected_by'],
                                 video_url=batch_comment['video_url']
                             )
-                        logger.info(f"成功存储50条评论到数据库")
+                            if result > 0:
+                                inserted_count += 1
+                        logger.info(f"尝试存储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
                         comments_batch.clear()  # 清空缓存
                     except Exception as e:
                         logger.error(f"存储评论到数据库时发生错误: {str(e)}")
@@ -398,7 +401,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
             scroll_distance = random.randint(300, 500)
             ActionChains(driver).scroll_by_amount(0, scroll_distance).perform()
         
-        logger.info(f"页面滚动完成，滚动距离: {scroll_distance if 'scroll_distance' in locals() else down_scroll_distance} 像素")
+        logger.info(f"页面滚动完成滚动距离: {scroll_distance if 'scroll_distance' in locals() else down_scroll_distance} 像素")
         
         random_sleep(3, 7)
         
@@ -429,8 +432,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
     # 循环结束后，存储剩余的评论
     if comments_batch:
         try:
+            inserted_count = 0
             for batch_comment in comments_batch:
-                db.add_tiktok_comment(
+                result = db.add_tiktok_comment(
                     video_id=batch_comment['video_id'],
                     user_id=batch_comment['user_id'],
                     reply_content=batch_comment['reply_content'],
@@ -439,7 +443,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by):
                     collected_by=batch_comment['collected_by'],
                     video_url=batch_comment['video_url']
                 )
-            logger.info(f"成功存储剩余的 {len(comments_batch)} 条评论到数据库")
+                if result > 0:
+                    inserted_count += 1
+            logger.info(f"尝试存储剩余的 {len(comments_batch)} 条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {len(comments_batch) - inserted_count} 条重复评论")
         except Exception as e:
             logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
 
@@ -489,8 +495,12 @@ def process_task(task_id, keyword, server_ip):
                 logger.info(f"任务 {task_id} 没有更多待处理的视频，退出循环")
                 break  # 没有更多待处理的视频
 
-            video_id, video_url = next_video['id'], next_video['video_url']
-            logger.info(f"获取到待处理视频：ID {video_id}, URL {video_url}")
+            video_id, video_url, status = next_video['id'], next_video['video_url'], next_video['status']
+            if status == 'processing':
+                logger.info(f"继续处理之前未完成的视频：ID {video_id}, URL {video_url}")
+            else:
+                logger.info(f"开始处理新的视频：ID {video_id}, URL {video_url}")
+
             try:
                 comments = collect_comments(driver, video_url, video_id, keyword, db, user_id)
                 db.mark_video_completed(video_id)

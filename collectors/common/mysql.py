@@ -174,7 +174,14 @@ class MySQLDatabase:
         for query in create_tables_queries:
             self.execute_update(query)
         
-        logger.info("所有必要的表已创建或已存在")
+        # 添加唯一索引
+        add_index_query = """
+        ALTER TABLE tiktok_comments
+        ADD UNIQUE INDEX idx_user_content (user_id, reply_content(255))
+        """
+        self.execute_update(add_index_query)
+        
+        logger.info("所有必要的表和索引已创建或已存在")
 
     def create_tiktok_task(self, keyword):
         """创建新的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
@@ -220,9 +227,10 @@ class MySQLDatabase:
         return self.execute_update(query)
 
     def add_tiktok_comment(self, video_id, user_id, reply_content, reply_time, keyword, collected_by, video_url):
-        """添加TikTok评论"""
+        """添加TikTok评论，忽略重复的user_id和reply_content组合"""
         query = """
-        INSERT INTO tiktok_comments (video_id, user_id, reply_content, reply_time, keyword, collected_by, video_url)
+        INSERT IGNORE INTO tiktok_comments 
+        (video_id, user_id, reply_content, reply_time, keyword, collected_by, video_url)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         params = (video_id, user_id, reply_content, reply_time, keyword, collected_by, video_url)
@@ -299,10 +307,23 @@ class MySQLDatabase:
         return self.execute_query(query)
 
     def get_next_pending_video(self, task_id, server_ip):
-        """获取下一个待处理的视频"""
+        """获取下一个待处理的视频，优先返回正在处理中的本机视频"""
         try:
             with self.connection.cursor() as cursor:
-                # 步骤1：查找下一个待处理的视频
+                # 步骤1：查找正在处理中且由本机IP处理的视频
+                processing_query = f"""
+                SELECT id, video_url, 'processing' as status FROM tiktok_videos
+                WHERE task_id = {task_id} AND status = 'processing' AND processing_server_ip = '{server_ip}'
+                LIMIT 1
+                """
+                cursor.execute(processing_query)
+                processing_result = cursor.fetchone()
+
+                if processing_result:
+                    logger.info(f"找到正在处理中的本机视频：ID {processing_result['id']}, URL {processing_result['video_url']}")
+                    return processing_result
+
+                # 步骤2：如果没有正在处理的本机视频，则查找新的待处理视频
                 select_query = f"""
                 SELECT id, video_url FROM tiktok_videos
                 WHERE task_id = {task_id} AND status = 'pending'
@@ -315,7 +336,7 @@ class MySQLDatabase:
                 if result:
                     video_id, video_url = result['id'], result['video_url']
                     
-                    # 步骤2：更新视频状态
+                    # 更新视频状态
                     update_query = f"""
                     UPDATE tiktok_videos
                     SET status = 'processing', processing_server_ip = '{server_ip}'
@@ -324,8 +345,8 @@ class MySQLDatabase:
                     cursor.execute(update_query)
                     self.connection.commit()
 
-                    logger.info(f"成功更新视频状态：ID {video_id}, URL {video_url}")
-                    return {'id': video_id, 'video_url': video_url}
+                    logger.info(f"成功更新新的待处理视频状态：ID {video_id}, URL {video_url}")
+                    return {'id': video_id, 'video_url': video_url, 'status': 'processing'}
                 else:
                     logger.info(f"任务 {task_id} 没有更多待处理的视频")
                     return None
