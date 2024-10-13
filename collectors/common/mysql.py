@@ -252,7 +252,6 @@ class MySQLDatabase:
             END
         WHERE id = %s
         """
-        # 使用单引号包裹IP地址
         return self.execute_update(query, (server_ip, server_ip, server_ip, task_id))
 
     def get_running_tiktok_task_by_ip(self, server_ip):
