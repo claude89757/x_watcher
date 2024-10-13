@@ -354,14 +354,14 @@ with tab2:
 
     # 创建任务表单
     with st.form("create_tiktok_task"):
-        keyword = st.text_input("搜索关键词", value=default_keyword)
+        search_keyword = st.text_input("搜索关键词", value=default_keyword)
         submit_task = st.form_submit_button("创建任务")
 
     if submit_task:
         try:
             response = requests.post(
                 TIKTOK_API_URL,
-                json={"keyword": keyword},
+                json={"keyword": search_keyword},
                 headers={"Content-Type": "application/json"}
             )
             response.raise_for_status()  # 如果请求失败,会抛出异常
@@ -370,7 +370,7 @@ with tab2:
             if task_id:
                 st.success(f"成功创建任务,ID: {task_id}")
                 # 保存关键字到缓存
-                save_keyword_to_cache(keyword)
+                save_keyword_to_cache(search_keyword)
             else:
                 st.error("创建任务失败: 未返回任务ID")
         except requests.RequestException as e:
@@ -416,9 +416,6 @@ with tab2:
                     st.write(f"更新时间: {task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')}")
     else:
         st.write("暂无任务")
-
-    # 查询关键词输入
-    search_keyword = st.text_input("输入关键词查看任务状态和评论", value=default_keyword)
 
     if search_keyword:
         db = MySQLDatabase()
