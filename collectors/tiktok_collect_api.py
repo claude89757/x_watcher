@@ -6,7 +6,7 @@ from tiktok_collect_by_uc import process_task, get_public_ip
 import logging
 
 app = Flask(__name__)
-db = MySQLDatabase()
+db = MySQLDatabase()  # 确保这里正确初始化
 
 # 初始化logger
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def trigger_tiktok_task():
     if not public_ip:
         return jsonify({"error": "Failed to get public IP"}), 500
 
-    db.connect()
+    db.connect()  # 确保在使用数据库前连接
     try:
         # 检查是否有正在运行的任务
         running_tasks = db.get_running_tiktok_task_by_keyword(keyword)
@@ -54,7 +54,7 @@ def trigger_tiktok_task():
 
         return jsonify({"message": "Task triggered successfully", "task_id": task_id}), 200
     finally:
-        db.disconnect()
+        db.disconnect()  # 确保在完成后断开连接
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

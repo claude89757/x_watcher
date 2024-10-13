@@ -339,6 +339,14 @@ class MySQLDatabase:
                 return cursor.fetchone()
         return None
 
+    def get_running_tiktok_task_by_keyword(self, keyword):
+        """获取指定关键词的正在运行的TikTok任务"""
+        query = """
+        SELECT * FROM tiktok_tasks 
+        WHERE status = 'running' AND keyword = %s
+        """
+        return self.execute_query(query, (keyword,))
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
