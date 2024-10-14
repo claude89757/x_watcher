@@ -88,10 +88,7 @@ tab1, tab2, tab3 = st.tabs(["评论收集", "评论过滤", "评论分析_AI"])
 def create_vnc_websocket(worker_ip, password):
     ws_url = f"ws://{worker_ip}:6080/websockify"
     try:
-        # 启用调试输出
         websocket.enableTrace(True)
-        
-        # 创建自定义的 WebSocket 连接
         ws = websocket.create_connection(
             ws_url,
             timeout=30,
@@ -101,47 +98,43 @@ def create_vnc_websocket(worker_ip, password):
         
         logger.info(f"WebSocket连接已建立: {ws_url}")
         
-        # 读取 RFB 握手消息
         rfb_version = ws.recv()
         logger.info(f"Received RFB version: {rfb_version}")
         
-        # 发送客户端版本（使用二进制帧）
         ws.send(b"RFB 003.008\n", opcode=websocket.ABNF.OPCODE_BINARY)
         logger.info("Sent client version")
         
-        # 读取安全类型
         security_types = ws.recv()
         logger.info(f"Received security types: {security_types}")
         
-        # 选择 VNC 认证 (type 2)（使用二进制帧）
+        if security_types.startswith(b'\x00\x00\x00\x00'):
+            error_msg = security_types[4:].decode('utf-8')
+            raise Exception(f"VNC authentication error: {error_msg}")
+        
+        if b'\x02' not in security_types:
+            raise Exception("VNC authentication not supported")
+        
         ws.send(b"\x02", opcode=websocket.ABNF.OPCODE_BINARY)
         logger.info("Sent authentication choice")
         
-        # 接收 16 字节挑战
         challenge = ws.recv()
-        logger.info(f"Received challenge: {challenge}")
+        if len(challenge) != 16:
+            raise Exception(f"Invalid challenge length: {len(challenge)}")
+        logger.info(f"Received challenge: {challenge.hex()}")
         
-        # 使用 DES 加密挑战
         response = encrypt_password(password, challenge)
         ws.send(response, opcode=websocket.ABNF.OPCODE_BINARY)
         logger.info("Sent encrypted challenge response")
         
-        # 读取认证结果
         auth_result = ws.recv()
         if auth_result != b"\x00\x00\x00\x00":
             raise Exception("VNC authentication failed")
         
         logger.info("VNC authentication successful")
         return ws
-    except websocket.WebSocketException as e:
-        logger.error(f"WebSocket error: {str(e)}")
-        raise Exception(f"WebSocket error: {str(e)}")
-    except socket.error as e:
-        logger.error(f"Socket error: {str(e)}")
-        raise Exception(f"Socket error: {str(e)}")
     except Exception as e:
         logger.error(f"Failed to create WebSocket connection: {str(e)}")
-        raise Exception(f"Failed to create WebSocket connection: {str(e)}")
+        raise
 
 def get_vnc_screen(ws):
     try:
@@ -173,9 +166,6 @@ def get_vnc_screen(ws):
         raise Exception(f"Failed to get VNC screen: {str(e)}")
 
 def encrypt_password(password, challenge):
-    # 这里需要实现 VNC 密码加密
-    # 通常使用固定密钥的 DES 加密
-    # 由于 Python 的标准库不包含 DES，你可能需要使用第三方库如 pycryptodome
     def fixkey(key):
         newkey = []
         for ki in range(len(key)):
