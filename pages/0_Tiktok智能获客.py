@@ -102,8 +102,9 @@ with tab1:
             for index, worker in enumerate(active_workers):
                 worker_ip = worker['worker_ip']
                 worker_name = worker['worker_name']
+                novnc_password = worker['novnc_password'] or 'default_password'
                 # 构造带有密码的 VNC URL
-                vnc_url = f"http://{worker_ip}:6080/vnc.html?password={urllib.parse.quote(VNC_PASSWORD)}&autoconnect=true"
+                vnc_url = f"http://{worker_ip}:6080/vnc.html?password={urllib.parse.quote(novnc_password)}&autoconnect=true"
                 
                 with cols[index % 2]:  # 在两列之间交替放置 VNC 窗口
                     st.subheader(f"Worker: {worker_name} ({worker_ip})")

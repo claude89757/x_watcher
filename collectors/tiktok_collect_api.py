@@ -30,6 +30,7 @@ running_tasks = {}
 # 全局变量存储worker信息
 worker_ip = get_public_ip()
 worker_name = socket.gethostname()
+novnc_password = os.environ.get('VNC_PASSWORD', 'default_password')
 
 # 设置最大并发任务数
 MAX_CONCURRENT_TASKS = 3
@@ -38,7 +39,7 @@ def register_worker():
     db = MySQLDatabase()
     db.connect()
     try:
-        db.add_or_update_worker(worker_ip, worker_name, status='active')
+        db.add_or_update_worker(worker_ip, worker_name, status='active', novnc_password=novnc_password)
         logger.info(f"Worker registered: IP {worker_ip}, Name {worker_name}")
     finally:
         db.disconnect()
