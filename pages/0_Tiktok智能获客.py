@@ -98,34 +98,25 @@ with tab1:
         active_workers = db.get_worker_list()
         
         if active_workers:
-            # 使用列布局来更好地利用空间
-            cols = st.columns(2)
-            for index, worker in enumerate(active_workers):
-                with cols[index % 2]:
-                    worker_ip = worker['worker_ip']
-                    worker_name = worker['worker_name']
-                    novnc_password = worker['novnc_password']
-                    # 构造带有密码的 VNC URL
-                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={urllib.parse.quote(novnc_password)}&autoconnect=true"
-                    
-                    with st.expander(f"Worker: {worker_name} ({worker_ip})", expanded=True):
-                        # 显示 worker 状态和当前任务
-                        st.write(f"状态: {worker['status']}")
-                        if worker['current_task_ids']:
-                            st.write(f"当前任务: {worker['current_task_ids']}")
-                        else:
-                            st.write("当前无任务")
-                        
-                        # 添加错误处理和加载状态
-                        try:
-                            with st.spinner("正在加载 VNC 画面..."):
-                                st.components.v1.iframe(vnc_url, width=400, height=300)
-                            
-                            # 提供全屏选项
-                            if st.button(f"全屏查看 {worker_name}", key=f"fullscreen_{worker_ip}"):
-                                st.components.v1.iframe(vnc_url, width=800, height=600)
-                        except Exception as e:
-                            st.error(f"无法加载 {worker_name} 的 VNC 画面: {str(e)}")
+            # 创建选择框让用户选择要查看的 worker
+            worker_options = [f"{w['worker_name']} ({w['worker_ip']})" for w in active_workers]
+            selected_worker = st.selectbox("选择要查看的 Worker", options=worker_options)
+            
+            # 获取选中的 worker 信息
+            selected_worker_info = next(w for w in active_workers if f"{w['worker_name']} ({w['worker_ip']})" == selected_worker)
+            
+            # 显示选中 worker 的信息
+            st.write(f"状态: {selected_worker_info['status']}")
+            if selected_worker_info['current_task_ids']:
+                st.write(f"当前任务: {selected_worker_info['current_task_ids']}")
+            else:
+                st.write("当前无任务")
+            
+            # 构造 VNC URL
+            vnc_url = f"http://{selected_worker_info['worker_ip']}:6080/vnc.html?password={urllib.parse.quote(selected_worker_info['novnc_password'])}&autoconnect=true"
+            
+            # 显示 VNC 窗口
+            st.components.v1.iframe(vnc_url, width=800, height=600)
         else:
             st.info("当前没有活跃的 workers")
 
