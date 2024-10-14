@@ -18,6 +18,9 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 import requests
+import websocket
+from PIL import Image
+import io
 
 from common.config import CONFIG
 from common.cos import list_latest_files
@@ -77,6 +80,26 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # 创建标签页
 tab1, tab2, tab3 = st.tabs(["评论收集", "评论过滤", "评论分析_AI"])
 
+def create_vnc_websocket(worker_ip, password):
+    ws_url = f"ws://{worker_ip}:6080/websockify"
+    ws = websocket.create_connection(ws_url, timeout=10)
+    auth_message = json.dumps({"type": "auth", "password": password})
+    ws.send(auth_message)
+    response = ws.recv()
+    if json.loads(response).get("type") != "auth_success":
+        raise Exception("VNC authentication failed")
+    return ws
+
+def get_vnc_screen(ws):
+    request = json.dumps({"type": "request_update"})
+    ws.send(request)
+    response = ws.recv()
+    if isinstance(response, bytes):
+        # 假设返回的是 PNG 格式的图像数据
+        image = Image.open(io.BytesIO(response))
+        return image
+    else:
+        raise Exception("Unexpected response format")
 
 with tab1:
     st.header("评论收集")
@@ -90,10 +113,6 @@ with tab1:
     db.connect()
     
     try:
-        # 添加刷新按钮
-        if st.button("刷新 Worker 状态"):
-            st.rerun()
-
         # 获取所有活跃的 workers
         active_workers = db.get_worker_list()
         
@@ -112,11 +131,47 @@ with tab1:
             else:
                 st.write("当前无任务")
             
-            # 构造 VNC URL
-            vnc_url = f"http://{selected_worker_info['worker_ip']}:6080/vnc.html?password={urllib.parse.quote(selected_worker_info['novnc_password'])}&autoconnect=true"
+            # 创建一个占位符来显示 VNC 画面
+            vnc_placeholder = st.empty()
             
-            # 显示 VNC 窗口
-            st.components.v1.iframe(vnc_url, width=800, height=600)
+            # 创建连接状态指示器
+            connection_status = st.empty()
+            
+            # 添加手动刷新按钮
+            if st.button("刷新 VNC 画面"):
+                connection_status.info("正在连接 VNC...")
+                try:
+                    ws = create_vnc_websocket(selected_worker_info['worker_ip'], selected_worker_info['novnc_password'])
+                    connection_status.success("VNC 连接成功")
+                    
+                    screen_data = get_vnc_screen(ws)
+                    vnc_placeholder.image(screen_data, caption="VNC 画面", use_column_width=True)
+                    
+                    ws.close()
+                except Exception as e:
+                    connection_status.error(f"VNC 连接失败: {str(e)}")
+                    st.error("请检查 worker 状态或稍后重试")
+            
+            # 自动刷新功能
+            auto_refresh = st.checkbox("自动刷新 (每10秒)")
+            if auto_refresh:
+                try:
+                    while True:
+                        connection_status.info("正在连接 VNC...")
+                        try:
+                            ws = create_vnc_websocket(selected_worker_info['worker_ip'], selected_worker_info['novnc_password'])
+                            connection_status.success("VNC 连接成功")
+                            
+                            screen_data = get_vnc_screen(ws)
+                            vnc_placeholder.image(screen_data, caption="VNC 画面", use_column_width=True)
+                            
+                            ws.close()
+                        except Exception as e:
+                            connection_status.error(f"VNC 连接失败: {str(e)}")
+                        
+                        time.sleep(10)
+                except st.ScriptRunnerError:
+                    st.warning("自动刷新已停止")
         else:
             st.info("当前没有活跃的 workers")
 
