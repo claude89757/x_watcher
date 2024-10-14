@@ -15,6 +15,8 @@ import random
 import json
 import traceback
 from datetime import timedelta
+import base64
+from Crypto.Cipher import DES
 
 import pandas as pd
 import streamlit as st
@@ -85,34 +87,84 @@ def create_vnc_websocket(worker_ip, password):
     ws_url = f"ws://{worker_ip}:6080/websockify"
     try:
         ws = websocket.create_connection(ws_url, timeout=10)
-        auth_message = json.dumps({"type": "auth", "password": password})
-        ws.send(auth_message)
-        response = ws.recv()
-        try:
-            json_response = json.loads(response)
-            if json_response.get("type") != "auth_success":
-                raise Exception(f"VNC authentication failed: {json_response}")
-        except json.JSONDecodeError:
-            # 如果响应不是JSON格式，打印原始响应以进行调试
-            raise Exception(f"Unexpected response format. Raw response: {response}")
+        
+        # 读取 RFB 握手消息
+        rfb_version = ws.recv()
+        logger.info(f"Received RFB version: {rfb_version}")
+        
+        # 发送客户端版本
+        ws.send(b"RFB 003.008\n")
+        
+        # 读取安全类型
+        security_types = ws.recv()
+        
+        # 选择 VNC 认证 (type 2)
+        ws.send(b"\x02")
+        
+        # 接收 16 字节挑战
+        challenge = ws.recv()
+        
+        # 使用 DES 加密挑战 (这里需要实现 VNC 密码加密)
+        response = encrypt_password(password, challenge)
+        ws.send(response)
+        
+        # 读取认证结果
+        auth_result = ws.recv()
+        if auth_result != b"\x00\x00\x00\x00":
+            raise Exception("VNC authentication failed")
+        
+        logger.info("VNC authentication successful")
         return ws
     except Exception as e:
         raise Exception(f"Failed to create WebSocket connection: {str(e)}")
 
 def get_vnc_screen(ws):
     try:
-        request = json.dumps({"type": "request_update"})
-        ws.send(request)
-        response = ws.recv()
-        if isinstance(response, bytes):
-            # 假设返回的是 PNG 格式的图像数据
-            image = Image.open(io.BytesIO(response))
-            return image
+        # 发送 FramebufferUpdateRequest
+        ws.send(b"\x03\x00\x00\x00\x00\x00\x00\x00\x00")
+        
+        # 读取响应
+        frame_type = ws.recv(1)
+        if frame_type == b"\x00":  # FramebufferUpdate
+            ws.recv(3)  # 跳过填充字节
+            num_rects = int.from_bytes(ws.recv(2), byteorder='big')
+            
+            # 假设只有一个矩形，包含整个屏幕
+            x = int.from_bytes(ws.recv(2), byteorder='big')
+            y = int.from_bytes(ws.recv(2), byteorder='big')
+            width = int.from_bytes(ws.recv(2), byteorder='big')
+            height = int.from_bytes(ws.recv(2), byteorder='big')
+            encoding_type = int.from_bytes(ws.recv(4), byteorder='big')
+            
+            if encoding_type == 0:  # Raw encoding
+                raw_data = ws.recv(width * height * 4)  # 假设 32 位色深
+                image = Image.frombytes('RGBA', (width, height), raw_data)
+                return image
+            else:
+                raise Exception(f"Unsupported encoding type: {encoding_type}")
         else:
-            # 如果响应不是字节格式，可能是错误消息
-            raise Exception(f"Unexpected response format. Raw response: {response}")
+            raise Exception(f"Unexpected frame type: {frame_type}")
     except Exception as e:
         raise Exception(f"Failed to get VNC screen: {str(e)}")
+
+def encrypt_password(password, challenge):
+    # 这里需要实现 VNC 密码加密
+    # 通常使用固定密钥的 DES 加密
+    # 由于 Python 的标准库不包含 DES，你可能需要使用第三方库如 pycryptodome
+    def fixkey(key):
+        newkey = []
+        for ki in range(len(key)):
+            bsrc = ord(key[ki])
+            btgt = 0
+            for i in range(8):
+                if bsrc & (1 << i):
+                    btgt = btgt | (1 << (7 - i))
+            newkey.append(btgt)
+        return bytes(newkey)
+
+    key = fixkey(password.ljust(8, '\x00')[:8])
+    des = DES.new(key, DES.MODE_ECB)
+    return des.encrypt(challenge)
 
 with tab1:
     st.header("评论收集")
