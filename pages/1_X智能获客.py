@@ -29,9 +29,6 @@ st.set_page_config(page_title="X智能获客", page_icon="🤖", layout="wide")
 # Configure logger
 logger = setup_logger(__name__)
 
-# Configure Streamlit pages and state
-st.set_page_config(page_title="Tiktok智能获客", page_icon="🤖", layout="wide")
-
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
