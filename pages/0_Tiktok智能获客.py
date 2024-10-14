@@ -13,6 +13,7 @@ import datetime
 import urllib.parse
 import random
 import json
+import traceback
 from datetime import timedelta
 
 import pandas as pd
@@ -82,24 +83,36 @@ tab1, tab2, tab3 = st.tabs(["评论收集", "评论过滤", "评论分析_AI"])
 
 def create_vnc_websocket(worker_ip, password):
     ws_url = f"ws://{worker_ip}:6080/websockify"
-    ws = websocket.create_connection(ws_url, timeout=10)
-    auth_message = json.dumps({"type": "auth", "password": password})
-    ws.send(auth_message)
-    response = ws.recv()
-    if json.loads(response).get("type") != "auth_success":
-        raise Exception("VNC authentication failed")
-    return ws
+    try:
+        ws = websocket.create_connection(ws_url, timeout=10)
+        auth_message = json.dumps({"type": "auth", "password": password})
+        ws.send(auth_message)
+        response = ws.recv()
+        try:
+            json_response = json.loads(response)
+            if json_response.get("type") != "auth_success":
+                raise Exception(f"VNC authentication failed: {json_response}")
+        except json.JSONDecodeError:
+            # 如果响应不是JSON格式，打印原始响应以进行调试
+            raise Exception(f"Unexpected response format. Raw response: {response}")
+        return ws
+    except Exception as e:
+        raise Exception(f"Failed to create WebSocket connection: {str(e)}")
 
 def get_vnc_screen(ws):
-    request = json.dumps({"type": "request_update"})
-    ws.send(request)
-    response = ws.recv()
-    if isinstance(response, bytes):
-        # 假设返回的是 PNG 格式的图像数据
-        image = Image.open(io.BytesIO(response))
-        return image
-    else:
-        raise Exception("Unexpected response format")
+    try:
+        request = json.dumps({"type": "request_update"})
+        ws.send(request)
+        response = ws.recv()
+        if isinstance(response, bytes):
+            # 假设返回的是 PNG 格式的图像数据
+            image = Image.open(io.BytesIO(response))
+            return image
+        else:
+            # 如果响应不是字节格式，可能是错误消息
+            raise Exception(f"Unexpected response format. Raw response: {response}")
+    except Exception as e:
+        raise Exception(f"Failed to get VNC screen: {str(e)}")
 
 with tab1:
     st.header("评论收集")
@@ -151,6 +164,7 @@ with tab1:
                 except Exception as e:
                     connection_status.error(f"VNC 连接失败: {str(e)}")
                     st.error("请检查 worker 状态或稍后重试")
+                    st.error(f"详细错误信息: {traceback.format_exc()}")
             
             # 自动刷新功能
             auto_refresh = st.checkbox("自动刷新 (每10秒)")
@@ -168,6 +182,7 @@ with tab1:
                             ws.close()
                         except Exception as e:
                             connection_status.error(f"VNC 连接失败: {str(e)}")
+                            st.error(f"详细错误信息: {traceback.format_exc()}")
                         
                         time.sleep(10)
                 except st.ScriptRunnerError:
