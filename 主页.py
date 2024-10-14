@@ -21,7 +21,7 @@ from common.collector_sdk import check_x_login_status
 logger = setup_logger(__name__)
 
 # Configure Streamlit pages and state
-st.set_page_config(page_title="(Demo)X_AI_Marketing", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="AI_Marketing", page_icon="🤖", layout="wide")
 
 # Force responsive layout for columns also on mobile
 st.write(
