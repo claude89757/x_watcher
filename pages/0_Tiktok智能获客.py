@@ -94,9 +94,9 @@ def create_vnc_websocket(worker_ip, password):
         # 创建自定义的 WebSocket 连接
         ws = websocket.create_connection(
             ws_url,
-            timeout=30,  # 增加超时时间
-            sslopt={"cert_reqs": ssl.CERT_NONE},  # 忽略SSL证书验证
-            header=["Pragma: no-cache", "Cache-Control: no-cache"]  # 添加额外的 HTTP 头
+            timeout=30,
+            sslopt={"cert_reqs": ssl.CERT_NONE},
+            header=["Pragma: no-cache", "Cache-Control: no-cache"]
         )
         
         logger.info(f"WebSocket连接已建立: {ws_url}")
@@ -105,16 +105,16 @@ def create_vnc_websocket(worker_ip, password):
         rfb_version = ws.recv()
         logger.info(f"Received RFB version: {rfb_version}")
         
-        # 发送客户端版本
-        ws.send(b"RFB 003.008\n")
+        # 发送客户端版本（使用二进制帧）
+        ws.send(b"RFB 003.008\n", opcode=websocket.ABNF.OPCODE_BINARY)
         logger.info("Sent client version")
         
         # 读取安全类型
         security_types = ws.recv()
         logger.info(f"Received security types: {security_types}")
         
-        # 选择 VNC 认证 (type 2)
-        ws.send(b"\x02")
+        # 选择 VNC 认证 (type 2)（使用二进制帧）
+        ws.send(b"\x02", opcode=websocket.ABNF.OPCODE_BINARY)
         logger.info("Sent authentication choice")
         
         # 接收 16 字节挑战
@@ -123,7 +123,7 @@ def create_vnc_websocket(worker_ip, password):
         
         # 使用 DES 加密挑战
         response = encrypt_password(password, challenge)
-        ws.send(response)
+        ws.send(response, opcode=websocket.ABNF.OPCODE_BINARY)
         logger.info("Sent encrypted challenge response")
         
         # 读取认证结果
@@ -145,30 +145,30 @@ def create_vnc_websocket(worker_ip, password):
 
 def get_vnc_screen(ws):
     try:
-        # 发送 FramebufferUpdateRequest
-        ws.send(b"\x03\x00\x00\x00\x00\x00\x00\x00\x00")
+        # 发送 FramebufferUpdateRequest（使用二进制帧）
+        ws.send(b"\x03\x00\x00\x00\x00\x00\x00\x00\x00", opcode=websocket.ABNF.OPCODE_BINARY)
         
         # 读取响应
-        frame_type = ws.recv(1)
-        if frame_type == b"\x00":  # FramebufferUpdate
-            ws.recv(3)  # 跳过填充字节
-            num_rects = int.from_bytes(ws.recv(2), byteorder='big')
+        frame_type = ws.recv()
+        if frame_type[0] == 0:  # FramebufferUpdate
+            num_rects = int.from_bytes(frame_type[2:4], byteorder='big')
             
             # 假设只有一个矩形，包含整个屏幕
-            x = int.from_bytes(ws.recv(2), byteorder='big')
-            y = int.from_bytes(ws.recv(2), byteorder='big')
-            width = int.from_bytes(ws.recv(2), byteorder='big')
-            height = int.from_bytes(ws.recv(2), byteorder='big')
-            encoding_type = int.from_bytes(ws.recv(4), byteorder='big')
+            rect_data = ws.recv()
+            x = int.from_bytes(rect_data[0:2], byteorder='big')
+            y = int.from_bytes(rect_data[2:4], byteorder='big')
+            width = int.from_bytes(rect_data[4:6], byteorder='big')
+            height = int.from_bytes(rect_data[6:8], byteorder='big')
+            encoding_type = int.from_bytes(rect_data[8:12], byteorder='big')
             
             if encoding_type == 0:  # Raw encoding
-                raw_data = ws.recv(width * height * 4)  # 假设 32 位色深
+                raw_data = ws.recv()
                 image = Image.frombytes('RGBA', (width, height), raw_data)
                 return image
             else:
                 raise Exception(f"Unsupported encoding type: {encoding_type}")
         else:
-            raise Exception(f"Unexpected frame type: {frame_type}")
+            raise Exception(f"Unexpected frame type: {frame_type[0]}")
     except Exception as e:
         raise Exception(f"Failed to get VNC screen: {str(e)}")
 
