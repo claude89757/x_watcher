@@ -22,16 +22,6 @@ from common.redis_client import RedisClient
 from collectors.common.mysql import MySQLDatabase
 from pages.tiktok_tab.data_collect import data_collect
 
-# 添加当前目录到sys.path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
-
-# 导入其他py文件
-x_tab_1 = importlib.import_module("x_tab.1_评论收集")
-x_tab_2 = importlib.import_module("x_tab.2_评论过滤")
-x_tab_3 = importlib.import_module("x_tab.3_评论分析_AI")
-x_tab_4 = importlib.import_module("x_tab.4_私信生成_AI")
-x_tab_5 = importlib.import_module("x_tab.5_私信发送")
 
 # 设置页面配置
 st.set_page_config(page_title="X智能获客", page_icon="🤖", layout="wide")
@@ -86,17 +76,17 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论�
 
 # 在每个标签页中运行相应的py文件内容
 with tab1:
-    x_tab_1.main()
+    st.write("评论收集功能正在开发中")
 
 with tab2:
-    x_tab_2.main()
+    st.write("评论收集功能正在开发中")
 
 with tab3:
-    x_tab_3.main()
+    st.write("评论收集功能正在开发中")
 
 with tab4:
-    x_tab_4.main()
+    st.write("评论收集功能正在开发中")
 
 with tab5:
-    x_tab_5.main()
+    st.write("评论收集功能正在开发中")
 
