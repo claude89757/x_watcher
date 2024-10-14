@@ -22,11 +22,14 @@ console_handler.setFormatter(formatter)
 # 将处理器添加到logger
 logger.addHandler(console_handler)
 
+# 全局字典来存储正在运行的任务线程
+running_tasks = {}
+
 @app.route('/trigger_tiktok_task', methods=['POST'])
 def trigger_tiktok_task():
-    keyword = request.json.get('keyword')
-    if not keyword:
-        return jsonify({"error": "Missing keyword parameter"}), 400
+    task_id = request.json.get('task_id')
+    if not task_id:
+        return jsonify({"error": "Missing task_id parameter"}), 400
 
     public_ip = get_public_ip()
     if not public_ip:
@@ -35,27 +38,29 @@ def trigger_tiktok_task():
     db = MySQLDatabase()
     db.connect()
     try:
-        # 检查当前主机运行的任务数量
+        # Check the number of tasks running on the current host
         running_tasks = db.get_running_tiktok_task_by_ip(public_ip)
-        if len(running_tasks) >= 2:
-            return jsonify({"error": "Maximum number of concurrent tasks (2) reached for this host"}), 429
+        if len(running_tasks) >= 1:
+            return jsonify({"error": "Maximum number of concurrent tasks (1) reached for this host"}), 429
 
-        # 检查是否有正在运行的任务
-        running_tasks = db.get_running_tiktok_task_by_keyword(keyword)
-        if running_tasks:
-            task_id = running_tasks[0]['id']
-            logger.info(f"加入现有的TikTok任务: ID {task_id}, 关键词 {keyword}")
-        else:
-            # 如果没有运行中的任务，创建一个新任务
-            task_id = db.create_tiktok_task(keyword)
-            logger.info(f"创建了新的TikTok任务: ID {task_id}, 关键词 {keyword}")
+        # Check if the task exists
+        task = db.get_tiktok_task_by_id(task_id)
+        if not task:
+            return jsonify({"error": f"Task ID {task_id} does not exist"}), 404
 
-        # 更新任务状态和服务器IP
+        # Check if the server IP is already in the task
+        server_ips = task['server_ips'].split(',') if task['server_ips'] else []
+        if public_ip in server_ips:
+            return jsonify({"error": f"This server IP {public_ip} is already in task {task_id}"}), 400
+
+        # Update task status to running and add server IP
         db.update_tiktok_task_status(task_id, 'running')
         db.update_tiktok_task_server_ip(task_id, public_ip)
 
-        # 在新线程中处理任务
-        threading.Thread(target=process_task, args=(task_id, keyword, public_ip)).start()
+        # 启动新的线程来处理任务
+        task_thread = threading.Thread(target=process_task, args=(task_id, task['keyword'], public_ip))
+        task_thread.start()
+        running_tasks[task_id] = task_thread
 
         return jsonify({"message": "Task triggered successfully", "task_id": task_id}), 200
     finally:
@@ -89,6 +94,35 @@ def resume_tiktok_task():
         threading.Thread(target=process_task, args=(task_id, task['keyword'], public_ip)).start()
 
         return jsonify({"message": "Task resumed successfully", "task_id": task_id}), 200
+    finally:
+        db.disconnect()
+
+@app.route('/delete_tiktok_task', methods=['POST'])
+def delete_tiktok_task():
+    task_id = request.json.get('task_id')
+    if not task_id:
+        return jsonify({"error": "Missing task_id parameter"}), 400
+
+    public_ip = get_public_ip()
+    if not public_ip:
+        return jsonify({"error": "Failed to get public IP"}), 500
+
+    db = MySQLDatabase()
+    db.connect()
+    try:
+        task = db.get_tiktok_task_by_id(task_id)
+        if not task:
+            return jsonify({"error": "Task not found"}), 404
+
+        # 检查任务是否在此worker上运行
+        if task['status'] == 'running' and public_ip in (task['server_ips'] or '').split(','):
+            # 停止正在运行的线程
+            if task_id in running_tasks:
+                running_tasks[task_id].do_run = False
+                running_tasks[task_id].join(timeout=5)  # 等待线程结束，最多等待5秒
+                del running_tasks[task_id]
+
+        return jsonify({"message": "Task deleted successfully", "task_id": task_id}), 200
     finally:
         db.disconnect()
 

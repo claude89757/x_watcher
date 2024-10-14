@@ -52,22 +52,43 @@ def data_collect():
 
         if submit_task:
             try:
-                response = requests.post(
-                    f"{TIKTOK_WORKER_001_API_URL}/create_tiktok_task",
-                    json={"keyword": search_keyword},
-                    headers={"Content-Type": "application/json"}
-                )
-                response.raise_for_status()  # 如果请求失败,会抛出异常
-                result = response.json()
-                task_id = result.get("task_id")
-                if task_id:
-                    st.success(f"✅ 成功创建任务,ID: {task_id}")
-                    # 保存关键字到缓存
-                    save_keyword_to_cache(search_keyword)
+                # 检查是否已存在相同关键字的运行中任务
+                running_tasks = db.get_running_tiktok_task_by_keyword(search_keyword)
+                if running_tasks:
+                    st.warning(f"⚠️ 已存在关键词为 '{search_keyword}' 的运行中任务。任务ID: {running_tasks[0]['id']}")
                 else:
-                    st.error("❌ 创建任务失败: 未返回任务ID")
-            except requests.RequestException as e:
-                st.error(f"❌ 创建任务失败: {str(e)}")
+                    # 在MySQL中创建新任务
+                    task_id = db.create_tiktok_task(search_keyword)
+                    if task_id:
+                        st.success(f"✅ 成功在数据库中创建任务。ID: {task_id}")
+                        
+                        # 触发所有可用的worker
+                        worker_urls = [os.environ.get(f'TIKTOK_WORKER_{i:03d}_API_URL', '') for i in range(1, 100)]
+                        worker_urls = [url for url in worker_urls if url]  # 过滤掉空的URL
+                        successful_triggers = 0
+                        
+                        for url in worker_urls:
+                            try:
+                                response = requests.post(
+                                    f"{url}/trigger_tiktok_task",
+                                    json={"task_id": task_id},
+                                    headers={"Content-Type": "application/json"}
+                                )
+                                response.raise_for_status()
+                                successful_triggers += 1
+                            except requests.RequestException as e:
+                                st.error(f"❌ 触发worker {url} 失败: {str(e)}")
+                        
+                        if successful_triggers > 0:
+                            st.success(f"✅ 成功触发 {successful_triggers} 个worker")
+                            # 保存关键字到缓存
+                            save_keyword_to_cache(search_keyword)
+                        else:
+                            st.error("❌ 未能触发任何worker")
+                    else:
+                        st.error("❌ 在数据库中创建任务失败")
+            except Exception as e:
+                st.error(f"❌ 创建任务时出错: {str(e)}")
 
         # 任务管理
         st.subheader("任务管理")
@@ -109,7 +130,26 @@ def data_collect():
                                     st.error(f"恢复任务失败: {str(e)}")
                     with col2:
                         if st.button('🗑️ 删除', key=f'delete_{task["id"]}'):
-                            db.delete_tiktok_task(task['id'])
+                            # 调用所有worker的delete_tiktok_task API
+                            worker_urls = [os.environ.get(f'TIKTOK_WORKER_{i:03d}_API_URL', '') for i in range(1, 100)]
+                            worker_urls = [url for url in worker_urls if url]  # 过滤掉空的URL
+                            
+                            for url in worker_urls:
+                                try:
+                                    response = requests.post(
+                                        f"{url}/delete_tiktok_task",
+                                        json={"task_id": task['id']},
+                                        headers={"Content-Type": "application/json"}
+                                    )
+                                    response.raise_for_status()
+                                except requests.RequestException as e:
+                                    st.error(f"❌ 在worker {url} 上删除任务失败: {str(e)}")
+                            
+                            # 在数据库中删除任务
+                            if db.delete_tiktok_task(task['id']):
+                                st.success(f"✅ 成功删除任务 ID: {task['id']}")
+                            else:
+                                st.error(f"❌ 在数据库中删除任务 ID: {task['id']} 失败")
                             st.rerun()
                     with col3:
                         st.write(f"🕒 更新时间: {task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')}")
