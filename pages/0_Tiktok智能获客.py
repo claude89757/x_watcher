@@ -77,8 +77,6 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # 创建标签页
 tab1, tab2, tab3 = st.tabs(["评论收集", "评论过滤", "评论分析_AI"])
 
-# 在文件的开头附近添加 VNC 密码
-VNC_PASSWORD = os.environ.get('VNC_PASSWORD', 'default_password')  # 从环境变量获取密码，如果没有设置则使用默认密码
 
 with tab1:
     st.header("评论收集")
@@ -92,30 +90,42 @@ with tab1:
     db.connect()
     
     try:
+        # 添加刷新按钮
+        if st.button("刷新 Worker 状态"):
+            st.rerun()
+
         # 获取所有活跃的 workers
         active_workers = db.get_worker_list()
         
         if active_workers:
-            # 创建多列布局
-            cols = st.columns(2)  # 可以根据需要调整列数
-            
+            # 使用列布局来更好地利用空间
+            cols = st.columns(2)
             for index, worker in enumerate(active_workers):
-                worker_ip = worker['worker_ip']
-                worker_name = worker['worker_name']
-                novnc_password = worker['novnc_password'] or 'default_password'
-                # 构造带有密码的 VNC URL
-                vnc_url = f"http://{worker_ip}:6080/vnc.html?password={urllib.parse.quote(novnc_password)}&autoconnect=true"
-                
-                with cols[index % 2]:  # 在两列之间交替放置 VNC 窗口
-                    st.subheader(f"Worker: {worker_name} ({worker_ip})")
-                    st.components.v1.iframe(vnc_url, width=400, height=300)  # 调整宽度和高度以适应布局
+                with cols[index % 2]:
+                    worker_ip = worker['worker_ip']
+                    worker_name = worker['worker_name']
+                    novnc_password = worker['novnc_password']
+                    # 构造带有密码的 VNC URL
+                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={urllib.parse.quote(novnc_password)}&autoconnect=true"
                     
-                    # 显示 worker 状态和当前任务
-                    st.write(f"状态: {worker['status']}")
-                    if worker['current_task_ids']:
-                        st.write(f"当前任务: {worker['current_task_ids']}")
-                    else:
-                        st.write("当前无任务")
+                    with st.expander(f"Worker: {worker_name} ({worker_ip})", expanded=True):
+                        # 显示 worker 状态和当前任务
+                        st.write(f"状态: {worker['status']}")
+                        if worker['current_task_ids']:
+                            st.write(f"当前任务: {worker['current_task_ids']}")
+                        else:
+                            st.write("当前无任务")
+                        
+                        # 添加错误处理和加载状态
+                        try:
+                            with st.spinner("正在加载 VNC 画面..."):
+                                st.components.v1.iframe(vnc_url, width=400, height=300)
+                            
+                            # 提供全屏选项
+                            if st.button(f"全屏查看 {worker_name}", key=f"fullscreen_{worker_ip}"):
+                                st.components.v1.iframe(vnc_url, width=800, height=600)
+                        except Exception as e:
+                            st.error(f"无法加载 {worker_name} 的 VNC 画面: {str(e)}")
         else:
             st.info("当前没有活跃的 workers")
 
