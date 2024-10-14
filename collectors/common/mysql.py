@@ -168,6 +168,19 @@ class MySQLDatabase:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (task_id) REFERENCES tiktok_tasks(id)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS worker_infos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                worker_ip VARCHAR(45) NOT NULL,
+                worker_name VARCHAR(255),
+                status ENUM('active', 'inactive', 'busy') DEFAULT 'inactive',
+                last_heartbeat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                current_task_ids TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_worker_ip (worker_ip)
+            )
             """
         ]
 
@@ -573,6 +586,76 @@ class MySQLDatabase:
         """
         results = self.execute_query(query, (keyword,))
         return [result['user_id'] for result in results]
+
+    def get_running_tiktok_tasks(self):
+        """获取所有正在运行的TikTok任务"""
+        query = "SELECT * FROM tiktok_tasks WHERE status = 'running'"
+        return self.execute_query(query)
+
+    def add_or_update_worker(self, worker_ip, worker_name=None, status='inactive', current_task_ids=None):
+        """添加或更新 worker 信息"""
+        query = """
+        INSERT INTO worker_infos (worker_ip, worker_name, status, current_task_ids, last_heartbeat)
+        VALUES (%s, %s, %s, %s, NOW())
+        ON DUPLICATE KEY UPDATE
+        worker_name = VALUES(worker_name),
+        status = VALUES(status),
+        current_task_ids = VALUES(current_task_ids),
+        last_heartbeat = NOW()
+        """
+        current_task_ids_str = ','.join(map(str, current_task_ids)) if current_task_ids else None
+        params = (worker_ip, worker_name, status, current_task_ids_str)
+        return self.execute_update(query, params)
+
+    def get_worker_list(self):
+        """获取所有 worker 的列表"""
+        query = "SELECT * FROM worker_infos ORDER BY last_heartbeat DESC"
+        return self.execute_query(query)
+
+    def update_worker_status(self, worker_ip, status):
+        """更新 worker 的状态"""
+        query = "UPDATE worker_infos SET status = %s, last_heartbeat = NOW() WHERE worker_ip = %s"
+        params = (status, worker_ip)
+        return self.execute_update(query, params)
+
+    def update_worker_task(self, worker_ip, task_ids):
+        """更新 worker 当前执行的任务 ID 列表"""
+        query = "UPDATE worker_infos SET current_task_ids = %s, last_heartbeat = NOW() WHERE worker_ip = %s"
+        task_ids_str = ','.join(map(str, task_ids))
+        params = (task_ids_str, worker_ip)
+        return self.execute_update(query, params)
+
+    def get_available_workers(self):
+        """获取可用的 workers（状态为 active 且没有当前任务）"""
+        query = """
+        SELECT * FROM worker_infos 
+        WHERE status = 'active' AND (current_task_ids IS NULL OR current_task_ids = '')
+        ORDER BY last_heartbeat DESC
+        """
+        return self.execute_query(query)
+
+    def remove_inactive_workers(self, inactive_threshold_minutes=10):
+        """移除长时间未活动的 workers"""
+        query = f"""
+        DELETE FROM worker_infos
+        WHERE last_heartbeat < NOW() - INTERVAL {inactive_threshold_minutes} MINUTE
+        """
+        return self.execute_update(query)
+
+    def get_worker_current_tasks(self, worker_ip):
+        """获取 worker 当前执行的任务 ID 列表"""
+        query = "SELECT current_task_ids FROM worker_infos WHERE worker_ip = %s"
+        result = self.execute_query(query, (worker_ip,))
+        if result and result[0]['current_task_ids']:
+            return [int(task_id) for task_id in result[0]['current_task_ids'].split(',')]
+        return []
+
+    def update_worker_task(self, worker_ip, task_ids):
+        """更新 worker 当前执行的任务 ID 列表"""
+        query = "UPDATE worker_infos SET current_task_ids = %s, last_heartbeat = NOW() WHERE worker_ip = %s"
+        task_ids_str = ','.join(map(str, task_ids))
+        params = (task_ids_str, worker_ip)
+        return self.execute_update(query, params)
 
 # 使用示例
 if __name__ == "__main__":

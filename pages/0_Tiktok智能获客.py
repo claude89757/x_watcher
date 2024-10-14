@@ -52,7 +52,6 @@ else:
     time.sleep(3)
     st.switch_page("Home.py", )
 
-
 # Force responsive layout for columns also on mobile
 st.write(
     """<style>
@@ -78,22 +77,53 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # 创建标签页
 tab1, tab2, tab3 = st.tabs(["评论收集", "评论过滤", "评论分析_AI"])
 
+# 在文件的开头附近添加 VNC 密码
+VNC_PASSWORD = os.environ.get('VNC_PASSWORD', 'default_password')  # 从环境变量获取密码，如果没有设置则使用默认密码
 
 with tab1:
-    st.header("TikTok评论收集")
+    st.header("评论收集")
     data_collect()
+    
+    # 添加 VNC 窗口
+    st.subheader("Worker 实时画面")
+    
+    # 初始化数据库连接
+    db = MySQLDatabase()
+    db.connect()
+    
+    try:
+        # 获取所有活跃的 workers
+        active_workers = db.get_worker_list()
+        
+        if active_workers:
+            # 创建多列布局
+            cols = st.columns(2)  # 可以根据需要调整列数
+            
+            for index, worker in enumerate(active_workers):
+                worker_ip = worker['worker_ip']
+                worker_name = worker['worker_name']
+                # 构造带有密码的 VNC URL
+                vnc_url = f"http://{worker_ip}:6080/vnc.html?password={urllib.parse.quote(VNC_PASSWORD)}&autoconnect=true"
+                
+                with cols[index % 2]:  # 在两列之间交替放置 VNC 窗口
+                    st.subheader(f"Worker: {worker_name} ({worker_ip})")
+                    st.components.v1.iframe(vnc_url, width=400, height=300)  # 调整宽度和高度以适应布局
+                    
+                    # 显示 worker 状态和当前任务
+                    st.write(f"状态: {worker['status']}")
+                    if worker['current_task_ids']:
+                        st.write(f"当前任务: {worker['current_task_ids']}")
+                    else:
+                        st.write("当前无任务")
+        else:
+            st.info("当前没有活跃的 workers")
+
+    finally:
+        # 确保在函数结束时关闭数据库连接
+        db.disconnect()
 
 with tab2:
     st.header("评论过滤")
 
 with tab3:
     st.header("评论分析_AI")
-
-
-
-
-
-
-
-
-
