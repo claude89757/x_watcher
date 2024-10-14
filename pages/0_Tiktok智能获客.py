@@ -22,6 +22,8 @@ import pandas as pd
 import streamlit as st
 import requests
 import websocket
+import socket
+import ssl
 from PIL import Image
 import io
 
@@ -86,7 +88,18 @@ tab1, tab2, tab3 = st.tabs(["评论收集", "评论过滤", "评论分析_AI"])
 def create_vnc_websocket(worker_ip, password):
     ws_url = f"ws://{worker_ip}:6080/websockify"
     try:
-        ws = websocket.create_connection(ws_url, timeout=10)
+        # 启用调试输出
+        websocket.enableTrace(True)
+        
+        # 创建自定义的 WebSocket 连接
+        ws = websocket.create_connection(
+            ws_url,
+            timeout=30,  # 增加超时时间
+            sslopt={"cert_reqs": ssl.CERT_NONE},  # 忽略SSL证书验证
+            header=["Pragma: no-cache", "Cache-Control: no-cache"]  # 添加额外的 HTTP 头
+        )
+        
+        logger.info(f"WebSocket连接已建立: {ws_url}")
         
         # 读取 RFB 握手消息
         rfb_version = ws.recv()
@@ -94,19 +107,24 @@ def create_vnc_websocket(worker_ip, password):
         
         # 发送客户端版本
         ws.send(b"RFB 003.008\n")
+        logger.info("Sent client version")
         
         # 读取安全类型
         security_types = ws.recv()
+        logger.info(f"Received security types: {security_types}")
         
         # 选择 VNC 认证 (type 2)
         ws.send(b"\x02")
+        logger.info("Sent authentication choice")
         
         # 接收 16 字节挑战
         challenge = ws.recv()
+        logger.info(f"Received challenge: {challenge}")
         
-        # 使用 DES 加密挑战 (这里需要实现 VNC 密码加密)
+        # 使用 DES 加密挑战
         response = encrypt_password(password, challenge)
         ws.send(response)
+        logger.info("Sent encrypted challenge response")
         
         # 读取认证结果
         auth_result = ws.recv()
@@ -115,7 +133,14 @@ def create_vnc_websocket(worker_ip, password):
         
         logger.info("VNC authentication successful")
         return ws
+    except websocket.WebSocketException as e:
+        logger.error(f"WebSocket error: {str(e)}")
+        raise Exception(f"WebSocket error: {str(e)}")
+    except socket.error as e:
+        logger.error(f"Socket error: {str(e)}")
+        raise Exception(f"Socket error: {str(e)}")
     except Exception as e:
+        logger.error(f"Failed to create WebSocket connection: {str(e)}")
         raise Exception(f"Failed to create WebSocket connection: {str(e)}")
 
 def get_vnc_screen(ws):
