@@ -565,6 +565,15 @@ class MySQLDatabase:
         result = self.execute_query(query)
         return result[0] if result else None
 
+    def get_existing_user_ids_for_keyword(self, keyword):
+        query = """
+        SELECT DISTINCT user_id
+        FROM tiktok_comments
+        WHERE keyword = %s
+        """
+        results = self.execute_query(query, (keyword,))
+        return [result['user_id'] for result in results]
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")

@@ -318,22 +318,42 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
     )
 
+    # 从数据库中获取已存储的用户ID
+    existing_user_ids = set(db.get_existing_user_ids_for_keyword(keyword))
+    logger.info(f"从数据库中获取到 {len(existing_user_ids)} 个已存储的用户ID")
+
     comments_data = []
     comments_batch = []
     scroll_attempts = 0
-    max_scroll_attempts = 20
+    max_scroll_attempts = 50  # 最大滚动尝试次数
     consecutive_no_new_comments = 0
-    max_consecutive_no_new = 5
+    max_consecutive_no_new = 10  # 连续无新评论的最大次数
 
     last_comments_count = 0
     seen_comments = set()
 
+    # 动态调整滚动距离
+    min_scroll_distance = 300
+    max_scroll_distance = 1000
+    current_scroll_distance = min_scroll_distance
+
+    # 指数退避策略
+    backoff_factor = 1.5
+    max_backoff_time = 20
+
     while scroll_attempts < max_scroll_attempts:
+        scroll_attempts += 1
+        logger.info(f"滚动尝试次数: {scroll_attempts}/{max_scroll_attempts}")
+
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         for comment_div in soup.select('div[class*="DivCommentItemWrapper"]'):
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
             
+            # 如果用户ID已经在数据库中，跳过这条评论
+            if user_id in existing_user_ids:
+                continue
+
             reply_content_span = comment_div.select_one('span[data-e2e="comment-level-1"]')
             reply_content = reply_content_span.get_text(strip=True) if reply_content_span else ''
             
@@ -382,6 +402,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                             )
                             if result > 0:
                                 inserted_count += 1
+                                existing_user_ids.add(batch_comment['user_id'])
                         logger.info(f"尝试存储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
                         comments_batch.clear()  # 清空缓存
                         
@@ -393,46 +414,59 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                     except Exception as e:
                         logger.error(f"存储评论到数据库时发生错误: {str(e)}")
 
-        # 滚动页面和其他逻辑保持不变
+        # 优化的滚动策略
         if consecutive_no_new_comments >= max_consecutive_no_new:
-            logger.info("连续多次未加载新评论，尝试向上滚动")
-            up_scroll_distance = random.randint(100, 300)
-            ActionChains(driver).scroll_by_amount(0, -up_scroll_distance).perform()
-            random_sleep(2, 4)
-            down_scroll_distance = random.randint(up_scroll_distance - 50, up_scroll_distance + 50)
-            ActionChains(driver).scroll_by_amount(0, down_scroll_distance).perform()
+            logger.info("连续多次未加载新评论，尝试更激进的滚动策略")
+            # 尝试快速滚动到底部然后回到顶部
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            random_sleep(1, 2)
+            driver.execute_script("window.scrollTo(0, 0);")
+            random_sleep(1, 2)
             consecutive_no_new_comments = 0
+            current_scroll_distance = min_scroll_distance
         else:
-            scroll_distance = random.randint(300, 500)
-            ActionChains(driver).scroll_by_amount(0, scroll_distance).perform()
+            # 动态调整滚动距离
+            scroll_distance = random.randint(current_scroll_distance, current_scroll_distance + 200)
+            driver.execute_script(f"window.scrollBy(0, {scroll_distance});")
+            current_scroll_distance = min(current_scroll_distance + 50, max_scroll_distance)
         
-        logger.info(f"页面滚动完成滚动距离: {scroll_distance if 'scroll_distance' in locals() else down_scroll_distance} 像素")
+        logger.info(f"页面滚动完成，滚动距离: {scroll_distance} 像素")
         
-        random_sleep(3, 7)
+        # 指数退避等待
+        wait_time = min(0.5 * (backoff_factor ** consecutive_no_new_comments), max_backoff_time)
+        random_sleep(wait_time, wait_time + 2)
         
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
-        )
+        # 检测是否到达页面底部
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        random_sleep(1, 2)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        
+        if new_height == last_height:
+            logger.info("已到达页面底部")
+            break
         
         if len(comments_data) > last_comments_count:
             new_comments = comments_data[last_comments_count:]
             logger.info(f"本轮新收集到 {len(new_comments)} 条评论，累计收集 {len(comments_data)} 条评论")
             consecutive_no_new_comments = 0
-            scroll_attempts = 0
+            current_scroll_distance = min_scroll_distance  # 重置滚动距离
         else:
             consecutive_no_new_comments += 1
-            scroll_attempts += 1
-            logger.info(f"未加载新评论，连续未加载次数: {consecutive_no_new_comments}, 总滚动尝试次数: {scroll_attempts}")
+            logger.info(f"未加载新评论，连续未加载次数: {consecutive_no_new_comments}")
         
         last_comments_count = len(comments_data)
 
         if is_captcha_present(driver):
             solve_captcha(driver)
 
-        if random.random() < 0.3:
-            pause_time = random.uniform(5, 15)
+        # 随机暂停
+        if random.random() < 0.2:
+            pause_time = random.uniform(3, 10)
             logger.info(f"随机暂停 {pause_time:.2f} 秒")
             time.sleep(pause_time)
+
+    logger.info(f"滚动结束，原因: {'达到最大滚动次数' if scroll_attempts >= max_scroll_attempts else '到达页面底部'}")
 
     # 循环结束后，存储剩余的评论
     if comments_batch:
@@ -450,6 +484,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                 )
                 if result > 0:
                     inserted_count += 1
+                    existing_user_ids.add(batch_comment['user_id'])
             logger.info(f"尝试存储剩余的 {len(comments_batch)} 条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {len(comments_batch) - inserted_count} 条重复评论")
         except Exception as e:
             logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
