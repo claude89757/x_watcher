@@ -1,26 +1,21 @@
-import os
-import sys
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@Time    : 2024年10月14日
+@Author  : Your Name
+@File    : 1_X智能获客.py
+@Software: cursor
+"""
+
 import time
-import importlib
-import urllib.parse
-import random
-import json
 from datetime import timedelta
 
-import pandas as pd
 import streamlit as st
-import requests
 
 from common.config import CONFIG
-from common.cos import list_latest_files
-from common.cos import download_file
 from common.log_config import setup_logger
-from common.collector_sdk import call_collect_data_from_x
 from sidebar import sidebar
-from sidebar import cache_file_counts
-from common.redis_client import RedisClient
-from collectors.common.mysql import MySQLDatabase
-from pages.tiktok_tab.data_collect import data_collect
+
 
 
 # 设置页面配置
