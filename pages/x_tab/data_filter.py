@@ -58,7 +58,6 @@ def comment_filter():
         next_button_label = "Next: AI Analyze Data"
         log_out_button_label = "Log out"
 
-    st.title(page_title)
     st.markdown(page_description)
 
     src_dir = f"./data/{st.session_state.access_code}/raw/"

@@ -58,30 +58,6 @@ def generate_msg():
         generate_msg_button_label = "Generate Promotional Msg"
         log_out_button_label = "Log out"
 
-
-    # Force responsive layout for columns also on mobile
-    st.write(
-        """<style>
-        [data-testid="column"] {
-            width: calc(50% - 1rem);
-            flex: 1 1 calc(50% - 1rem);
-            min-width: calc(50% - 1rem);
-        }
-        </style>""",
-        unsafe_allow_html=True,
-    )
-
-    # Hide Streamlit elements
-    hide_streamlit_style = """
-                <style>
-                .stDeployButton {visibility: hidden;}
-                [data-testid="stToolbar"] {visibility: hidden !important;}
-                footer {visibility: hidden !important;}
-                </style>
-                """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-    st.title(page_title)
     st.markdown(page_description)
 
     cur_dir = f"./data/{st.session_state.access_code}/analyzed/"

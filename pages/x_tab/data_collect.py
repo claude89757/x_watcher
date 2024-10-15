@@ -46,8 +46,6 @@ def data_collect():
     if "search_keyword" not in st.session_state:
         st.session_state.search_keyword = st.query_params.get("search_keyword", "")
 
-
-    st.header("Twitter论集")
     # 原有的Twitter评论收集代码
     # 根据选择的语言设置文本
     if st.session_state.language == "CN":
@@ -89,7 +87,6 @@ def data_collect():
         next_button_label = "Next: Filter Data"
         ready_to_filter_message = "Ready to filter data..."
 
-    st.title(page_title)
     st.markdown(page_description)
 
     st.session_state.search_keyword = st.text_input(label=search_keyword_label, value=st.session_state.search_keyword)
