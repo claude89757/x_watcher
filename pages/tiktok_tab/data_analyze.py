@@ -135,17 +135,16 @@ def data_analyze(db):
 
     # 输入产品描述和目标客户描述
     col1, col2 = st.columns(2)
-    
     with col1:
         product_description = st.text_area("产品描述", 
                                            value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
-                                           height=100,
+                                           height=30,
                                            key="product_description")
     
     with col2:
         customer_description = st.text_area("目标客户描述", 
                                             value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
-                                            height=100,
+                                            height=30,
                                             key="customer_description")
 
     # 检查用户是否修改了描述
@@ -203,7 +202,7 @@ def data_analyze(db):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.text_area("第一轮分析Prompt", prompt_template_first_round, height=300)
+        st.text_area("第一轮分析Prompt", prompt_template_first_round, height=250)
         example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=10)
         if example_comments_first:
             df_example_first = pd.DataFrame(example_comments_first)
@@ -213,7 +212,7 @@ def data_analyze(db):
             st.write("没有找到第一轮分析的示例数据")
 
     with col2:
-        st.text_area("第二轮分析Prompt", prompt_template_second_round, height=300)
+        st.text_area("第二轮分析Prompt", prompt_template_second_round, height=250)
         example_comments_second = db.get_potential_customers(selected_keyword, limit=10)
         if example_comments_second:
             df_example_second = pd.DataFrame(example_comments_second)
@@ -234,7 +233,7 @@ def data_analyze(db):
         if potential_customers_count > 0:
             st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
         else:
-            st.info("未发现潜在客户，无需进行第二轮分析")
+            st.info("暂未发现潜在客户")
         
         # 显示第一轮分析结果
         st.subheader("查看第一轮分析结果")
@@ -254,7 +253,6 @@ def data_analyze(db):
     with col2:
         # 显示第二轮分析按钮
         if potential_customers_count > 0:
-            st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
             if st.button("开始第二轮分析", type="primary"):
                 second_round_analyze(db, selected_keyword, model, batch_size, prompt_template_second_round)
         else:
