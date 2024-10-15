@@ -99,6 +99,7 @@ def random_sleep(min_seconds=1, max_seconds=3):
 
 def save_cookies(driver, username):
     """保存当前会话的Cookies到JSON文件。"""
+    logger.info("保存Cookies...")
     cookies = driver.get_cookies()
     
     # 移除可能导致问题的字段
@@ -109,6 +110,7 @@ def save_cookies(driver, username):
     
     # 保存为JSON文件
     filename = f"{username}-cookies.json"
+    logger.info(f"保存Cookies到 {filename}")
     with open(filename, "w") as file:
         json.dump(cookies, file, indent=2)
     logger.info(f"Cookies已保存到 {filename}")
@@ -251,7 +253,7 @@ def login_by_local_cookies(driver):
                 try:
                     driver.add_cookie(cookie)
                 except Exception as e:
-                    logger.warning(f"添���cookie失败: {cookie['name']}. 错误: {str(e)}")
+                    logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
             
             # 刷新页面以应用cookies
             driver.refresh()
@@ -405,7 +407,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                             if result > 0:
                                 inserted_count += 1
                                 existing_user_ids.add(batch_comment['user_id'])
-                        logger.info(f"尝试存储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
+                        logger.info(f"尝试���储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
                         comments_batch.clear()  # 清空缓存
                         
                         # 检查任务状态
@@ -604,11 +606,26 @@ def main():
     finally:
         driver.quit()
 
-def simulate_human_input(element, text):
-    """模拟人类输入文本"""
+def simulate_human_input(driver, element, text):
+    """模拟人类输入文本，并验证输入是否正确"""
     for char in text:
         element.send_keys(char)
-        time.sleep(random.uniform(0.1, 0.3))  # 随机暂停，模拟人类输入速度
+        time.sleep(random.uniform(0.2, 0.5))  # 增加随机暂停时间
+
+    # 验证输入是否正确
+    input_value = element.get_attribute('value')
+    if input_value != text:
+        # 如果输入不正确，使用JavaScript直接设置值
+        driver.execute_script("arguments[0].value = arguments[1];", element, text)
+        # 触发input事件
+        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", element)
+        # 触发change事件
+        driver.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", element)
+
+    # 最后再次验证
+    WebDriverWait(driver, 10).until(
+        EC.text_to_be_present_in_element_value((By.XPATH, f"//*[@name='{element.get_attribute('name')}']"), text)
+    )
 
 def check_account_status(account_id, username, email):
     db = MySQLDatabase()
@@ -619,20 +636,20 @@ def check_account_status(account_id, username, email):
         
         # 导航到TikTok登录页面
         driver.get("https://www.tiktok.com/login/phone-or-email/email")
-               
+        
         # 点击忘记密码按钮
         forgot_password_button = WebDriverWait(driver, 15).until(
             EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Forgot password?')]"))
         )
         forgot_password_button.click()
         
-        # 输入邮箱 
+        # 等待邮箱输入框出现
         email_input = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.NAME, "email"))
         )
         
-        # 模拟人类输入邮箱
-        simulate_human_input(email_input, email)
+        # 输入邮箱
+        simulate_human_input(driver, email_input, email)
         
         # 随机暂停，模拟人类思考
         time.sleep(random.uniform(0.5, 1.5))
@@ -656,6 +673,7 @@ def check_account_status(account_id, username, email):
             
             # 每10秒检查一次
             time.sleep(10)
+            logger.info(f"等待人工操作完成，已等待 {time.time() - start_time:.2f} 秒")
         
         if success:
             # 登录成功，保存cookies
