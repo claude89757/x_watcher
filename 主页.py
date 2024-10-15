@@ -136,8 +136,8 @@ if access_granted:
     tab1, tab2 = st.tabs(["AI 营销工具", "X 账号管理"])
 
     with tab1:
-        st.page_link("pages/0_Tiktok智能获客.py", label="TikTok智能获客", icon="1️⃣", use_container_width=True)
-        st.page_link("pages/1_X智能获客.py", label="X智能获客", icon="2️⃣", use_container_width=True)
+        st.page_link("pages/0_智能助手_Tiktok.py", label="TikTok智能助手", icon="1️⃣", use_container_width=True)
+        st.page_link("pages/1_智能助手_X.py", label="X智能助手", icon="2️⃣", use_container_width=True)
         st.markdown("-----")
 
     with tab2:
