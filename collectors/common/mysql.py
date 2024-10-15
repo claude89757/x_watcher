@@ -243,6 +243,21 @@ class MySQLDatabase:
         """
         self.execute_update(create_analyzed_comments_table)
 
+        create_second_round_analyzed_comments_table = """
+        CREATE TABLE IF NOT EXISTS tiktok_second_round_analyzed_comments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            keyword VARCHAR(255),
+            user_id VARCHAR(255),
+            reply_content TEXT,
+            first_round_classification VARCHAR(50),
+            second_round_classification VARCHAR(50),
+            analysis_reason TEXT,
+            analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_comment (keyword, user_id, reply_content(255))
+        )
+        """
+        self.execute_update(create_second_round_analyzed_comments_table)
+
     def create_tiktok_task(self, keyword):
         """创建新的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
@@ -385,7 +400,7 @@ class MySQLDatabase:
         return self.execute_query(query)
 
     def get_pending_tiktok_task_by_keyword(self, keyword):
-        """获取指定关键词的待处理TikTok任务"""
+        """获取指定关键词的待处���TikTok任务"""
         query = f"""
         SELECT * FROM tiktok_tasks 
         WHERE status = 'pending' AND keyword = '{keyword}' 
@@ -854,6 +869,53 @@ class MySQLDatabase:
         """
         result = self.execute_query(query, (keyword,))
         return result[0]['count'] if result else 0
+
+    def save_second_round_analyzed_comments(self, keyword, analyzed_data):
+        """保存第二轮分析后的评论数据"""
+        query = """
+        INSERT INTO tiktok_second_round_analyzed_comments 
+        (keyword, user_id, reply_content, first_round_classification, second_round_classification, analysis_reason)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        second_round_classification = VALUES(second_round_classification),
+        analysis_reason = VALUES(analysis_reason),
+        analyzed_at = CURRENT_TIMESTAMP
+        """
+        values = [
+            (keyword, row['用户ID'], row['评论内容'], row['第一轮分类结果'], row['第二轮分类结果'], row['分析理由'])
+            for _, row in analyzed_data.iterrows()
+        ]
+        return self.insert_many(query, values)
+
+    def get_second_round_analyzed_comments(self, keyword, limit=1000):
+        """获取指定关键词的第二轮分析后评论数据"""
+        query = """
+        SELECT * FROM tiktok_second_round_analyzed_comments
+        WHERE keyword = %s
+        ORDER BY analyzed_at DESC
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
+    def get_potential_customers_count(self, keyword):
+        """获取指定关键词的潜在客户数量"""
+        query = """
+        SELECT COUNT(*) as count
+        FROM tiktok_analyzed_comments
+        WHERE keyword = %s AND classification = '潜在客户'
+        """
+        result = self.execute_query(query, (keyword,))
+        return result[0]['count'] if result else 0
+
+    def get_potential_customers(self, keyword, limit=1000):
+        """获取指定关键词的潜在客户评论数据"""
+        query = """
+        SELECT * FROM tiktok_analyzed_comments
+        WHERE keyword = %s AND classification = '潜在客户'
+        ORDER BY analyzed_at DESC
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
 
 # 使用示例
 if __name__ == "__main__":
