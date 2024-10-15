@@ -611,7 +611,7 @@ def check_account_status(account_id, username, email):
         driver = setup_driver()
         
         # 导航到TikTok登录页面
-        driver.get("https://www.tiktok.com/login/phone-or-email")
+        driver.get("https://www.tiktok.com/login/phone-or-email/email")
         
         # 选择邮箱登录选项
         email_option = WebDriverWait(driver, 10).until(
@@ -651,8 +651,11 @@ def check_account_status(account_id, username, email):
             time.sleep(10)
         
         if success:
+            # 登录成功，保存cookies
+            save_cookies(driver, username)
+            
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active")
+            logger.info(f"账号 {username} 状态更新为 active，并已保存cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（操作超时或失败）")
