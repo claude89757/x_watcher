@@ -242,17 +242,17 @@ def data_analyze(db):
             classification_counts = final_results['分类结果'].value_counts()
             st.write(classification_counts)
 
-            # 显示第二轮分析按钮
-            potential_customers_count = db.get_potential_customers_count(selected_keyword)
-            if potential_customers_count > 0:
-                st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
-                if st.button("开始第二轮分析", type="secondary"):
-                    second_round_analyze(db, selected_keyword, model, batch_size)
-            else:
-                st.info("未发现潜在客户，无需进行第二轮分析")
-
         else:
             st.warning("没有找到相关的过滤后的评论数据")
+
+    # 显示第二轮分析按钮
+    potential_customers_count = db.get_potential_customers_count(selected_keyword)
+    if potential_customers_count > 0:
+        st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+        if st.button("开始第二轮分析", type="secondary"):
+            second_round_analyze(db, selected_keyword, model, batch_size)
+    else:
+        st.info("未发现潜在客户，无需进行第二轮分析")
 
     # 显示第一轮分析结果
     st.subheader("查看第一轮分析结果")
