@@ -315,7 +315,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         driver.execute_script("arguments[0].pause();", video_element)
         logger.info("视频已暂停")
     except Exception as e:
-        logger.warning("未能暂停视频，可能未找到视频元素")
+        logger.warning("未能暂停视频，可能未���到视频元素")
 
     WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
@@ -407,7 +407,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                             if result > 0:
                                 inserted_count += 1
                                 existing_user_ids.add(batch_comment['user_id'])
-                        logger.info(f"尝试���储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
+                        logger.info(f"尝试储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
                         comments_batch.clear()  # 清空缓存
                         
                         # 检查任务状态
@@ -666,13 +666,14 @@ def check_account_status(account_id, username, email):
         start_time = time.time()
         success = False
         while time.time() - start_time < 1800:  # 1800秒 = 30分钟
-            # 检查是否已经登录成功
-            if "For You" in driver.title or "推荐" in driver.title:
+            # 使用check_login_status检查是否已经登录成功
+            user_id = check_login_status(driver)
+            if user_id:
                 success = True
                 break
             
             # 每10秒检查一次
-            time.sleep(10)
+            time.sleep(5)
             logger.info(f"等待人工操作完成，已等待 {time.time() - start_time:.2f} 秒")
         
         if success:
