@@ -91,10 +91,13 @@ try:
 
     # 在侧边栏显示全局统计数据
     st.sidebar.header("全局数据统计")
-    st.sidebar.metric("已收集关键字", global_stats['keyword_count'])
-    st.sidebar.metric("评论总数", global_stats['comment_count'])
-    st.sidebar.metric("潜在客户", global_stats['potential_customer_count'])
-    st.sidebar.metric("高意向客户", global_stats['high_intent_customer_count'])
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        st.metric("已收集关键字", global_stats['keyword_count'])
+        st.metric("潜在客户", global_stats['potential_customer_count'])
+    with col2:
+        st.metric("评论总数", global_stats['comment_count'])
+        st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控", "账号管理"])
