@@ -47,7 +47,7 @@ def data_analyze():
                                         key="analyze_keyword_select") 
 
         # 选择每轮输入的数据量
-        batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=2)
+        batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
 
         # 选择总共要分类的评论数量
         total_comments = st.slider("总共要分类的评论数量", min_value=100, max_value=10000, value=1000, step=100)
@@ -55,6 +55,9 @@ def data_analyze():
         # 计算并显示预估的问答次数
         estimated_rounds = (total_comments + batch_size - 1) // batch_size
         st.write(f"预估需要进行 {estimated_rounds} 轮问答")
+
+        # 选择模型
+        model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
 
         # 输入产品描述和目标客户描述
         product_description = st.text_area("产品描述", "请输入您的产品描述")
@@ -67,20 +70,25 @@ def data_analyze():
 
         请分析以下评论数据，并将每条评论分类为"潜在客户"或"非目标客户"。
         对于每条评论，请提供以下输出：
-        1. 原始评论内容
-        2. 分类结果（"潜在客户"或"非目标客户"）
-        3. 简短的分析理由（不超过50个字）
+        1. 用户ID
+        2. 原始评论内容
+        3. 分类结果（"潜在客户"或"非目标客户"）
+        4. 简短的分析理由（不超过50个字）
 
         评论数据：
         {{comments}}
 
         请以CSV格式输出结果，包含以下列：
-        "评论内容", "分类结果", "分析理由"
+        "用户ID", "评论内容", "分类结果", "分析理由"
+
+        请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。
         """
 
         # 显示完整的prompt示例
         st.subheader("Prompt示例")
-        st.text_area("完整Prompt", prompt_template.replace("{comments}", "1. 这是一个示例评论\n2. 这是另一个示例评论"), height=300)
+        example_comments = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=10)
+        example_comments_text = "\n".join([f"{i+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for i, comment in enumerate(example_comments)])
+        st.text_area("完整Prompt", prompt_template.replace("{comments}", example_comments_text), height=300)
 
         if st.button("开始分析", type="primary"):
             # 获取过滤后的评论数据
@@ -93,12 +101,12 @@ def data_analyze():
                 results = []
                 for i in range(0, len(filtered_comments), batch_size):
                     batch = filtered_comments[i:i+batch_size]
-                    comments_text = "\n".join([f"{j+1}. {comment['reply_content']}" for j, comment in enumerate(batch)])
+                    comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
                     
                     current_prompt = prompt_template.replace("{comments}", comments_text)
                     
                     try:
-                        response = process_with_gpt("gpt-3.5-turbo", current_prompt)
+                        response = process_with_gpt(model, current_prompt)
                         csv_content = response.strip()
                         batch_results = pd.read_csv(pd.compat.StringIO(csv_content))
                         results.append(batch_results)
@@ -132,4 +140,3 @@ def data_analyze():
     finally:
         # 确保在函数结束时关闭数据库连接
         db.disconnect()
-
