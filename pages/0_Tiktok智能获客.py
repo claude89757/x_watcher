@@ -81,7 +81,6 @@ st.title("Tiktok智能获客系统")
 tab1, tab2, tab3 = st.tabs(["评论收集", "评论过滤", "评论分析_AI"])
 
 with tab1:
-    st.header("评论收集")
     data_collect()
     
     # 添加 VNC 窗口
