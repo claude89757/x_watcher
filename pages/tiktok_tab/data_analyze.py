@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 from collectors.common.mysql import MySQLDatabase
 from common.azure_openai import process_with_gpt
+from io import StringIO
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
@@ -122,7 +123,7 @@ def data_analyze():
         batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
 
         # 选择总共要分类的评论数量
-        total_comments = st.slider("总共要分类的评论数量", min_value=100, max_value=10000, value=1000, step=100)
+        total_comments = st.slider("总共要分类的评论数量", min_value=100, max_value=10000, value=100, step=100)
 
         # 计算并显示预估的问答次数
         estimated_rounds = (total_comments + batch_size - 1) // batch_size
@@ -197,8 +198,20 @@ def data_analyze():
                     
                     try:
                         response = process_with_gpt(model, current_prompt)
+                        
+                        # 去除可能存在的 ```csv 标记
+                        response = response.strip()
+                        if response.startswith("```csv"):
+                            response = response[7:]
+                        if response.endswith("```"):
+                            response = response[:-3]
                         csv_content = response.strip()
-                        batch_results = pd.read_csv(pd.compat.StringIO(csv_content))
+                        
+                        # 使用 StringIO 来创建一个类文件对象
+                        csv_file = StringIO(csv_content)
+                        
+                        # 使用 pandas 读取 CSV 内容
+                        batch_results = pd.read_csv(csv_file)
                         results.append(batch_results)
                     except Exception as e:
                         st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
