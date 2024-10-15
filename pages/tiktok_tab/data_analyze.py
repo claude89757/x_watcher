@@ -192,7 +192,7 @@ def data_analyze(db):
     评论数据：
     {{comments}}
 
-    请以CSV格式输出结果，包含以下列：
+    请以CSV格式输出结果，包���以下列：
     "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
     请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。
@@ -227,8 +227,24 @@ def data_analyze(db):
     potential_customers_count = db.get_potential_customers_count(selected_keyword)
     if potential_customers_count > 0:
         st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+        
+        # 获取第二轮分析结果的简要数据
+        second_round_results = db.get_second_round_analyzed_comments(selected_keyword, limit=5)
+        if second_round_results:
+            df_second_round = pd.DataFrame(second_round_results)
+            st.write("第二轮分析结果简要：")
+            st.dataframe(df_second_round[['user_id', 'second_round_classification', 'analysis_reason']].head())
+            
+            # 显示第二轮分析的统计信息
+            classification_counts = df_second_round['second_round_classification'].value_counts()
+            st.write("第二轮分析统计：")
+            st.write(classification_counts)
+        else:
+            st.info("尚未进行第二轮分析")
     else:
-        pass
+        st.warning("未发现潜在客户，无需进行第二轮分析")
+
+    
 
     with col1:
         if st.button("开始第一轮分析", type="primary"):
@@ -282,38 +298,39 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
 
         results = []
         for i in range(0, len(filtered_comments), batch_size):
-            batch = filtered_comments[i:i+batch_size]
-            comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
-            
-            current_prompt = prompt_template.replace("{comments}", comments_text)
-            
-            try:
-                response = process_with_gpt(model, current_prompt, max_tokens=5000)
+            with st.spinner(f'正在处理第 {i//batch_size + 1} 批次...'):
+                batch = filtered_comments[i:i+batch_size]
+                comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
                 
-                # 去除可能存在的 ```csv 标记
-                response = response.strip()
-                if response.startswith("```csv"):
-                    response = response[7:]
-                if response.endswith("```"):
-                    response = response[:-3]
-                csv_content = response.strip()
+                current_prompt = prompt_template.replace("{comments}", comments_text)
                 
-                # 使用 StringIO 来创建一个类文件对象
-                csv_file = StringIO(csv_content)
-                
-                # 使用 pandas 读取 CSV 内容
-                batch_results = pd.read_csv(csv_file)
-                results.append(batch_results)
+                try:
+                    response = process_with_gpt(model, current_prompt, max_tokens=5000)
+                    
+                    # 去除可能存在的 ```csv 标记
+                    response = response.strip()
+                    if response.startswith("```csv"):
+                        response = response[7:]
+                    if response.endswith("```"):
+                        response = response[:-3]
+                    csv_content = response.strip()
+                    
+                    # 使用 StringIO 来创建一个类文件对象
+                    csv_file = StringIO(csv_content)
+                    
+                    # 使用 pandas 读取 CSV 内容
+                    batch_results = pd.read_csv(csv_file)
+                    results.append(batch_results)
 
-                # 保存批次结果到数据库
-                db.save_analyzed_comments(keyword, batch_results)
+                    # 保存批次结果到数据库
+                    db.save_analyzed_comments(keyword, batch_results)
 
-            except Exception as e:
-                st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
-            
-            progress = (i + batch_size) / len(filtered_comments)
-            progress_bar.progress(min(progress, 1.0))
-            status_text.text(f"已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论")
+                except Exception as e:
+                    st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
+                
+                progress = (i + batch_size) / len(filtered_comments)
+                progress_bar.progress(min(progress, 1.0))
+                status_text.text(f"已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论")
 
         # 合并所有结果
         final_results = pd.concat(results, ignore_index=True)
@@ -342,38 +359,39 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
 
     results = []
     for i in range(0, len(potential_customers), batch_size):
-        batch = potential_customers[i:i+batch_size]
-        comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
-        
-        current_prompt = prompt_template.replace("{comments}", comments_text)
-        
-        try:
-            response = process_with_gpt(model, current_prompt, max_tokens=5000)
+        with st.spinner(f'正在处理第 {i//batch_size + 1} 批次...'):
+            batch = potential_customers[i:i+batch_size]
+            comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
             
-            # 去除可能存在的 ```csv 标记
-            response = response.strip()
-            if response.startswith("```csv"):
-                response = response[7:]
-            if response.endswith("```"):
-                response = response[:-3]
-            csv_content = response.strip()
+            current_prompt = prompt_template.replace("{comments}", comments_text)
             
-            # 使用 StringIO 来创建一个类文件对象
-            csv_file = StringIO(csv_content)
-            
-            # 使用 pandas 读取 CSV 内容
-            batch_results = pd.read_csv(csv_file)
-            results.append(batch_results)
+            try:
+                response = process_with_gpt(model, current_prompt, max_tokens=5000)
+                
+                # 去除可能存在的 ```csv 标记
+                response = response.strip()
+                if response.startswith("```csv"):
+                    response = response[7:]
+                if response.endswith("```"):
+                    response = response[:-3]
+                csv_content = response.strip()
+                
+                # 使用 StringIO 来创建一个类文件对象
+                csv_file = StringIO(csv_content)
+                
+                # 使用 pandas 读取 CSV 内容
+                batch_results = pd.read_csv(csv_file)
+                results.append(batch_results)
 
-            # 保存批次结果到数据库
-            db.save_second_round_analyzed_comments(keyword, batch_results)
+                # 保存批次结果到数据库
+                db.save_second_round_analyzed_comments(keyword, batch_results)
 
-        except Exception as e:
-            st.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
-        
-        progress = (i + batch_size) / len(potential_customers)
-        progress_bar.progress(min(progress, 1.0))
-        status_text.text(f"已处理 {min(i+batch_size, len(potential_customers))}/{len(potential_customers)} 条评论")
+            except Exception as e:
+                st.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
+            
+            progress = (i + batch_size) / len(potential_customers)
+            progress_bar.progress(min(progress, 1.0))
+            status_text.text(f"已处理 {min(i+batch_size, len(potential_customers))}/{len(potential_customers)} 条评论")
 
     # 合并所有结果
     final_results = pd.concat(results, ignore_index=True)
