@@ -4,11 +4,11 @@ import urllib
 from collectors.common.mysql import MySQLDatabase
 
 
-def account_management(db):
+def account_management(db: MySQLDatabase):
     st.header("账号管理")
 
     # 获取可用的worker IP列表
-    available_workers = db.get_available_workers()
+    available_worker_ips = db.get_available_worker_ips()
 
     # 使用会话状态来跟踪是否显示添加账号表单
     if 'show_add_account_form' not in st.session_state:
@@ -25,7 +25,7 @@ def account_management(db):
                 username = st.text_input("用户名")
                 password = st.text_input("密码", type="password")
                 email = st.text_input("邮箱")
-                login_ips = st.multiselect("登录主机IP", options=available_workers)
+                login_ips = st.multiselect("登录主机IP", options=available_worker_ips)
                 submit = st.form_submit_button("提交")
 
                 if submit:

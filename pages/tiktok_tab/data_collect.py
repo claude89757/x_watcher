@@ -6,7 +6,7 @@ import streamlit as st
 from collectors.common.mysql import MySQLDatabase
 
 
-def data_collect(db):
+def data_collect(db: MySQLDatabase):
     # 全局面板
     st.info("本页面用于从TikTok收集数据并创建数据采集任务。")
 

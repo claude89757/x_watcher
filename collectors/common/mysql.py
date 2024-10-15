@@ -259,7 +259,7 @@ class MySQLDatabase:
         self.execute_update(create_second_round_analyzed_comments_table)
 
     def create_tiktok_task(self, keyword):
-        """创建���的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
+        """创建的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
         check_query = f"""
         SELECT id FROM tiktok_tasks 
@@ -650,7 +650,7 @@ class MySQLDatabase:
         return [result['user_id'] for result in results]
 
     def get_running_tiktok_tasks(self):
-        """获取所有��在运行的TikTok任务"""
+        """获取所有的运行中TikTok任务"""
         query = "SELECT * FROM tiktok_tasks WHERE status = 'running'"
         return self.execute_query(query)
 
@@ -936,6 +936,17 @@ class MySQLDatabase:
         stats['high_intent_customer_count'] = result[0]['high_intent_customer_count'] if result else 0
 
         return stats
+
+    def get_available_worker_ips(self):
+        """获取所有可用的 worker IP 地址"""
+        query = """
+        SELECT worker_ip 
+        FROM worker_infos 
+        WHERE status = 'active'
+        ORDER BY last_heartbeat DESC
+        """
+        results = self.execute_query(query)
+        return [result['worker_ip'] for result in results] if results else []
 
 # 使用示例
 if __name__ == "__main__":

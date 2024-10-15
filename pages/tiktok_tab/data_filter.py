@@ -5,7 +5,7 @@ import pandas as pd
 from collectors.common.mysql import MySQLDatabase
 
 
-def data_filter(db):
+def data_filter(db: MySQLDatabase):
     # 全局面板
     st.info("本页面用于过滤和处理TikTok评论数据。")
 

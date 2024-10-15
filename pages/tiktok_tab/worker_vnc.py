@@ -3,7 +3,7 @@ import streamlit as st
 from collectors.common.mysql import MySQLDatabase
 
 
-def worker_vnc(db):    
+def worker_vnc(db: MySQLDatabase):    
     # 获取所有活跃的 workers
     active_workers = db.get_worker_list()
     
