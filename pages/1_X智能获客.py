@@ -69,59 +69,55 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 创建标签页
 tabs = ["评论收集", "评论过滤", "评论分析_AI", "私信生成_AI", "私信发送"]
-tab1, tab2, tab3, tab4, tab5 = st.tabs(tabs)
+st.session_state.active_tab = st.tabs(tabs)
 
 # 定义导航函数
 def navigate(direction):
-    st.session_state.active_tab = (st.session_state.active_tab + direction) % len(tabs)
-    st.rerun()
+    current_index = tabs.index(st.session_state.active_tab)
+    new_index = (current_index + direction) % len(tabs)
+    st.session_state.active_tab = tabs[new_index]
 
 # 在每个标签页中运行相应的py文件内容
-with tab1:
-    if st.session_state.active_tab == 0:
-        data_collect()
-        col1, col2 = st.columns(2)
-        with col2:
-            if st.button("下一步 →", key="next_1"):
-                navigate(1)
+if st.session_state.active_tab == "评论收集":
+    data_collect()
+    col1, col2 = st.columns(2)
+    with col2:
+        if st.button("下一步 →", key="next_1"):
+            navigate(1)
 
-with tab2:
-    if st.session_state.active_tab == 1:
-        comment_filter()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("← 上一步", key="prev_2"):
-                navigate(-1)
-        with col2:
-            if st.button("下一步 →", key="next_2"):
-                navigate(1)
+elif st.session_state.active_tab == "评论过滤":
+    comment_filter()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← 上一步", key="prev_2"):
+            navigate(-1)
+    with col2:
+        if st.button("下一步 →", key="next_2"):
+            navigate(1)
 
-with tab3:
-    if st.session_state.active_tab == 2:
-        comment_analyze()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("← 上一步", key="prev_3"):
-                navigate(-1)
-        with col2:
-            if st.button("下一步 →", key="next_3"):
-                navigate(1)
+elif st.session_state.active_tab == "评论分析_AI":
+    comment_analyze()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← 上一步", key="prev_3"):
+            navigate(-1)
+    with col2:
+        if st.button("下一步 →", key="next_3"):
+            navigate(1)
 
-with tab4:
-    if st.session_state.active_tab == 3:
-        generate_msg()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("← 上一步", key="prev_4"):
-                navigate(-1)
-        with col2:
-            if st.button("下一步 →", key="next_4"):
-                navigate(1)
+elif st.session_state.active_tab == "私信生成_AI":
+    generate_msg()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← 上一步", key="prev_4"):
+            navigate(-1)
+    with col2:
+        if st.button("下一步 →", key="next_4"):
+            navigate(1)
 
-with tab5:
-    if st.session_state.active_tab == 4:
-        send_msg()
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("← 上一步", key="prev_5"):
-                navigate(-1)
+elif st.session_state.active_tab == "私信发送":
+    send_msg()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("← 上一步", key="prev_5"):
+            navigate(-1)
