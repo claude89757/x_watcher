@@ -88,14 +88,5 @@ def account_management(db):
                             st.success("账号删除成功")
                         else:
                             st.error("账号删除失败")
-                
-                # 修改登录主机IP
-                st.write("修改登录主机IP:")
-                new_login_ips = st.multiselect("新的登录主机IP", options=available_workers, default=account['login_ips'].split(',') if account['login_ips'] else [], key=f"new_ips_{account['id']}")
-                if st.button("更新登录主机IP", key=f"update_ips_{account['id']}"):
-                    if db.update_tiktok_account_login_ips(account['id'], new_login_ips):
-                        st.success("登录主机IP更新成功")
-                    else:
-                        st.error("登录主机IP更新失败")
     else:
         st.write("暂无账号")

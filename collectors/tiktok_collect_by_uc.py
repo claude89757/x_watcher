@@ -569,7 +569,7 @@ def process_task(task_id, keyword, server_ip):
 
     except Exception as e:
         logger.error(f"处理任务时发生错误: {str(e)}")
-        db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
+        # db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
         db.add_tiktok_task_log(task_id, 'error', str(e))
         if driver:
             take_screenshot(driver, f"error_task_{task_id}")
