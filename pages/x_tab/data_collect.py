@@ -87,7 +87,7 @@ def data_collect():
         next_button_label = "Next: Filter Data"
         ready_to_filter_message = "Ready to filter data..."
 
-    st.markdown(page_description)
+    st.info(page_description)
 
     st.session_state.search_keyword = st.text_input(label=search_keyword_label, value=st.session_state.search_keyword)
     st.session_state.max_post_num = st.selectbox(

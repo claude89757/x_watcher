@@ -61,7 +61,7 @@ def send_msg():
         send_msg_button_label = "Send Promotional Messages"
         log_out_button_label = "Log out"
 
-    st.markdown(page_description)
+    st.info(page_description)
 
     cur_dir = f"./data/{st.session_state.access_code}/msg/"
     records_dir = f"./data/{st.session_state.access_code}/records/"

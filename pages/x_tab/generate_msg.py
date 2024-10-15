@@ -58,7 +58,7 @@ def generate_msg():
         generate_msg_button_label = "Generate Promotional Msg"
         log_out_button_label = "Log out"
 
-    st.markdown(page_description)
+    st.info(page_description)
 
     cur_dir = f"./data/{st.session_state.access_code}/analyzed/"
     files = [f for f in os.listdir(cur_dir) if os.path.isfile(os.path.join(cur_dir, f))]

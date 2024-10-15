@@ -58,7 +58,7 @@ def comment_analyze():
         analysis_complete_message = "Analysis complete! Results saved to"
         log_out_button_label = "Log out"
 
-    st.markdown(page_description)
+    st.info(page_description)
 
     src_dir = f"./data/{st.session_state.access_code}/processed/"
     dst_dir = f"./data/{st.session_state.access_code}/analyzed/"
