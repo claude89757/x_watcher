@@ -73,10 +73,6 @@ def data_filter():
             else:
                 st.warning("⚠️ 没有找到相关评论数据")
 
-        # 添加刷新按钮
-        if st.button("刷新数据"):
-            st.rerun()
-
     finally:
         # 确保在函数结束时关闭数据库连接
         db.disconnect()
