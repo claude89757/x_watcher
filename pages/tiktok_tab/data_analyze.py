@@ -192,7 +192,7 @@ def data_analyze(db: MySQLDatabase):
 请以CSV格式输出结果，包含以下列：
 "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
-请确保输出的CSV格式正确，每个字段都用双引号围，并用逗号分隔。"""
+请确保输出的CSV格式正确，每个字段都用���号围，并用逗号分隔。"""
 
     # 显示完整的prompt示例
     col1, col2 = st.columns(2)
@@ -309,13 +309,17 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                         response = response[:-3]
                     csv_content = response.strip()
                     
+                    # 使用固定的列名
+                    fixed_headers = ["用户ID", "评论内容", "分类结果", "分析理由"]
+                    
                     # 使用 csv.reader 来解析 CSV 内容
                     csv_reader = csv.reader(csv_content.splitlines())
-                    headers = next(csv_reader)  # 获取标题行
+                    next(csv_reader)  # 跳过 GPT 生成的标题行
+                    
                     rows = []
                     for row in csv_reader:
-                        if len(row) == len(headers):
-                            rows.append(row)
+                        if len(row) == len(fixed_headers):
+                            rows.append(dict(zip(fixed_headers, row)))
                         else:
                             total_ignored += 1
                             if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
@@ -324,7 +328,7 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                     
                     # 使用处理后的数据创建 DataFrame
                     if rows:
-                        batch_results = pd.DataFrame(rows, columns=headers)
+                        batch_results = pd.DataFrame(rows)
                         results.append(batch_results)
 
                         # 保存批次结果到数据库
@@ -395,13 +399,17 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                     response = response[:-3]
                 csv_content = response.strip()
                 
+                # 使用固定的列名
+                fixed_headers = ["用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"]
+                
                 # 使用 csv.reader 来解析 CSV 内容
                 csv_reader = csv.reader(csv_content.splitlines())
-                headers = next(csv_reader)  # 获取标题行
+                next(csv_reader)  # 跳过 GPT 生成的标题行
+                
                 rows = []
                 for row in csv_reader:
-                    if len(row) == len(headers):
-                        rows.append(row)
+                    if len(row) == len(fixed_headers):
+                        rows.append(dict(zip(fixed_headers, row)))
                     else:
                         total_ignored += 1
                         if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
@@ -410,7 +418,7 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                 
                 # 使用处理后的数据创建 DataFrame
                 if rows:
-                    batch_results = pd.DataFrame(rows, columns=headers)
+                    batch_results = pd.DataFrame(rows)
                     results.append(batch_results)
 
                     # 保存批次结果到数据库
