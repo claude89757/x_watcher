@@ -612,21 +612,9 @@ def check_account_status(account_id, username, email):
         
         # 导航到TikTok登录页面
         driver.get("https://www.tiktok.com/login/phone-or-email/email")
-        
-        # 选择邮箱登录选项
-        email_option = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Use phone / email / username')]"))
-        )
-        email_option.click()
-        
-        # 输入邮箱
-        email_input = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, "email"))
-        )
-        email_input.send_keys(email)
-        
+               
         # 点击忘记密码按钮
-        forgot_password_button = WebDriverWait(driver, 10).until(
+        forgot_password_button = WebDriverWait(driver, 15).until(
             EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Forgot password?')]"))
         )
         forgot_password_button.click()
