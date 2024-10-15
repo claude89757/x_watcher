@@ -60,6 +60,7 @@ def data_collect(db):
             successful_triggers = 0
             
             for worker in available_workers:
+                st.write(f"worker: {worker}")
                 try:
                     worker_ip = worker['worker_ip']
                     response = requests.post(
