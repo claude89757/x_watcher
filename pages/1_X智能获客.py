@@ -41,7 +41,7 @@ if st.session_state.access_code and st.session_state.access_code in CONFIG['acce
 else:
     st.warning("Access not Granted!")
     time.sleep(3)
-    st.switch_page("Home.py")
+    st.switch_page("主页.py")
 
 # Force responsive layout for columns also on mobile
 st.write(
