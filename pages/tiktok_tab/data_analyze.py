@@ -229,18 +229,13 @@ def data_analyze(db):
         st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
         
         # 获取第二轮分析结果的简要数据
-        second_round_results = db.get_second_round_analyzed_comments(selected_keyword, limit=5)
+        second_round_results = db.get_second_round_analyzed_comments(selected_keyword)
         if second_round_results:
             df_second_round = pd.DataFrame(second_round_results)
-            st.write("第二轮分析结果简要：")
-            st.dataframe(df_second_round[['user_id', 'second_round_classification', 'analysis_reason']].head())
-            
-            # 显示第二轮分析的统计信息
-            classification_counts = df_second_round['second_round_classification'].value_counts()
-            st.write("第二轮分析统计：")
-            st.write(classification_counts)
+            high_intent_customers_count = df_second_round[df_second_round['second_round_classification'] == '高意向客户'].shape[0]
+            st.success(f"第二轮分析完成，发现 {high_intent_customers_count} 个高意向客户")
         else:
-            st.info("尚未进行第二轮分析")
+            st.warning("尚未进行第二轮分析")
     else:
         st.warning("未发现潜在客户，无需进行第二轮分析")
 
