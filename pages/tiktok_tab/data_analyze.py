@@ -5,6 +5,44 @@ import pandas as pd
 from collectors.common.mysql import MySQLDatabase
 from common.azure_openai import process_with_gpt
 
+# 定义缓存文件路径
+DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
+
+def generate_descriptions(keyword):
+    """生成产品描述和目标客户描述"""
+    prompt = f"""
+    基于关键词 "{keyword}" 生成以下内容：
+    1. 一个简短的产品描述（不超过100字）
+    2. 一个简短的目标客户描述（不超过100字）
+
+    请以JSON格式输出，包含 "product_description" 和 "customer_description" 两个字段。
+    """
+    try:
+        response = process_with_gpt("gpt-4o", prompt)
+        descriptions = json.loads(response)
+        return descriptions
+    except Exception as e:
+        st.error(f"生成描述时发生错误: {str(e)}")
+        return None
+
+def load_descriptions_from_cache(keyword):
+    """从缓存文件加载描述"""
+    if os.path.exists(DESCRIPTION_CACHE_FILE):
+        with open(DESCRIPTION_CACHE_FILE, 'r') as f:
+            cache = json.load(f)
+            return cache.get(keyword, None)
+    return None
+
+def save_descriptions_to_cache(keyword, descriptions):
+    """保存描述到缓存文件"""
+    cache = {}
+    if os.path.exists(DESCRIPTION_CACHE_FILE):
+        with open(DESCRIPTION_CACHE_FILE, 'r') as f:
+            cache = json.load(f)
+    cache[keyword] = descriptions
+    with open(DESCRIPTION_CACHE_FILE, 'w') as f:
+        json.dump(cache, f)
+
 def data_analyze():
     # 初始化数据库连接
     db = MySQLDatabase()
@@ -44,7 +82,15 @@ def data_analyze():
         # 创建下拉框让用户选择关键字，使用缓存的默认值
         selected_keyword = st.selectbox("关键字", keywords, 
                                         index=keywords.index(default_keyword) if default_keyword in keywords else 0,
-                                        key="analyze_keyword_select") 
+                                        key="analyze_keyword_select")
+
+        # 获取或生成描述
+        descriptions = load_descriptions_from_cache(selected_keyword)
+        if descriptions is None:
+            with st.spinner("正在生成产品和客户描述..."):
+                descriptions = generate_descriptions(selected_keyword)
+                if descriptions:
+                    save_descriptions_to_cache(selected_keyword, descriptions)
 
         # 选择每轮输入的数据量
         batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
@@ -60,8 +106,26 @@ def data_analyze():
         model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
 
         # 输入产品描述和目标客户描述
-        product_description = st.text_area("产品描述", "请输入您的产品描述")
-        customer_description = st.text_area("目标客户描述", "请描述您的目标客户")
+        product_description = st.text_area("产品描述", 
+                                           value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
+                                           height=100,
+                                           key="product_description")
+        customer_description = st.text_area("目标客户描述", 
+                                            value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
+                                            height=100,
+                                            key="customer_description")
+
+        # 检查用户是否修改了描述
+        if (descriptions and 
+            (product_description != descriptions['product_description'] or 
+             customer_description != descriptions['customer_description'])):
+            # 用户修改了描述，更新缓存
+            new_descriptions = {
+                "product_description": product_description,
+                "customer_description": customer_description
+            }
+            save_descriptions_to_cache(selected_keyword, new_descriptions)
+            st.success("已更新产品和客户描述缓存")
 
         # 构建完整的prompt
         prompt_template = f"""
