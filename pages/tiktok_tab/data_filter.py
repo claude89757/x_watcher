@@ -1,3 +1,5 @@
+import os
+import json
 import streamlit as st
 import pandas as pd
 from collectors.common.mysql import MySQLDatabase
@@ -22,11 +24,27 @@ def data_filter():
         with col2:
             st.metric("已收集评论数", stats['comment_count'])
 
+        # 定义缓存文件路径
+        KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
+
+        def load_keyword_from_cache():
+            """从缓存文件加载关键字"""
+            if os.path.exists(KEYWORD_CACHE_FILE):
+                with open(KEYWORD_CACHE_FILE, 'r') as f:
+                    data = json.load(f)
+                    return data.get('keyword', '')
+            return ''
+
+        # 从缓存加载默认关键字
+        default_keyword = load_keyword_from_cache()
+
         # 获取所有关键字
         keywords = db.get_all_tiktok_keywords()
 
-        # 创建下拉框让用户选择关键字
-        selected_keyword = st.selectbox("选择关键字", keywords)
+        # 创建下拉框让用户选择关键字，使用缓存的默认值
+        selected_keyword = st.selectbox("选择关键字", keywords, 
+                                        index=keywords.index(default_keyword) if default_keyword in keywords else 0)
+
 
         if selected_keyword:
             # 获取选定关键字的评论数据
@@ -60,7 +78,7 @@ def data_filter():
 
                 st.write(f"过滤后的评论数量: {len(df)}")
 
-                                # 数据过滤规则
+                # 数据过滤规则
                 st.caption("数据过滤规则:")
                 st.markdown("""
                 - 过滤长度小于10的评论
@@ -75,7 +93,6 @@ def data_filter():
                         st.success(f"✅ 成功保存 {saved_count} 条过滤后的评论")
                     except Exception as e:
                         st.error(f"❌ 保存过滤后的数据时发生错误: {str(e)}")
-
 
                 # 显示过滤后的数据
                 st.subheader("过滤后的评论数据")
