@@ -37,50 +37,48 @@ def data_collect(db):
     if submit_task:
         # 保存关键字到缓存
         save_keyword_to_cache(search_keyword)
-        try:
-            # 检查是否已存在相同关键字的运行中任务
-            running_tasks = db.get_running_tiktok_task_by_keyword(search_keyword)
-            task_id = None
-            
-            if running_tasks:
-                st.warning(f"⚠️ 已存在关键词为 '{search_keyword}' 的运行中任务。任务ID: {running_tasks[0]['id']}")
-                task_id = running_tasks[0]['id']
-            else:
-                # 在MySQL中创建新任务
-                task_id = db.create_tiktok_task(search_keyword)
-                if task_id:
-                    st.success(f"✅ 成功在数据库中创建任务。ID: {task_id}")
-                else:
-                    st.error("❌ 在数据库中创建任务失败")
-                    return  # 如果创建任务失败，直接返回
-
-            # 无论是新任务还是已存在的任务，都触发worker执行
+        # 检查是否已存在相同关键字的运行中任务
+        running_tasks = db.get_running_tiktok_task_by_keyword(search_keyword)
+        task_id = None
+        
+        if running_tasks:
+            st.warning(f"⚠️ 已存在关键词为 '{search_keyword}' 的运行中任务。任务ID: {running_tasks[0]['id']}")
+            task_id = running_tasks[0]['id']
+        else:
+            # 在MySQL中创建新任务
+            task_id = db.create_tiktok_task(search_keyword)
             if task_id:
-                # 获取所有可用的worker
-                available_workers = db.get_available_workers()
-                successful_triggers = 0
-                
-                for worker in available_workers:
-                    try:
-                        worker_ip = worker['worker_ip']
-                        response = requests.post(
-                            f"http://{worker_ip}:5000/trigger_tiktok_task",
-                            json={"task_id": task_id},
-                            headers={"Content-Type": "application/json"}
-                        )
-                        response.raise_for_status()
-                        successful_triggers += 1
-                    except requests.RequestException as e:
-                        st.error(f"❌ 触发worker {worker_ip} 失败: {str(e)}")
-                
-                if successful_triggers > 0:
-                    st.success(f"✅ 成功触发 {successful_triggers} 个worker")
-                else:
-                    st.error("❌ 未能触发任何worker")
+                st.success(f"✅ 成功在数据库中创建任务。ID: {task_id}")
             else:
-                st.error("❌ 无法获取有效的任务ID")
-        except Exception as e:
-            st.error(f"❌ 处理任务时出错: {str(e)}")
+                st.error("❌ 在数据库中创建任务失败")
+                return  # 如果创建任务失败，直接返回
+
+        # 无论是新任务还是已存在的任务，都触发worker执行
+        if task_id:
+            # 获取所有可用的worker
+            available_workers = db.get_available_workers()
+            successful_triggers = 0
+            
+            for worker in available_workers:
+                try:
+                    worker_ip = worker['worker_ip']
+                    response = requests.post(
+                        f"http://{worker_ip}:5000/trigger_tiktok_task",
+                        json={"task_id": task_id},
+                        headers={"Content-Type": "application/json"}
+                    )
+                    response.raise_for_status()
+                    successful_triggers += 1
+                except requests.RequestException as e:
+                    st.error(f"❌ 触发worker {worker_ip} 失败: {str(e)}")
+            
+            if successful_triggers > 0:
+                st.success(f"✅ 成功触发 {successful_triggers} 个worker")
+            else:
+                st.error("❌ 未能触发任何worker")
+        else:
+            st.error("❌ 无法获取有效的任务ID")
+
 
     # 任务管理
     st.subheader("任务管理")
