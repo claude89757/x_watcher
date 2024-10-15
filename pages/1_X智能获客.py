@@ -15,11 +15,11 @@ from common.log_config import setup_logger
 from sidebar import sidebar_for_x
 
 # 导入各个标签页的函数
-from x_tab.data_collect import data_collect
-from x_tab.data_filter import comment_filter
-from x_tab.data_analyze import comment_analyze
-from x_tab.generate_msg import generate_msg
-from x_tab.send_msg import send_msg
+from pages.x_tab.data_collect import data_collect
+from pages.x_tab.data_filter import comment_filter
+from pages.x_tab.data_analyze import comment_analyze
+from pages.x_tab.generate_msg import generate_msg
+from pages.x_tab.send_msg import send_msg
 
 # 设置页面配置
 st.set_page_config(page_title="X智能获客", page_icon="🤖", layout="wide")
