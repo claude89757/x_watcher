@@ -7,6 +7,7 @@ from common.azure_openai import process_with_gpt
 from io import StringIO
 import csv
 import logging
+import io
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
@@ -192,7 +193,7 @@ def data_analyze(db: MySQLDatabase):
 请以CSV格式输出结果，包含以下列：
 "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
-请确保输出的CSV格式正确，每个字段都用���号围，并用逗号分隔。"""
+请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。"""
 
     # 显示完整的prompt示例
     col1, col2 = st.columns(2)
@@ -279,6 +280,14 @@ def data_analyze(db: MySQLDatabase):
                 else:
                     st.warning("没有找到第二轮分析的评论数据")
 
+def remove_extra_quotes(text):
+    """移除字符串开头和结尾的多余引号"""
+    if text.startswith('"') and text.endswith('"'):
+        return text[1:-1]
+    elif text.startswith("'") and text.endswith("'"):
+        return text[1:-1]
+    return text
+
 def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
     # 获取过滤后的评论数据
     filtered_comments = db.get_filtered_tiktok_comments_by_keyword(keyword, limit=total_comments)
@@ -312,14 +321,15 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                     # 使用固定的列名
                     fixed_headers = ["用户ID", "评论内容", "分类结果", "分析理由"]
                     
-                    # 使用 csv.reader 来解析 CSV 内容
-                    csv_reader = csv.reader(csv_content.splitlines())
+                    # 使用 csv.reader 来解析 CSV 内容，并去除多余的引号
+                    csv_reader = csv.reader(io.StringIO(csv_content))
                     next(csv_reader)  # 跳过 GPT 生成的标题行
                     
                     rows = []
                     for row in csv_reader:
                         if len(row) == len(fixed_headers):
-                            rows.append(dict(zip(fixed_headers, row)))
+                            cleaned_row = [remove_extra_quotes(cell) for cell in row]
+                            rows.append(dict(zip(fixed_headers, cleaned_row)))
                         else:
                             total_ignored += 1
                             if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
@@ -402,14 +412,15 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                 # 使用固定的列名
                 fixed_headers = ["用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"]
                 
-                # 使用 csv.reader 来解析 CSV 内容
-                csv_reader = csv.reader(csv_content.splitlines())
+                # 使用 csv.reader 来解析 CSV 内容，并去除多余的引号
+                csv_reader = csv.reader(io.StringIO(csv_content))
                 next(csv_reader)  # 跳过 GPT 生成的标题行
                 
                 rows = []
                 for row in csv_reader:
                     if len(row) == len(fixed_headers):
-                        rows.append(dict(zip(fixed_headers, row)))
+                        cleaned_row = [remove_extra_quotes(cell) for cell in row]
+                        rows.append(dict(zip(fixed_headers, cleaned_row)))
                     else:
                         total_ignored += 1
                         if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
