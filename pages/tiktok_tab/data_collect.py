@@ -12,7 +12,8 @@ def data_collect():
 
     try:
         # 全局面板
-        st.subheader("收集统计")
+        st.info("本页面用于从TikTok收集数据并创建数据采集任务。")
+
         col1, col2, col3 = st.columns(3)
         
         # 从数据库获取统计信息
