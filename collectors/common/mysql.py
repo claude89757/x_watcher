@@ -740,6 +740,12 @@ class MySQLDatabase:
         query = "UPDATE tiktok_accounts SET status = %s WHERE id = %s"
         return self.execute_update(query, (status, account_id))
 
+    def get_worker_by_ip(self, worker_ip):
+        """获取指定IP的worker信息"""
+        query = "SELECT * FROM worker_infos WHERE worker_ip = %s"
+        result = self.execute_query(query, (worker_ip,))
+        return result[0] if result else None
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
