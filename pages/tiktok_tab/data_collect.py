@@ -10,17 +10,6 @@ def data_collect(db):
     # 全局面板
     st.info("本页面用于从TikTok收集数据并创建数据采集任务。")
 
-    col1, col2, col3 = st.columns(3)
-    
-    # 从数据库获取统计信息
-    stats = db.get_tiktok_collection_stats()
-
-    with col1:
-        st.metric("已收集关键字", stats['keyword_count'])
-    with col2:
-        st.metric("已收集评论数", stats['comment_count'])
-
-
     # 定义缓存文件路径
     KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
 

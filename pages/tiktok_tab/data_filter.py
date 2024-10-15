@@ -9,16 +9,6 @@ def data_filter(db):
     # 全局面板
     st.info("本页面用于过滤和处理TikTok评论数据。")
 
-    col1, col2 = st.columns(2)
-    
-    # 从数据库获取统计信息
-    stats = db.get_tiktok_collection_stats()
-
-    with col1:
-        st.metric("已收集关键字", stats['keyword_count'])
-    with col2:
-        st.metric("已收集评论数", stats['comment_count'])
-
     # 定义缓存文件路径
     KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
 
