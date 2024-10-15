@@ -48,35 +48,49 @@ def clear_folder(folder_path):
             print(f'Failed to delete {file_path}. Reason: {e}')
 
 
-def sidebar():
+def sidebar_home():
     try:
-        st.sidebar.subheader("重构中")
-        # # Cache file counts
-        # cache_file_counts()
-
-        # # Create a component in the sidebar to display file counts
-        # st.sidebar.subheader("File Statistics")
-
-        # # Display counts and add buttons in a horizontal layout
-        # with st.sidebar:
-        #     for label, key, folder in [
-        #         ("Raw Data Files", "raw", "raw"),
-        #         ("Processed Data Files", "processed", "processed"),
-        #         ("Analyzed Data Files", "analyzed", "analyzed"),
-        #         ("Msg Data Files", "msg", "msg")
-        #     ]:
-        #         col1, col2 = st.columns([1, 2])
-        #         with col1:
-        #             st.caption(f"{label}: {st.session_state[f'{key}_data_file_count']}")
-        #         with col2:
-        #             if st.button("Clear", key=f"clear_{key}"):
-        #                 clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
-        #                 st.session_state[f'{key}_data_file_count'] = \
-        #                     count_files(f"./data/{st.session_state.access_code}/{folder}/")
-
-        #     # Add refresh button for file counts
-        #     if st.button("Refresh"):
-        #         cache_file_counts()
-        #         st.rerun()
+        st.sidebar.subheader("构建中")
     except:
         st.write("...")
+
+
+def sidebar_for_x():
+    try:
+        # Cache file counts
+        cache_file_counts()
+
+        # Create a component in the sidebar to display file counts
+        st.sidebar.subheader("File Statistics")
+
+        # Display counts and add buttons in a horizontal layout
+        with st.sidebar:
+            for label, key, folder in [
+                ("Raw Data Files", "raw", "raw"),
+                ("Processed Data Files", "processed", "processed"),
+                ("Analyzed Data Files", "analyzed", "analyzed"),
+                ("Msg Data Files", "msg", "msg")
+            ]:
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    st.caption(f"{label}: {st.session_state[f'{key}_data_file_count']}")
+                with col2:
+                    if st.button("Clear", key=f"clear_{key}"):
+                        clear_folder(f"./data/{st.session_state.access_code}/{folder}/")
+                        st.session_state[f'{key}_data_file_count'] = \
+                            count_files(f"./data/{st.session_state.access_code}/{folder}/")
+
+            # Add refresh button for file counts
+            if st.button("Refresh"):
+                cache_file_counts()
+                st.rerun()
+    except:
+        st.write("...")
+
+
+def sidebar_for_tiktok():
+    try:
+        st.sidebar.subheader("构建中")
+    except:
+        st.write("...")
+        

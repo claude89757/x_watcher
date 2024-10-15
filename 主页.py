@@ -13,7 +13,7 @@ import datetime
 import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
-from sidebar import sidebar
+from sidebar import sidebar_home
 from common.redis_client import RedisClient
 from common.collector_sdk import check_x_login_status
 
@@ -128,7 +128,7 @@ else:
             logger.warning(f"{code} login failed.")
 
 if access_granted:
-    sidebar()
+    sidebar_home()
     st.success(access_granted_message)
     st.markdown("-----")
 

@@ -24,7 +24,7 @@ from common.cos import list_latest_files
 from common.cos import download_file
 from common.log_config import setup_logger
 from common.collector_sdk import call_collect_data_from_x
-from sidebar import sidebar
+from sidebar import sidebar_for_tiktok
 from sidebar import cache_file_counts
 from common.redis_client import RedisClient
 from collectors.common.mysql import MySQLDatabase
@@ -46,7 +46,7 @@ if 'language' not in st.session_state:
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
     st.query_params.access_code = st.session_state.access_code
     st.query_params.language = st.session_state.language
-    sidebar()
+    sidebar_for_tiktok()
 else:
     st.warning("Access not Granted!")
     time.sleep(3)
