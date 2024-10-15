@@ -845,6 +845,16 @@ class MySQLDatabase:
         """
         return self.execute_query(query, (keyword, limit))
 
+    def get_filtered_tiktok_comments_count(self, keyword):
+        """获取指定关键词的已过滤评论数量"""
+        query = """
+        SELECT COUNT(*) as count
+        FROM tiktok_filtered_comments
+        WHERE keyword = %s
+        """
+        result = self.execute_query(query, (keyword,))
+        return result[0]['count'] if result else 0
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")

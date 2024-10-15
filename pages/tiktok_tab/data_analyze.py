@@ -119,13 +119,26 @@ def data_analyze():
             batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
 
         with col2:
-            # 选择总共要分类的评论数量（改为下拉框）
+            # 获取当前关键字的评论总数
+            total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
+            
+            # 创建可选择的评论数量列表
+            comment_count_options = [100, 500, 1000, 2000, 5000, 10000]
+            comment_count_options = [opt for opt in comment_count_options if opt <= total_available_comments]
+            if total_available_comments not in comment_count_options:
+                comment_count_options.append(total_available_comments)
+            comment_count_options.sort()
+
+            # 选择总共要分类的评论数量
             total_comments = st.selectbox("总共要分类的评论数量", 
-                                          options=[100, 500, 1000, 2000, 5000, 10000], 
-                                          index=0)
+                                          options=comment_count_options, 
+                                          index=len(comment_count_options) - 1)  # 默认选择最大值
 
             # 选择模型
             model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
+
+        # 显示可用的评论总数
+        st.info(f"当前关键字 '{selected_keyword}' 共有 {total_available_comments} 条评论可供分析")
 
         # 计算并显示预估的问答次数
         estimated_rounds = (total_comments + batch_size - 1) // batch_size
