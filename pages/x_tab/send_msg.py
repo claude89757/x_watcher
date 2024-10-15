@@ -19,7 +19,6 @@ from common.log_config import setup_logger
 from common.azure_openai import generate_promotional_sms
 from common.collector_sdk import check_x_login_status
 from common.collector_sdk import send_promotional_msg
-from sidebar import sidebar
 
 # Configure logger
 logger = setup_logger(__name__)

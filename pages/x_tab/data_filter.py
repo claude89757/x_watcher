@@ -15,7 +15,6 @@ import streamlit as st
 
 from common.config import CONFIG
 from common.log_config import setup_logger
-from sidebar import sidebar
 from sidebar import cache_file_counts
 
 

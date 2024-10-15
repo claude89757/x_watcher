@@ -24,7 +24,6 @@ from common.cos import list_latest_files
 from common.cos import download_file
 from common.log_config import setup_logger
 from common.collector_sdk import call_collect_data_from_x
-from sidebar import sidebar
 from sidebar import cache_file_counts
 from common.redis_client import RedisClient
 from collectors.common.mysql import MySQLDatabase
