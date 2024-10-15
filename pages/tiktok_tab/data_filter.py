@@ -43,7 +43,8 @@ def data_filter():
 
         # 创建下拉框让用户选择关键字，使用缓存的默认值
         selected_keyword = st.selectbox("选择关键字", keywords, 
-                                        index=keywords.index(default_keyword) if default_keyword in keywords else 0)
+                                        index=keywords.index(default_keyword) if default_keyword in keywords else 0,
+                                        key="filter_keyword_select")  # 添加唯一的key
 
 
         if selected_keyword:
