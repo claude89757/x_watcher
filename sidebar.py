@@ -89,8 +89,5 @@ def sidebar_for_x():
 
 
 def sidebar_for_tiktok():
-    try:
-        st.sidebar.subheader("构建中")
-    except:
-        st.write("...")
+    pass
         
