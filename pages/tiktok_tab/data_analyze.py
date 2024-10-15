@@ -138,6 +138,7 @@ def data_analyze(db):
                                        value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
                                        height=100,
                                        key="product_description")
+    
     customer_description = st.text_area("目标客户描述", 
                                         value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
                                         height=100,
