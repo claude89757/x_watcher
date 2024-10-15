@@ -99,10 +99,11 @@ def data_analyze(db):
         selected_keyword = st.selectbox("关键字", keywords, 
                                         index=keywords.index(default_keyword) if default_keyword in keywords else 0,
                                         key="analyze_keyword_select")
+        
+        # 选择模型
+        model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
 
-        # 选择每轮输入的数据量
-        batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
-
+    
     with col2:
         # 获取当前关键字的评论总数
         total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
@@ -115,12 +116,11 @@ def data_analyze(db):
         comment_count_options.sort()
 
         # 选择总共要分类的评论数量
-        total_comments = st.selectbox("总共要分类的评论数量", 
-                                        options=comment_count_options, 
-                                        index=len(comment_count_options) - 1)  # 默认选择最大值
+        total_comments = st.selectbox("总共要分类的评论数量", options=comment_count_options, index=0)
 
-        # 选择模型
-        model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
+        # 选择每轮输入的数据量
+        batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
+
 
     # 显示可用的评论总数
     st.info(f"当前关键字 '{selected_keyword}' 共有 {total_available_comments} 条评论可供分析")
