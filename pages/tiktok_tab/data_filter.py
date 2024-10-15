@@ -60,11 +60,7 @@ def data_filter():
 
                 st.write(f"过滤后的评论数量: {len(df)}")
 
-                # 显示过滤后的数据
-                st.subheader("过滤后的评论数据")
-                st.dataframe(df)
-
-                # 数据过滤规则
+                                # 数据过滤规则
                 st.caption("数据过滤规则:")
                 st.markdown("""
                 - 过滤长度小于10的评论
@@ -73,12 +69,17 @@ def data_filter():
                 """)
 
                 # 保存过滤后的数据
-                if st.button("保存过滤后的数据"):
+                if st.button("保存过滤后的数据", type="primary"):
                     try:
                         saved_count = db.save_filtered_comments(df.to_dict('records'))
                         st.success(f"✅ 成功保存 {saved_count} 条过滤后的评论")
                     except Exception as e:
                         st.error(f"❌ 保存过滤后的数据时发生错误: {str(e)}")
+
+
+                # 显示过滤后的数据
+                st.subheader("过滤后的评论数据")
+                st.dataframe(df)
 
             else:
                 st.warning("⚠️ 没有找到相关评论数据")
