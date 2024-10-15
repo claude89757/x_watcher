@@ -225,15 +225,14 @@ def data_analyze(db):
     col1, col2 = st.columns(2)
 
     potential_customers_count = db.get_potential_customers_count(selected_keyword)
+    if potential_customers_count > 0:
+        st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+    else:
+        pass
 
     with col1:
         if st.button("开始第一轮分析", type="primary"):
             first_round_analyze(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round)
-
-        if potential_customers_count > 0:
-            st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
-        else:
-            st.info("暂未发现潜在客户")
         
         # 显示第一轮分析结果
         st.subheader("查看第一轮分析结果")
