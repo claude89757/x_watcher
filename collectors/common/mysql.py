@@ -259,7 +259,7 @@ class MySQLDatabase:
         self.execute_update(create_second_round_analyzed_comments_table)
 
     def create_tiktok_task(self, keyword):
-        """创建的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
+        """创建TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
         check_query = f"""
         SELECT id FROM tiktok_tasks 
@@ -748,7 +748,7 @@ class MySQLDatabase:
         """添加新的TikTok账号"""
         query = """
         INSERT INTO tiktok_accounts (username, password, email, login_ips)
-        VALUES (%s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s)
         """
         return self.execute_update(query, (username, password, email, ','.join(login_ips)))
 
