@@ -5,6 +5,8 @@ import pandas as pd
 from collectors.common.mysql import MySQLDatabase
 from common.azure_openai import process_with_gpt
 from io import StringIO
+import csv
+import logging
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
@@ -103,7 +105,7 @@ def data_analyze(db: MySQLDatabase):
     # 获取当前关键字的评论总数
     total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
     
-    # 创建可选择的评论数量列表
+    # 创建可选择的论数量列表
     comment_count_options = [100, 500, 1000, 2000, 5000, 10000, total_available_comments]
     comment_count_options = sorted(set([opt for opt in comment_count_options if opt <= total_available_comments]))
 
@@ -111,7 +113,7 @@ def data_analyze(db: MySQLDatabase):
         # 选择总共要分类的评论数量
         total_comments = st.selectbox("评论数量", 
                                       options=comment_count_options, 
-                                      index=0)  # 默认选择最大值
+                                      index=0)  # 默选择最大值
 
     with col3:
         # 选择每轮输入的数据量
@@ -190,7 +192,7 @@ def data_analyze(db: MySQLDatabase):
 请以CSV格式输出结果，包含以下列：
 "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
-请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。"""
+请确保输出的CSV格式正确，每个字段都用双引号围，并用逗号分隔。"""
 
     # 显示完整的prompt示例
     col1, col2 = st.columns(2)
@@ -281,6 +283,9 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
     # 获取过滤后的评论数据
     filtered_comments = db.get_filtered_tiktok_comments_by_keyword(keyword, limit=total_comments)
 
+    ignored_comments = []
+    total_ignored = 0
+
     if filtered_comments:
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -304,15 +309,28 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                         response = response[:-3]
                     csv_content = response.strip()
                     
-                    # 使用 StringIO 来创建一个类文件对象
-                    csv_file = StringIO(csv_content)
+                    # 使用 csv.reader 来解析 CSV 内容
+                    csv_reader = csv.reader(csv_content.splitlines())
+                    headers = next(csv_reader)  # 获取标题行
+                    rows = []
+                    for row in csv_reader:
+                        if len(row) == len(headers):
+                            rows.append(row)
+                        else:
+                            total_ignored += 1
+                            if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
+                                ignored_comments.append(row)
+                            logging.warning(f"忽略字段数量不匹配的行: {row}")
                     
-                    # 使用 pandas 读取 CSV 内容
-                    batch_results = pd.read_csv(csv_file)
-                    results.append(batch_results)
+                    # 使用处理后的数据创建 DataFrame
+                    if rows:
+                        batch_results = pd.DataFrame(rows, columns=headers)
+                        results.append(batch_results)
 
-                    # 保存批次结果到数据库
-                    db.save_analyzed_comments(keyword, batch_results)
+                        # 保存批次结果到数据库
+                        db.save_analyzed_comments(keyword, batch_results)
+                    else:
+                        logging.warning("本批次没有有效的数据行")
 
                 except Exception as e:
                     st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
@@ -322,16 +340,25 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                 status_text.text(f"已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论")
 
         # 合并所有结果
-        final_results = pd.concat(results, ignore_index=True)
+        if results:
+            final_results = pd.concat(results, ignore_index=True)
 
-        # 显示分类结果
-        st.subheader("总体分类结果")
-        st.write(final_results)
+            # 显示分类结果
+            st.subheader("总体分类结果")
+            st.write(final_results)
 
-        # 显示统计信息
-        st.subheader("统计信息")
-        classification_counts = final_results['分类结果'].value_counts()
-        st.write(classification_counts)
+            # 显示统计信息
+            st.subheader("统计信息")
+            classification_counts = final_results['分类结果'].value_counts()
+            st.write(classification_counts)
+
+            # 显示忽略的评论信息
+            if total_ignored > 0:
+                st.warning(f"共有 {total_ignored} 条评论因格式问题被忽略。")
+                if ignored_comments:
+                    st.warning(f"被忽略的评论示例：\n" + "\n".join([str(comment) for comment in ignored_comments]))
+        else:
+            st.warning("没有成功处理任何评论数据")
 
     else:
         st.warning("没有找到相关的过滤后的评论数据")
@@ -342,6 +369,9 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
     if not potential_customers:
         st.warning("没有找到潜在客户数据进行第二轮分析")
         return
+
+    ignored_comments = []
+    total_ignored = 0
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -365,15 +395,28 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                     response = response[:-3]
                 csv_content = response.strip()
                 
-                # 使用 StringIO 来创建一个类文件对象
-                csv_file = StringIO(csv_content)
+                # 使用 csv.reader 来解析 CSV 内容
+                csv_reader = csv.reader(csv_content.splitlines())
+                headers = next(csv_reader)  # 获取标题行
+                rows = []
+                for row in csv_reader:
+                    if len(row) == len(headers):
+                        rows.append(row)
+                    else:
+                        total_ignored += 1
+                        if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
+                            ignored_comments.append(row)
+                        logging.warning(f"忽略字段数量不匹配的行: {row}")
                 
-                # 使用 pandas 读取 CSV 内容
-                batch_results = pd.read_csv(csv_file)
-                results.append(batch_results)
+                # 使用处理后的数据创建 DataFrame
+                if rows:
+                    batch_results = pd.DataFrame(rows, columns=headers)
+                    results.append(batch_results)
 
-                # 保存批次结果到数据库
-                db.save_second_round_analyzed_comments(keyword, batch_results)
+                    # 保存批次结果到数据库
+                    db.save_second_round_analyzed_comments(keyword, batch_results)
+                else:
+                    logging.warning("本批次没有有效的数据行")
 
             except Exception as e:
                 st.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
@@ -383,13 +426,22 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
             status_text.text(f"已处理 {min(i+batch_size, len(potential_customers))}/{len(potential_customers)} 条评论")
 
     # 合并所有结果
-    final_results = pd.concat(results, ignore_index=True)
+    if results:
+        final_results = pd.concat(results, ignore_index=True)
 
-    # 显示第二轮分类结果
-    st.subheader("第二轮分析总体结果")
-    st.write(final_results)
+        # 显示第二轮分类结果
+        st.subheader("第二轮分析总体结果")
+        st.write(final_results)
 
-    # 显示统计信息
-    st.subheader("第二轮分析统计")
-    classification_counts = final_results['第二轮分类结果'].value_counts()
-    st.write(classification_counts)
+        # 显示统计信息
+        st.subheader("第二轮分析统计")
+        classification_counts = final_results['第二轮分类结果'].value_counts()
+        st.write(classification_counts)
+
+        # 显示忽略的评论信息
+        if total_ignored > 0:
+            st.warning(f"第二轮分析中共有 {total_ignored} 条评论因格式问题被忽略。")
+            if ignored_comments:
+                st.warning(f"第二轮被忽略的评论示例：\n" + "\n".join([str(comment) for comment in ignored_comments]))
+    else:
+        st.warning("没有成功处理任何评论数据")
