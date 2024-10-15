@@ -259,7 +259,7 @@ class MySQLDatabase:
         self.execute_update(create_second_round_analyzed_comments_table)
 
     def create_tiktok_task(self, keyword):
-        """创建新的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
+        """创建���的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
         check_query = f"""
         SELECT id FROM tiktok_tasks 
@@ -400,7 +400,7 @@ class MySQLDatabase:
         return self.execute_query(query)
 
     def get_pending_tiktok_task_by_keyword(self, keyword):
-        """获取指定关键词的待处���TikTok任务"""
+        """获取指定关键词的待处TikTok任务"""
         query = f"""
         SELECT * FROM tiktok_tasks 
         WHERE status = 'pending' AND keyword = '{keyword}' 
@@ -650,7 +650,7 @@ class MySQLDatabase:
         return [result['user_id'] for result in results]
 
     def get_running_tiktok_tasks(self):
-        """获取所有正在运行的TikTok任务"""
+        """获取所有��在运行的TikTok任务"""
         query = "SELECT * FROM tiktok_tasks WHERE status = 'running'"
         return self.execute_query(query)
 
@@ -796,7 +796,7 @@ class MySQLDatabase:
         return result[0] if result else None
 
     def get_all_tiktok_keywords(self):
-        """获取所有TikTok关键字"""
+        """获取所��TikTok关键字"""
         query = "SELECT DISTINCT keyword FROM tiktok_tasks"
         results = self.execute_query(query)
         return [result['keyword'] for result in results]
@@ -916,6 +916,32 @@ class MySQLDatabase:
         LIMIT %s
         """
         return self.execute_query(query, (keyword, limit))
+
+    def get_global_stats(self):
+        """获取全局统计数据"""
+        stats = {}
+
+        # 获取已收集的关键字数量
+        query = "SELECT COUNT(DISTINCT keyword) as keyword_count FROM tiktok_tasks"
+        result = self.execute_query(query)
+        stats['keyword_count'] = result[0]['keyword_count'] if result else 0
+
+        # 获取已收集的评论总数
+        query = "SELECT COUNT(*) as comment_count FROM tiktok_comments"
+        result = self.execute_query(query)
+        stats['comment_count'] = result[0]['comment_count'] if result else 0
+
+        # 获取潜在客户数量
+        query = "SELECT COUNT(*) as potential_customer_count FROM tiktok_analyzed_comments WHERE classification = '潜在客户'"
+        result = self.execute_query(query)
+        stats['potential_customer_count'] = result[0]['potential_customer_count'] if result else 0
+
+        # 获取高意向客户数量
+        query = "SELECT COUNT(*) as high_intent_customer_count FROM tiktok_second_round_analyzed_comments WHERE second_round_classification = '高意向客户'"
+        result = self.execute_query(query)
+        stats['high_intent_customer_count'] = result[0]['high_intent_customer_count'] if result else 0
+
+        return stats
 
 # 使用示例
 if __name__ == "__main__":

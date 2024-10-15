@@ -38,7 +38,7 @@ from pages.tiktok_tab.data_analyze import data_analyze
 logger = setup_logger(__name__)
 
 # Configure Streamlit pages and state
-st.set_page_config(page_title="Tiktok智能获客", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Tiktok��能获客", page_icon="🤖", layout="wide")
 
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
@@ -86,16 +86,15 @@ db = MySQLDatabase()
 db.connect()
 
 try:
-    col1, col2 = st.columns(2)
-    
-    # 从数据库获取统计信息
-    stats = db.get_tiktok_collection_stats()
+    # 获取全局统计数据
+    global_stats = db.get_global_stats()
 
-    # 使用条形图展示数据
-    with col1:
-        st.metric("已收集关键字", stats['keyword_count'])
-    with col2:
-        st.metric("已收集评论数", stats['comment_count'])
+    # 在侧边栏显示全局统计数据
+    st.sidebar.header("全局数据统计")
+    st.sidebar.metric("已收集关键字", global_stats['keyword_count'])
+    st.sidebar.metric("评论总数", global_stats['comment_count'])
+    st.sidebar.metric("潜在客户", global_stats['potential_customer_count'])
+    st.sidebar.metric("高意向客户", global_stats['high_intent_customer_count'])
 
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控", "账号管理"])
