@@ -29,7 +29,7 @@ def account_management(db):
                 submit = st.form_submit_button("提交")
 
                 if submit:
-                    if db.add_tiktok_account(username, password, email, status, login_ips):
+                    if db.add_tiktok_account(username, password, email, login_ips):
                         st.success("账号添加成功")
                         st.session_state.show_add_account_form = False  # 添加成功后关闭表单
                     else:
