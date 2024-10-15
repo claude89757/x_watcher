@@ -111,7 +111,7 @@ def data_analyze(db):
         # 选择总共要分类的评论数量
         total_comments = st.selectbox("分类评论数量", 
                                       options=comment_count_options, 
-                                      index=len(comment_count_options) - 1)  # 默认选择最大值
+                                      index=0)  # 默认选择最大值
 
     with col3:
         # 选择每轮输入的数据量
