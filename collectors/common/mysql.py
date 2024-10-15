@@ -744,13 +744,13 @@ class MySQLDatabase:
         params = (status, status, video_id)
         return self.execute_update(query, params)
 
-    def add_tiktok_account(self, username, password, email, status, login_ips):
+    def add_tiktok_account(self, username, password, email, login_ips):
         """添加新的TikTok账号"""
         query = """
-        INSERT INTO tiktok_accounts (username, password, email, status, login_ips)
+        INSERT INTO tiktok_accounts (username, password, email, login_ips)
         VALUES (%s, %s, %s, %s, %s)
         """
-        return self.execute_update(query, (username, password, email, status, ','.join(login_ips)))
+        return self.execute_update(query, (username, password, email, ','.join(login_ips)))
 
     def get_tiktok_accounts(self):
         """获取所有TikTok账号"""
