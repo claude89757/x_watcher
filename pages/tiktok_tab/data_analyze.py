@@ -91,10 +91,6 @@ def data_analyze(db):
     # 获取所有关键字
     keywords = db.get_all_tiktok_keywords()
 
-
-    
- 
-
     # 创建四列布局
     col1, col2, col3, col4 = st.columns(4)
 
