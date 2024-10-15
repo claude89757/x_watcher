@@ -28,7 +28,6 @@ def account_management():
                     username = st.text_input("用户名")
                     password = st.text_input("密码", type="password")
                     email = st.text_input("邮箱")
-                    status = st.selectbox("状态", ["active", "inactive"])
                     login_ips = st.multiselect("登录主机IP", options=available_workers)
                     submit = st.form_submit_button("提交")
 
