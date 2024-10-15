@@ -36,8 +36,6 @@ def data_collect():
     """
     评论收集tab
     """
-    # Configure Streamlit pages and state
-    st.set_page_config(page_title="评论收集", page_icon="🤖", layout="wide")
 
     # 从URL读取缓存数据
     if 'access_code' not in st.session_state:
