@@ -91,15 +91,9 @@ def data_analyze(db):
     # 获取所有关键字
     keywords = db.get_all_tiktok_keywords()
 
-    # 获取当前关键字的评论总数
-    total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
+
     
-    # 创建可选择的评论数量列表
-    comment_count_options = [100, 500, 1000, 2000, 5000, 10000]
-    comment_count_options = [opt for opt in comment_count_options if opt <= total_available_comments]
-    if total_available_comments not in comment_count_options:
-        comment_count_options.append(total_available_comments)
-    comment_count_options.sort()
+ 
 
     # 创建四列布局
     col1, col2, col3, col4 = st.columns(4)
@@ -111,6 +105,14 @@ def data_analyze(db):
                                         key="analyze_keyword_select")
 
     with col2:
+         # 获取当前关键字的评论总数
+        total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
+        # 创建可选择的评论数量列表
+        comment_count_options = [100, 500, 1000, 2000, 5000, 10000]
+        comment_count_options = [opt for opt in comment_count_options if opt <= total_available_comments]
+        if total_available_comments not in comment_count_options:
+            comment_count_options.append(total_available_comments)
+        comment_count_options.sort()
         # 选择总共要分类的评论数量
         total_comments = st.selectbox("分类评论数量", 
                                       options=comment_count_options, 
