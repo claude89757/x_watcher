@@ -75,7 +75,7 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 添加大标题
-st.title("Tiktok智能获客系统")
+st.title("Tiktok智能助手")
 
 # 创建标签页
 tab1, tab2, tab3, tab4 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控"])

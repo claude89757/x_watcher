@@ -66,7 +66,7 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 添加大标题
-st.title("X智能获客系统")
+st.title("X智能助手")
 
 # 创建标签页
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "私信生成_AI", "私信发送"])
