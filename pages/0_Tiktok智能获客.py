@@ -81,20 +81,29 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # 添加大标题
 st.title("Tiktok智能助手")
 
-# 创建标签页
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控", "账号管理"])
+# 初始化数据库连接
+db = MySQLDatabase()
+db.connect()
 
-with tab1:
-    data_collect()
+try:
+    # 创建标签页
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控", "账号管理"])
 
-with tab2:
-    data_filter()
+    with tab1:
+        data_collect(db)
 
-with tab3:
-    data_analyze()
+    with tab2:
+        data_filter(db)
 
-with tab4:
-    worker_vnc()
+    with tab3:
+        data_analyze(db)
 
-with tab5:
-    account_management()
+    with tab4:
+        worker_vnc(db)
+
+    with tab5:
+        account_management(db)
+
+finally:
+    # 确保在程序结束时关闭数据库连接
+    db.disconnect()
