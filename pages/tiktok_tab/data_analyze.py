@@ -106,10 +106,30 @@ def data_analyze():
         # 获取所有关键字
         keywords = db.get_all_tiktok_keywords()
 
-        # 创建下拉框让用户选择关键字，使用缓存的默认值
-        selected_keyword = st.selectbox("关键字", keywords, 
-                                        index=keywords.index(default_keyword) if default_keyword in keywords else 0,
-                                        key="analyze_keyword_select")
+        # 创建两列布局
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # 创建下拉框让用户选择关键字，使用缓存的默认值
+            selected_keyword = st.selectbox("关键字", keywords, 
+                                            index=keywords.index(default_keyword) if default_keyword in keywords else 0,
+                                            key="analyze_keyword_select")
+
+            # 选择每轮输入的数据量
+            batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
+
+        with col2:
+            # 选择总共要分类的评论数量（改为下拉框）
+            total_comments = st.selectbox("总共要分类的评论数量", 
+                                          options=[100, 500, 1000, 2000, 5000, 10000], 
+                                          index=0)
+
+            # 选择模型
+            model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
+
+        # 计算并显示预估的问答次数
+        estimated_rounds = (total_comments + batch_size - 1) // batch_size
+        st.write(f"预估需要进行 {estimated_rounds} 轮问答")
 
         # 获取或生成描述
         descriptions = load_descriptions_from_cache(selected_keyword)
@@ -119,28 +139,22 @@ def data_analyze():
                 if descriptions:
                     save_descriptions_to_cache(selected_keyword, descriptions)
 
-        # 选择每轮输入的数据量
-        batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
+        # 创建两列布局用于产品描述和目标客户描述
+        col1, col2 = st.columns(2)
 
-        # 选择总共要分类的评论数量
-        total_comments = st.slider("总共要分类的评论数量", min_value=100, max_value=10000, value=100, step=100)
+        with col1:
+            # 输入产品描述
+            product_description = st.text_area("产品描述", 
+                                               value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
+                                               height=150,
+                                               key="product_description")
 
-        # 计算并显示预估的问答次数
-        estimated_rounds = (total_comments + batch_size - 1) // batch_size
-        st.write(f"预估需要进行 {estimated_rounds} 轮问答")
-
-        # 选择模型
-        model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
-
-        # 输入产品描述和目标客户描述
-        product_description = st.text_area("产品描述", 
-                                           value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
-                                           height=150,  # 增加高度以适应更长的描述
-                                           key="product_description")
-        customer_description = st.text_area("目标客户描述", 
-                                            value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
-                                            height=150,  # 增加高度以适应更长的描述
-                                            key="customer_description")
+        with col2:
+            # 输入目标客户描述
+            customer_description = st.text_area("目标客户描述", 
+                                                value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
+                                                height=150,
+                                                key="customer_description")
 
         # 检查用户是否修改了描述
         if (descriptions and 
