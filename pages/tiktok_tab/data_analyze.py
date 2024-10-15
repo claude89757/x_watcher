@@ -12,17 +12,43 @@ def generate_descriptions(keyword):
     """生成产品描述和目标客户描述"""
     prompt = f"""
     基于关键词 "{keyword}" 生成以下内容：
-    1. 一个简短的产品描述（不超过100字）
-    2. 一个简短的目标客户描述（不超过100字）
+    1. 产品描述（不超过50字）
+    2. 目标客户描述（不超过50字）
 
     请以JSON格式输出，包含 "product_description" 和 "customer_description" 两个字段。
+
+    示例输出格式：
+    {{
+      "product_description": "高科技医疗美容产品，减少细纹，紧致肌肤，提升面容。",
+      "customer_description": "30岁以上注重外表的成年人，希望通过专业产品延缓衰老。"
+    }}
     """
     try:
-        response = process_with_gpt("gpt-4o", prompt)
+        response = process_with_gpt("gpt-4o-mini", prompt)
+        
+        # 去除可能存在的 ```json 标记
+        response = response.strip()
+        if response.startswith("```json"):
+            response = response[7:]
+        if response.endswith("```"):
+            response = response[:-3]
+        response = response.strip()
+        
         descriptions = json.loads(response)
+        
+        # 验证JSON结构
+        if "product_description" not in descriptions or "customer_description" not in descriptions:
+            raise ValueError("生成的描述缺少必要的字段")
+        
         return descriptions
-    except Exception as e:
+    except json.JSONDecodeError:
+        st.error("生成的描述不是有效的JSON格式")
+        return None
+    except ValueError as e:
         st.error(f"生成描述时发生错误: {str(e)}")
+        return None
+    except Exception as e:
+        st.error(f"生成描述时发生未知错误: {str(e)}")
         return None
 
 def load_descriptions_from_cache(keyword):
@@ -108,11 +134,11 @@ def data_analyze():
         # 输入产品描述和目标客户描述
         product_description = st.text_area("产品描述", 
                                            value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
-                                           height=100,
+                                           height=150,  # 增加高度以适应更长的描述
                                            key="product_description")
         customer_description = st.text_area("目标客户描述", 
                                             value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
-                                            height=100,
+                                            height=150,  # 增加高度以适应更长的描述
                                             key="customer_description")
 
         # 检查用户是否修改了描述
