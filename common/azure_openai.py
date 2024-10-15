@@ -243,3 +243,52 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
     status_text.text("Processing completed!")
 
     return result_df
+
+def process_with_gpt(model: str, prompt: str, max_tokens: int = 2000, temperature: float = 0.7, 
+                     top_p: float = 0.95) -> str:
+    """
+    使用GPT模型处理单次请求数据。
+    
+    :param model: 使用的GPT模型名称。
+    :param prompt: 完整的提示，包括系统提示、用户提示和数据。
+    :param max_tokens: 模型返回的最大token数，默认2000。
+    :param temperature: 控制输出随机性，默认0.7。
+    :param top_p: 控制输出多样性，默认0.95。
+    :return: GPT模型的响应内容。
+    """
+    payload = {
+        "messages": [
+            {"role": "system", "content": prompt}
+        ],
+        "temperature": temperature,
+        "top_p": top_p,
+        "max_tokens": max_tokens
+    }
+
+    logger.info("input==============================================")
+    logger.info(prompt)
+    logger.info("input==============================================")
+
+    url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
+          f"api-version=2024-02-15-preview"
+    try:
+        response = requests.post(url,
+                                 headers={
+                                     "Content-Type": "application/json",
+                                     "api-key": CONFIG.get("azure_open_api_key"),
+                                 },
+                                 json=payload
+        )
+        response.raise_for_status()
+        logger.info(f"response: {response.json()}")
+        response_content = response.json()['choices'][0]['message']['content']
+    except Exception as error:
+        error_message = traceback.format_exc()
+        logger.error(f"GPT processing failed: {error_message}")
+        raise
+
+    logger.info("output==============================================")
+    logger.info(response_content)
+    logger.info("output==============================================")
+
+    return response_content

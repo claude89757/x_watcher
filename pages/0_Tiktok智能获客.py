@@ -32,6 +32,7 @@ from pages.tiktok_tab.data_collect import data_collect
 from pages.tiktok_tab.worker_vnc import worker_vnc
 from pages.tiktok_tab.account import account_management
 from pages.tiktok_tab.data_filter import data_filter
+from pages.tiktok_tab.data_analyze import data_analyze
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -90,7 +91,7 @@ with tab2:
     data_filter()
 
 with tab3:
-    st.header("评论分析_AI")
+    data_analyze()
 
 with tab4:
     worker_vnc()

@@ -796,6 +796,14 @@ class MySQLDatabase:
         
         return self.insert_many(query, values)
 
+    def get_filtered_tiktok_comments_by_keyword(self, keyword, limit=1000):
+        query = """
+        SELECT * FROM tiktok_filtered_comments
+        WHERE keyword = %s
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
