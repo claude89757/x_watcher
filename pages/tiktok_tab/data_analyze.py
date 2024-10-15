@@ -157,7 +157,7 @@ def data_analyze(db):
         st.success("已更新产品和客户描述缓存")
 
     # 构建完整的prompt
-    prompt_template = f"""
+    prompt_template_first_round = f"""
     产品描述：{product_description}
     目标客户：{customer_description}
 
@@ -177,121 +177,7 @@ def data_analyze(db):
     请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。
     """
 
-    # 显示完整的prompt示例
-    st.subheader("Prompt示例")
-    example_comments = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=10)
-    example_comments_text = "\n".join([f"{i+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for i, comment in enumerate(example_comments)])
-    st.text_area("完整Prompt", prompt_template.replace("{comments}", example_comments_text), height=300)
-
-    if st.button("开始第一轮分析", type="primary"):
-        # 获取过滤后的评论数据
-        filtered_comments = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=total_comments)
-
-        if filtered_comments:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-
-            results = []
-            for i in range(0, len(filtered_comments), batch_size):
-                batch = filtered_comments[i:i+batch_size]
-                comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
-                
-                current_prompt = prompt_template.replace("{comments}", comments_text)
-                
-                try:
-                    response = process_with_gpt(model, current_prompt, max_tokens=20000)
-                    
-                    # 去除可能存在的 ```csv 标记
-                    response = response.strip()
-                    if response.startswith("```csv"):
-                        response = response[7:]
-                    if response.endswith("```"):
-                        response = response[:-3]
-                    csv_content = response.strip()
-                    
-                    # 使用 StringIO 来创建一个类文件对象
-                    csv_file = StringIO(csv_content)
-                    
-                    # 使用 pandas 读取 CSV 内容
-                    batch_results = pd.read_csv(csv_file)
-                    results.append(batch_results)
-
-                    # 保存批次结果到数据库
-                    db.save_analyzed_comments(selected_keyword, batch_results)
-
-                    # 动态展示当前批次的分析结果
-                    st.subheader(f"批次 {i//batch_size + 1} 分析结果")
-                    st.dataframe(batch_results)
-
-                except Exception as e:
-                    st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
-                
-                progress = (i + batch_size) / len(filtered_comments)
-                progress_bar.progress(min(progress, 1.0))
-                status_text.text(f"已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论")
-
-            # 合并所有结果
-            final_results = pd.concat(results, ignore_index=True)
-
-            # 显示分类结果
-            st.subheader("总体分类结果")
-            st.write(final_results)
-
-            # 显示统计信息
-            st.subheader("统计信息")
-            classification_counts = final_results['分类结果'].value_counts()
-            st.write(classification_counts)
-
-        else:
-            st.warning("没有找到相关的过滤后的评论数据")
-
-    # 显示第二轮分析按钮
-    potential_customers_count = db.get_potential_customers_count(selected_keyword)
-    if potential_customers_count > 0:
-        st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
-        if st.button("开始第二轮分析", type="primary"):
-            second_round_analyze(db, selected_keyword, model, batch_size)
-    else:
-        st.info("未发现潜在客户，无需进行第二轮分析")
-
-    # 显示第一轮分析结果
-    st.subheader("查看第一轮分析结果")
-    if st.button("加载第一轮分析结果"):
-        analyzed_comments = db.get_analyzed_comments(selected_keyword)
-        if analyzed_comments:
-            df_analyzed = pd.DataFrame(analyzed_comments)
-            st.dataframe(df_analyzed)
-            
-            # 显示统计信息
-            st.subheader("第一轮分析统计")
-            classification_counts = df_analyzed['classification'].value_counts()
-            st.write(classification_counts)
-        else:
-            st.info("没有找到已分析的评论数据")
-
-    # 显示第二轮分析结果
-    st.subheader("查看第二轮分析结果")
-    if st.button("加载第二轮分析结果"):
-        second_round_analyzed_comments = db.get_second_round_analyzed_comments(selected_keyword)
-        if second_round_analyzed_comments:
-            df_second_round = pd.DataFrame(second_round_analyzed_comments)
-            st.dataframe(df_second_round)
-            
-            # 显示统计信息
-            st.subheader("第二轮分析统计")
-            classification_counts = df_second_round['second_round_classification'].value_counts()
-            st.write(classification_counts)
-        else:
-            st.info("没有找到第二轮分析的评论数据")
-
-def second_round_analyze(db, keyword, model, batch_size):
-    potential_customers = db.get_potential_customers(keyword)
-    
-    if not potential_customers:
-        st.warning("没有找到潜在客户数据进行第二轮分析")
-        return
-
-    prompt_template = f"""
+    prompt_template_second_round = f"""
     请对以下被识别为"潜在客户"的评论进行更深入的分析，将每条评论分类为"高意向客户"、"中等意向客户"或"低意向客户"。
     对于每条评论，请提供以下输出：
     1. 用户ID
@@ -309,11 +195,137 @@ def second_round_analyze(db, keyword, model, batch_size):
     请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。
     """
 
-    # 显示第二轮分析的prompt示例
-    st.subheader("第二轮分析Prompt示例")
-    example_comments = potential_customers[:10]
-    example_comments_text = "\n".join([f"{i+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for i, comment in enumerate(example_comments)])
-    st.text_area("第二轮分析完整Prompt", prompt_template.replace("{comments}", example_comments_text), height=300)
+    # 显示完整的prompt示例
+    st.subheader("Prompt示例")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.text_area("第一轮分析Prompt", prompt_template_first_round, height=300)
+        example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=10)
+        example_comments_text_first = "\n".join([f"{i+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for i, comment in enumerate(example_comments_first)])
+        st.text_area("第一轮分析示例数据", example_comments_text_first, height=150)
+
+    with col2:
+        st.text_area("第二轮分析Prompt", prompt_template_second_round, height=300)
+        example_comments_second = db.get_potential_customers(selected_keyword, limit=10)
+        example_comments_text_second = "\n".join([f"{i+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for i, comment in enumerate(example_comments_second)])
+        st.text_area("第二轮分析示例数据", example_comments_text_second, height=150)
+
+    # 创建两列布局用于显示分析按钮和结果
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("开始第一轮分析", type="primary"):
+            first_round_analyze(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round)
+
+        # 显示第一轮分析结果
+        st.subheader("查看第一轮分析结果")
+        if st.button("加载第一轮分析结果", key="load_first_round"):
+            analyzed_comments = db.get_analyzed_comments(selected_keyword)
+            if analyzed_comments:
+                df_analyzed = pd.DataFrame(analyzed_comments)
+                st.dataframe(df_analyzed)
+                
+                # 显示统计信息
+                st.subheader("第一轮分析统计")
+                classification_counts = df_analyzed['classification'].value_counts()
+                st.write(classification_counts)
+            else:
+                st.info("没有找到已分析的评论数据")
+
+    with col2:
+        # 显示第二轮分析按钮
+        potential_customers_count = db.get_potential_customers_count(selected_keyword)
+        if potential_customers_count > 0:
+            st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+            if st.button("开始第二轮分析", type="primary"):
+                second_round_analyze(db, selected_keyword, model, batch_size, prompt_template_second_round)
+        else:
+            st.info("未发现潜在客户，无需进行第二轮分析")
+
+        # 显示第二轮分析结果
+        st.subheader("查看第二轮分析结果")
+        if st.button("加载第二轮分析结果", key="load_second_round"):
+            second_round_analyzed_comments = db.get_second_round_analyzed_comments(selected_keyword)
+            if second_round_analyzed_comments:
+                df_second_round = pd.DataFrame(second_round_analyzed_comments)
+                st.dataframe(df_second_round)
+                
+                # 显示统计信息
+                st.subheader("第二轮分析统计")
+                classification_counts = df_second_round['second_round_classification'].value_counts()
+                st.write(classification_counts)
+            else:
+                st.info("没有找到第二轮分析的评论数据")
+
+def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
+    # 获取过滤后的评论数据
+    filtered_comments = db.get_filtered_tiktok_comments_by_keyword(keyword, limit=total_comments)
+
+    if filtered_comments:
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        results = []
+        for i in range(0, len(filtered_comments), batch_size):
+            batch = filtered_comments[i:i+batch_size]
+            comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
+            
+            current_prompt = prompt_template.replace("{comments}", comments_text)
+            
+            try:
+                response = process_with_gpt(model, current_prompt, max_tokens=20000)
+                
+                # 去除可能存在的 ```csv 标记
+                response = response.strip()
+                if response.startswith("```csv"):
+                    response = response[7:]
+                if response.endswith("```"):
+                    response = response[:-3]
+                csv_content = response.strip()
+                
+                # 使用 StringIO 来创建一个类文件对象
+                csv_file = StringIO(csv_content)
+                
+                # 使用 pandas 读取 CSV 内容
+                batch_results = pd.read_csv(csv_file)
+                results.append(batch_results)
+
+                # 保存批次结果到数据库
+                db.save_analyzed_comments(keyword, batch_results)
+
+                # 动态展示当前批次的分析结果
+                st.subheader(f"批次 {i//batch_size + 1} 分析结果")
+                st.dataframe(batch_results)
+
+            except Exception as e:
+                st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
+            
+            progress = (i + batch_size) / len(filtered_comments)
+            progress_bar.progress(min(progress, 1.0))
+            status_text.text(f"已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论")
+
+        # 合并所有结果
+        final_results = pd.concat(results, ignore_index=True)
+
+        # 显示分类结果
+        st.subheader("总体分类结果")
+        st.write(final_results)
+
+        # 显示统计信息
+        st.subheader("统计信息")
+        classification_counts = final_results['分类结果'].value_counts()
+        st.write(classification_counts)
+
+    else:
+        st.warning("没有找到相关的过滤后的评论数据")
+
+def second_round_analyze(db, keyword, model, batch_size, prompt_template):
+    potential_customers = db.get_potential_customers(keyword)
+    
+    if not potential_customers:
+        st.warning("没有找到潜在客户数据进行第二轮分析")
+        return
 
     progress_bar = st.progress(0)
     status_text = st.empty()
