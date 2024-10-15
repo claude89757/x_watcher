@@ -177,7 +177,7 @@ def check_tiktok_account():
 
         # 检查是否已经有正在运行的检查任务
         if account_id in running_tasks:
-            return jsonify({"message": "Account status check is already in progress"}), 200
+            return jsonify({"error": "Account status check is already in progress"}), 409  # 使用409 Conflict状态码
 
         # 启动新的线程来检查账号状态
         check_thread = threading.Thread(target=check_account_status, args=(account_id, account['username'], account['email']))
