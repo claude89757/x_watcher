@@ -249,7 +249,7 @@ def data_analyze(db):
     potential_customers_count = db.get_potential_customers_count(selected_keyword)
     if potential_customers_count > 0:
         st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
-        if st.button("开始第二轮分析", type="secondary"):
+        if st.button("开始第二轮分析", type="primary"):
             second_round_analyze(db, selected_keyword, model, batch_size)
     else:
         st.info("未发现潜在客户，无需进行第二轮分析")
