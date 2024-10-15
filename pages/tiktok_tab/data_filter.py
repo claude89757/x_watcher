@@ -3,7 +3,6 @@ import pandas as pd
 from collectors.common.mysql import MySQLDatabase
 
 def data_filter():
-    st.header("评论数据过滤")
 
     # 初始化数据库连接
     db = MySQLDatabase()
@@ -65,10 +64,21 @@ def data_filter():
                 st.subheader("过滤后的评论数据")
                 st.dataframe(df)
 
+                # 数据过滤规则
+                st.caption("数据过滤规则:")
+                st.markdown("""
+                - 过滤长度小于10的评论
+                - 相同用户ID的评论合并成一条
+                - 重复评论用户或者评论内容相同的，去重
+                """)
+
                 # 保存过滤后的数据
                 if st.button("保存过滤后的数据"):
-                    saved_count = db.save_filtered_comments(df.to_dict('records'))
-                    st.success(f"✅ 成功保存 {saved_count} 条过滤后的评论")
+                    try:
+                        saved_count = db.save_filtered_comments(df.to_dict('records'))
+                        st.success(f"✅ 成功保存 {saved_count} 条过滤后的评论")
+                    except Exception as e:
+                        st.error(f"❌ 保存过滤后的数据时发生错误: {str(e)}")
 
             else:
                 st.warning("⚠️ 没有找到相关评论数据")
