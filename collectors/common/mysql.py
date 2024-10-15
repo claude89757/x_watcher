@@ -373,7 +373,7 @@ class MySQLDatabase:
                 processing_result = cursor.fetchone()
 
                 if processing_result:
-                    logger.info(f"找到正在���理中的本机视频：ID {processing_result['id']}, URL {processing_result['video_url']}")
+                    logger.info(f"找到正在理中的本机视频：ID {processing_result['id']}, URL {processing_result['video_url']}")
                     return processing_result
 
                 # 步骤2：如果没有正在处理的本机视频，则查找新的待处理视频
@@ -728,6 +728,17 @@ class MySQLDatabase:
         """更新TikTok账号的登录主机IP"""
         query = "UPDATE tiktok_accounts SET login_ips = %s WHERE id = %s"
         return self.execute_update(query, (','.join(login_ips), account_id))
+
+    def get_tiktok_account_by_id(self, account_id):
+        """获取指定ID的TikTok账号"""
+        query = "SELECT * FROM tiktok_accounts WHERE id = %s"
+        result = self.execute_query(query, (account_id,))
+        return result[0] if result else None
+
+    def update_tiktok_account_status(self, account_id, status):
+        """更新TikTok账号状态"""
+        query = "UPDATE tiktok_accounts SET status = %s WHERE id = %s"
+        return self.execute_update(query, (status, account_id))
 
 # 使用示例
 if __name__ == "__main__":

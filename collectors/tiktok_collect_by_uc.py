@@ -603,6 +603,68 @@ def main():
     finally:
         driver.quit()
 
+def check_account_status(account_id, username, email):
+    db = MySQLDatabase()
+    db.connect()
+    driver = None
+    try:
+        driver = setup_driver()
+        
+        # 导航到TikTok登录页面
+        driver.get("https://www.tiktok.com/login/phone-or-email")
+        
+        # 选择邮箱登录选项
+        email_option = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Use phone / email / username')]"))
+        )
+        email_option.click()
+        
+        # 输入邮箱
+        email_input = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "email"))
+        )
+        email_input.send_keys(email)
+        
+        # 点击忘记密码按钮
+        forgot_password_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Forgot password?')]"))
+        )
+        forgot_password_button.click()
+        
+        # 等待验证码输入框出现
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, "verification_code"))
+        )
+        
+        logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作")
+        
+        # 等待人工操作，最长等待30分钟
+        start_time = time.time()
+        success = False
+        while time.time() - start_time < 1800:  # 1800秒 = 30分钟
+            # 检查是否已经登录成功
+            if "For You" in driver.title or "推荐" in driver.title:
+                success = True
+                break
+            
+            # 每10秒检查一次
+            time.sleep(10)
+        
+        if success:
+            db.update_tiktok_account_status(account_id, 'active')
+            logger.info(f"账号 {username} 状态更新为 active")
+        else:
+            db.update_tiktok_account_status(account_id, 'inactive')
+            logger.info(f"账号 {username} 状态更新为 inactive（操作超时或失败）")
+
+    except Exception as e:
+        logger.error(f"检查账号 {username} 状态时发生错误: {str(e)}")
+        db.update_tiktok_account_status(account_id, 'inactive')
+    finally:
+        if driver:
+            driver.quit()
+        db.disconnect()
+
 # for local test
 if __name__ == '__main__':
     main()

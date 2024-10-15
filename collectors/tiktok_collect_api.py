@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify
 from common.mysql import MySQLDatabase
 import threading
-import requests
-from tiktok_collect_by_uc import process_task, get_public_ip
+from tiktok_collect_by_uc import process_task, get_public_ip, check_account_status
 import logging
 import os
 import socket
@@ -160,6 +159,40 @@ def delete_tiktok_task():
                 db.update_worker_task(worker_ip, ','.join(map(str, current_tasks)))
 
         return jsonify({"message": "Task deleted successfully", "task_id": task_id}), 200
+    finally:
+        db.disconnect()
+
+@app.route('/check_tiktok_account', methods=['POST'])
+def check_tiktok_account():
+    account_id = request.json.get('account_id')
+    if not account_id:
+        return jsonify({"error": "Missing account_id parameter"}), 400
+
+    db = MySQLDatabase()
+    db.connect()
+    try:
+        account = db.get_tiktok_account_by_id(account_id)
+        if not account:
+            return jsonify({"error": "Account not found"}), 404
+
+        # 检查是否已经有正在运行的检查任务
+        if account_id in running_tasks:
+            return jsonify({"message": "Account status check is already in progress"}), 200
+
+        # 启动新的线程来检查账号状态
+        check_thread = threading.Thread(target=check_account_status, args=(account_id, account['username'], account['email']))
+        check_thread.start()
+        running_tasks[account_id] = check_thread
+
+        return jsonify({
+            "message": "Account status check started",
+            "account_id": account_id,
+            "username": account['username'],
+            "current_status": account['status']
+        }), 200
+    except Exception as e:
+        logger.error(f"Error in check_tiktok_account: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
     finally:
         db.disconnect()
 

@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 from collectors.common.mysql import MySQLDatabase
 
 def account_management():
@@ -43,18 +44,38 @@ def account_management():
         if accounts:
             for account in accounts:
                 with st.expander(f"账号: {account['username']} (ID: {account['id']})"):
-                    col1, col2, col3 = st.columns([2, 2, 1])
+                    col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
                     with col1:
                         st.write(f"邮箱: {account['email']}")
                         st.write(f"当前登录主机IP: {account['login_ips']}")
                     with col2:
-                        new_status = st.selectbox("状态", ["active", "inactive"], index=0 if account['status'] == 'active' else 1, key=f"status_{account['id']}")
-                        if st.button("更新状态", key=f"update_status_{account['id']}"):
-                            if db.update_tiktok_account_status(account['id'], new_status):
-                                st.success("状态更新成功")
-                            else:
-                                st.error("状态更新失败")
+                        st.write(f"状态: {account['status']}")
                     with col3:
+                        if st.button("刷新状态", key=f"refresh_{account['id']}"):
+                            login_ips = account['login_ips'].split(',') if account['login_ips'] else []
+                            if not login_ips:
+                                st.error("该账号没有设置登录主机IP")
+                            else:
+                                triggered_workers = []
+                                for ip in login_ips:
+                                    try:
+                                        response = requests.post(
+                                            f"http://{ip}:5000/check_tiktok_account",
+                                            json={"account_id": account['id']},
+                                            timeout=5  # 设置5秒超时
+                                        )
+                                        if response.status_code == 200:
+                                            triggered_workers.append(ip)
+                                        else:
+                                            st.warning(f"Worker {ip} 响应状态码 {response.status_code}")
+                                    except requests.RequestException as e:
+                                        st.error(f"触发 worker {ip} 失败: {str(e)}")
+                                
+                                if triggered_workers:
+                                    st.success(f"账号状态刷新任务已触发。已触发的workers: {', '.join(triggered_workers)}")
+                                else:
+                                    st.error("未能触发任何worker")
+                    with col4:
                         if st.button("删除", key=f"delete_{account['id']}"):
                             if db.delete_tiktok_account(account['id']):
                                 st.success("账号删除成功")
