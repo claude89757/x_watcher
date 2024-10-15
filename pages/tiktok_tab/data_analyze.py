@@ -234,20 +234,20 @@ def data_analyze(db):
         if st.button("开始第一轮分析", type="primary"):
             first_round_analyze(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round)
         
-        # 显示第一轮分析结果
-        st.subheader("查看第一轮分析结果")
-        if st.button("加载第一轮分析结果", key="load_first_round"):
-            analyzed_comments = db.get_analyzed_comments(selected_keyword)
-            if analyzed_comments:
-                df_analyzed = pd.DataFrame(analyzed_comments)
-                st.dataframe(df_analyzed)
-                
-                # 显示统计信息
-                st.subheader("第一轮分析统计")
-                classification_counts = df_analyzed['classification'].value_counts()
-                st.write(classification_counts)
-            else:
-                st.info("没有找到已分析的评论数据")
+        # 使用expander来显示第一轮分析结果
+        with st.expander("查看第一轮分析结果", expanded=False):
+            if st.button("加载第一轮分析结果", key="load_first_round"):
+                analyzed_comments = db.get_analyzed_comments(selected_keyword)
+                if analyzed_comments:
+                    df_analyzed = pd.DataFrame(analyzed_comments)
+                    st.dataframe(df_analyzed)
+                    
+                    # 显示统计信息
+                    st.subheader("第一轮分析统计")
+                    classification_counts = df_analyzed['classification'].value_counts()
+                    st.write(classification_counts)
+                else:
+                    st.info("没有找到已分析的评论数据")
 
     with col2:
         # 显示第二轮分析按钮
@@ -257,20 +257,20 @@ def data_analyze(db):
         else:
             st.warning("未发现潜在客户，无需进行第二轮分析")
 
-        # 显示第二轮分析结果
-        st.subheader("查看第二轮分析结果")
-        if st.button("加载第二轮分析结果", key="load_second_round"):
-            second_round_analyzed_comments = db.get_second_round_analyzed_comments(selected_keyword)
-            if second_round_analyzed_comments:
-                df_second_round = pd.DataFrame(second_round_analyzed_comments)
-                st.dataframe(df_second_round)
-                
-                # 显示统计信息
-                st.subheader("第二轮分析统计")
-                classification_counts = df_second_round['second_round_classification'].value_counts()
-                st.write(classification_counts)
-            else:
-                st.warning("没有找到第二轮分析的评论数据")
+        # 使用expander来显示第二轮分析结果
+        with st.expander("查看第二轮分析结果", expanded=False):
+            if st.button("加载第二轮分析结果", key="load_second_round"):
+                second_round_analyzed_comments = db.get_second_round_analyzed_comments(selected_keyword)
+                if second_round_analyzed_comments:
+                    df_second_round = pd.DataFrame(second_round_analyzed_comments)
+                    st.dataframe(df_second_round)
+                    
+                    # 显示统计信息
+                    st.subheader("第二轮分析统计")
+                    classification_counts = df_second_round['second_round_classification'].value_counts()
+                    st.write(classification_counts)
+                else:
+                    st.warning("没有找到第二轮分析的评论数据")
 
 def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
     # 获取过滤后的评论数据
@@ -307,10 +307,6 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
 
                 # 保存批次结果到数据库
                 db.save_analyzed_comments(keyword, batch_results)
-
-                # 动态展示当前批次的分析结果
-                st.subheader(f"批次 {i//batch_size + 1} 分析结果")
-                st.dataframe(batch_results)
 
             except Exception as e:
                 st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
@@ -371,10 +367,6 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
 
             # 保存批次结果到数据库
             db.save_second_round_analyzed_comments(keyword, batch_results)
-
-            # 动态展示当前批次的分析结果
-            st.subheader(f"第二轮分析批次 {i//batch_size + 1} 结果")
-            st.dataframe(batch_results)
 
         except Exception as e:
             st.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
