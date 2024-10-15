@@ -45,6 +45,7 @@ import json
 from datetime import datetime, timedelta
 import requests
 import glob
+from selenium.webdriver.common.keys import Keys
 
 def preprocess_comment(comment):
     """预处理评论数据"""
@@ -250,7 +251,7 @@ def login_by_local_cookies(driver):
                 try:
                     driver.add_cookie(cookie)
                 except Exception as e:
-                    logger.warning(f"添加cookie失败: {cookie['name']}. 错误: {str(e)}")
+                    logger.warning(f"添���cookie失败: {cookie['name']}. 错误: {str(e)}")
             
             # 刷新页面以应用cookies
             driver.refresh()
@@ -603,6 +604,12 @@ def main():
     finally:
         driver.quit()
 
+def simulate_human_input(element, text):
+    """模拟人类输入文本"""
+    for char in text:
+        element.send_keys(char)
+        time.sleep(random.uniform(0.1, 0.3))  # 随机暂停，模拟人类输入速度
+
 def check_account_status(account_id, username, email):
     db = MySQLDatabase()
     db.connect()
@@ -619,11 +626,23 @@ def check_account_status(account_id, username, email):
         )
         forgot_password_button.click()
         
-        # 等待验证码输入框出现
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, "verification_code"))
+        # 输入邮箱 
+        email_input = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.NAME, "email"))
         )
         
+        # 模拟人类输入邮箱
+        simulate_human_input(email_input, email)
+        
+        # 随机暂停，模拟人类思考
+        time.sleep(random.uniform(0.5, 1.5))
+
+        # 点击接收验证码
+        send_code_button = WebDriverWait(driver, 15).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Send code')]"))
+        )
+        send_code_button.click()
+
         logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作")
         
         # 等待人工操作，最长等待30分钟
