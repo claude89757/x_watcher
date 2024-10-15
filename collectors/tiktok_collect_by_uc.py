@@ -665,7 +665,7 @@ def check_account_status(account_id, username, email):
         # 等待人工操作，最长等待30分钟
         start_time = time.time()
         success = False
-        while time.time() - start_time < 1800:  # 1800秒 = 30分钟
+        while time.time() - start_time < 900:  # 1800秒 = 30分钟
             # 使用check_login_status检查是否已经登录成功
             user_id = check_login_status(driver)
             if user_id:
