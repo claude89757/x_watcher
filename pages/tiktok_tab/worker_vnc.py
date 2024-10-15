@@ -28,6 +28,7 @@ def worker_vnc():
                 st.write("当前无任务")
             
             # 构造 VNC URL，包含密码参数
+            st.write(selected_worker_info)
             worker_ip = selected_worker_info['worker_ip']
             novnc_password = selected_worker_info['novnc_password']
             encoded_password = urllib.parse.quote(novnc_password)
