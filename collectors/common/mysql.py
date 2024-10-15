@@ -182,6 +182,18 @@ class MySQLDatabase:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_worker_ip (worker_ip)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS tiktok_accounts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(255),
+                status ENUM('active', 'inactive') DEFAULT 'active',
+                login_ips TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
             """
         ]
 
@@ -361,7 +373,7 @@ class MySQLDatabase:
                 processing_result = cursor.fetchone()
 
                 if processing_result:
-                    logger.info(f"找到正在处理中的本机视频：ID {processing_result['id']}, URL {processing_result['video_url']}")
+                    logger.info(f"找到正在���理中的本机视频：ID {processing_result['id']}, URL {processing_result['video_url']}")
                     return processing_result
 
                 # 步骤2：如果没有正在处理的本机视频，则查找新的待处理视频
@@ -682,6 +694,40 @@ class MySQLDatabase:
         """
         params = (status, status, video_id)
         return self.execute_update(query, params)
+
+    def add_tiktok_account(self, username, password, email, status, login_ips):
+        """添加新的TikTok账号"""
+        query = """
+        INSERT INTO tiktok_accounts (username, password, email, status, login_ips)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        return self.execute_update(query, (username, password, email, status, ','.join(login_ips)))
+
+    def get_tiktok_accounts(self):
+        """获取所有TikTok账号"""
+        query = "SELECT * FROM tiktok_accounts"
+        return self.execute_query(query)
+
+    def update_tiktok_account_status(self, account_id, status):
+        """更新TikTok账号状态"""
+        query = "UPDATE tiktok_accounts SET status = %s WHERE id = %s"
+        return self.execute_update(query, (status, account_id))
+
+    def delete_tiktok_account(self, account_id):
+        """删除TikTok账号"""
+        query = "DELETE FROM tiktok_accounts WHERE id = %s"
+        return self.execute_update(query, (account_id,))
+
+    def get_available_workers(self):
+        """获取可用的workers"""
+        query = "SELECT worker_ip FROM worker_infos WHERE status = 'active'"
+        results = self.execute_query(query)
+        return [result['worker_ip'] for result in results]
+
+    def update_tiktok_account_login_ips(self, account_id, login_ips):
+        """更新TikTok账号的登录主机IP"""
+        query = "UPDATE tiktok_accounts SET login_ips = %s WHERE id = %s"
+        return self.execute_update(query, (','.join(login_ips), account_id))
 
 # 使用示例
 if __name__ == "__main__":

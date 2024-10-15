@@ -30,6 +30,8 @@ from common.redis_client import RedisClient
 from collectors.common.mysql import MySQLDatabase
 from pages.tiktok_tab.data_collect import data_collect
 from pages.tiktok_tab.worker_vnc import worker_vnc
+from pages.tiktok_tab.account import account_management
+
 # Configure logger
 logger = setup_logger(__name__)
 
@@ -78,7 +80,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 st.title("Tiktok智能助手")
 
 # 创建标签页
-tab1, tab2, tab3, tab4 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控", "账号管理"])
 
 with tab1:
     data_collect()
@@ -91,3 +93,6 @@ with tab3:
 
 with tab4:
     worker_vnc()
+
+with tab5:
+    account_management()
