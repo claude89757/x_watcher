@@ -8,8 +8,6 @@
 """
 
 import time
-from datetime import timedelta
-
 import streamlit as st
 
 from common.config import CONFIG
@@ -34,6 +32,8 @@ if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
 if 'language' not in st.session_state:
     st.session_state.language = st.query_params.get('language')
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = 0
 
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
@@ -68,20 +68,60 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 创建标签页
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "私信生成_AI", "私信发送"])
+tabs = ["评论收集", "评论过滤", "评论分析_AI", "私信生成_AI", "私信发送"]
+tab1, tab2, tab3, tab4, tab5 = st.tabs(tabs)
+
+# 定义导航函数
+def navigate(direction):
+    st.session_state.active_tab = (st.session_state.active_tab + direction) % len(tabs)
+    st.experimental_rerun()
 
 # 在每个标签页中运行相应的py文件内容
 with tab1:
-    data_collect()
+    if st.session_state.active_tab == 0:
+        data_collect()
+        col1, col2 = st.columns(2)
+        with col2:
+            if st.button("下一步 →", key="next_1"):
+                navigate(1)
 
 with tab2:
-    comment_filter()
+    if st.session_state.active_tab == 1:
+        comment_filter()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("← 上一步", key="prev_2"):
+                navigate(-1)
+        with col2:
+            if st.button("下一步 →", key="next_2"):
+                navigate(1)
 
 with tab3:
-    comment_analyze()
+    if st.session_state.active_tab == 2:
+        comment_analyze()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("← 上一步", key="prev_3"):
+                navigate(-1)
+        with col2:
+            if st.button("下一步 →", key="next_3"):
+                navigate(1)
 
 with tab4:
-    generate_msg()
+    if st.session_state.active_tab == 3:
+        generate_msg()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("← 上一步", key="prev_4"):
+                navigate(-1)
+        with col2:
+            if st.button("下一步 →", key="next_4"):
+                navigate(1)
 
 with tab5:
-    send_msg()
+    if st.session_state.active_tab == 4:
+        send_msg()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("← 上一步", key="prev_5"):
+                navigate(-1)
