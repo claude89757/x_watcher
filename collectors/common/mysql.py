@@ -209,6 +209,26 @@ class MySQLDatabase:
         
         logger.info("所有必要的表和索引已创建或已存在")
 
+        create_filtered_comments_table = """
+        CREATE TABLE IF NOT EXISTS tiktok_filtered_comments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            video_id INT,
+            keyword VARCHAR(255),
+            user_id VARCHAR(255),
+            reply_content TEXT,
+            reply_time VARCHAR(255),
+            likes_count INT,
+            is_pinned BOOLEAN DEFAULT FALSE,
+            parent_comment_id INT NULL,
+            collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            collected_by VARCHAR(255),
+            video_url VARCHAR(255),
+            FOREIGN KEY (video_id) REFERENCES tiktok_videos(id),
+            FOREIGN KEY (parent_comment_id) REFERENCES tiktok_filtered_comments(id)
+        )
+        """
+        self.execute_update(create_filtered_comments_table)
+
     def create_tiktok_task(self, keyword):
         """创建新的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
@@ -745,6 +765,36 @@ class MySQLDatabase:
         query = "SELECT * FROM worker_infos WHERE worker_ip = %s"
         result = self.execute_query(query, (worker_ip,))
         return result[0] if result else None
+
+    def get_all_tiktok_keywords(self):
+        """获取所有TikTok关键字"""
+        query = "SELECT DISTINCT keyword FROM tiktok_tasks"
+        results = self.execute_query(query)
+        return [result['keyword'] for result in results]
+
+    def save_filtered_comments(self, filtered_comments):
+        """保存过滤后的评论到新表"""
+        query = """
+        INSERT INTO tiktok_filtered_comments 
+        (video_id, keyword, user_id, reply_content, reply_time, likes_count, is_pinned, 
+        parent_comment_id, collected_at, collected_by, video_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        values = [(
+            comment.get('video_id'),
+            comment['keyword'],
+            comment['user_id'],
+            comment['reply_content'],
+            comment['reply_time'],
+            comment.get('likes_count', 0),
+            comment.get('is_pinned', False),
+            comment.get('parent_comment_id'),
+            comment['collected_at'],
+            comment['collected_by'],
+            comment['video_url']
+        ) for comment in filtered_comments]
+        
+        return self.insert_many(query, values)
 
 # 使用示例
 if __name__ == "__main__":

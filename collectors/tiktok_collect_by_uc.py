@@ -315,7 +315,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         driver.execute_script("arguments[0].pause();", video_element)
         logger.info("视频已暂停")
     except Exception as e:
-        logger.warning("未能暂停视频，可能未���到视频元素")
+        logger.warning("未能暂停视频，可能未到视频元素")
 
     WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
@@ -660,23 +660,17 @@ def check_account_status(account_id, username, email):
         )
         send_code_button.click()
 
-        logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作")
+        logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作，完成后请按回车键继续...")
         
-        # 等待人工操作，最长等待30分钟
-        start_time = time.time()
-        success = False
-        while time.time() - start_time < 900:  # 1800秒 = 30分钟
-            # 使用check_login_status检查是否已经登录成功
-            user_id = check_login_status(driver)
-            if user_id:
-                success = True
-                break
-            
-            # 每10秒检查一次
-            time.sleep(5)
-            logger.info(f"等待人工操作完成，已等待 {time.time() - start_time:.2f} 秒")
+        # 等待用户按回车键
+        input("验证完成后请按回车键继续...")
         
-        if success:
+        logger.info("继续执行自动化操作...")
+        
+        # 直接检查登录状态
+        user_id = check_login_status(driver)
+        
+        if user_id:
             # 登录成功，保存cookies
             save_cookies(driver, username)
             
@@ -684,7 +678,7 @@ def check_account_status(account_id, username, email):
             logger.info(f"账号 {username} 状态更新为 active，并已保存cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
-            logger.info(f"账号 {username} 状态更新为 inactive（操作超时或失败）")
+            logger.info(f"账号 {username} 状态更新为 inactive（登录失败）")
 
     except Exception as e:
         logger.error(f"检查账号 {username} 状态时发生错误: {str(e)}")
