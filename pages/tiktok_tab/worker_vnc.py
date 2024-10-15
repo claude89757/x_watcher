@@ -28,11 +28,10 @@ def worker_vnc(db):
         encoded_password = urllib.parse.quote(novnc_password)
         vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
         
-        # 显示 VNC 窗口
-        st.components.v1.iframe(vnc_url, width=800, height=600)
+        # 添加加载 VNC 画面的按钮
+        if st.button("加载 VNC 画面"):
+            # 显示 VNC 窗口
+            st.components.v1.iframe(vnc_url, width=800, height=600)
         
-        # 添加刷新按钮
-        if st.button("刷新 VNC 画面"):
-            st.rerun()
     else:
         st.info("当前没有活跃的 workers")
