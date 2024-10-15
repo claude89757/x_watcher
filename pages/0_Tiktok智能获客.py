@@ -91,10 +91,11 @@ try:
     # 从数据库获取统计信息
     stats = db.get_tiktok_collection_stats()
 
-    with col1:
-        st.metric("已收集关键字", stats['keyword_count'])
-    with col2:
-        st.metric("已收集评论数", stats['comment_count'])
+    # 使用条形图展示数据
+    st.bar_chart({
+        "统计项": ["已收集关键字", "已收集评论数"],
+        "数量": [stats['keyword_count'], stats['comment_count']]
+    })
 
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控", "账号管理"])
