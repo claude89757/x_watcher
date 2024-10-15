@@ -665,6 +665,24 @@ class MySQLDatabase:
         params = (novnc_password, worker_ip)
         return self.execute_update(query, params)
 
+    def update_tiktok_video_status(self, video_id, status):
+        """更新TikTok视频的状态"""
+        valid_statuses = ['pending', 'processing', 'completed', 'failed']
+        if status not in valid_statuses:
+            raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+        
+        query = """
+        UPDATE tiktok_videos 
+        SET status = %s,
+            processing_server_ip = CASE 
+                WHEN %s = 'processing' THEN processing_server_ip 
+                ELSE NULL 
+            END
+        WHERE id = %s
+        """
+        params = (status, status, video_id)
+        return self.execute_update(query, params)
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
