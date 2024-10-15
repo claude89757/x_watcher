@@ -91,43 +91,42 @@ def data_analyze(db):
     # 获取所有关键字
     keywords = db.get_all_tiktok_keywords()
 
-    # 创建两列布局
-    col1, col2 = st.columns(2)
+    # 获取当前关键字的评论总数
+    total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
+    
+    # 创建可选择的评论数量列表
+    comment_count_options = [100, 500, 1000, 2000, 5000, 10000]
+    comment_count_options = [opt for opt in comment_count_options if opt <= total_available_comments]
+    if total_available_comments not in comment_count_options:
+        comment_count_options.append(total_available_comments)
+    comment_count_options.sort()
+
+    # 创建四列布局
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         # 创建下拉框让用户选择关键字，使用缓存的默认值
         selected_keyword = st.selectbox("关键字", keywords, 
                                         index=keywords.index(default_keyword) if default_keyword in keywords else 0,
                                         key="analyze_keyword_select")
-        
+
+    with col2:
+        # 选择总共要分类的评论数量
+        total_comments = st.selectbox("分类评论数量", 
+                                      options=comment_count_options, 
+                                      index=len(comment_count_options) - 1)  # 默认选择最大值
+
+    with col3:
+        # 选择每轮输入的数据量
+        batch_size = st.selectbox("每轮数据量", [10, 50, 100, 200], index=1)
+
+    with col4:
         # 选择模型
         model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
 
-    
-    with col2:
-        # 获取当前关键字的评论总数
-        total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
-        
-        # 创建可选择的评论数量列表
-        comment_count_options = [100, 500, 1000, 2000, 5000, 10000]
-        comment_count_options = [opt for opt in comment_count_options if opt <= total_available_comments]
-        if total_available_comments not in comment_count_options:
-            comment_count_options.append(total_available_comments)
-        comment_count_options.sort()
-
-        # 选择总共要分类的评论数量
-        total_comments = st.selectbox("总共要分类的评论数量", options=comment_count_options, index=0)
-
-        # 选择每轮输入的数据量
-        batch_size = st.selectbox("每轮输入的数据量", [10, 50, 100, 200], index=1)
-
-
     # 显示可用的评论总数
-    st.info(f"当前关键字 '{selected_keyword}' 共有 {total_available_comments} 条评论可供分析")
-
-    # 计算并显示预估的问答次数
     estimated_rounds = (total_comments + batch_size - 1) // batch_size
-    st.write(f"预估需要进行 {estimated_rounds} 轮问答")
+    st.info(f"关键字 '{selected_keyword}' 共 {total_comments} 条评论待分析, 预估需进行 {estimated_rounds} 轮问答 ")
 
     # 获取或生成描述
     descriptions = load_descriptions_from_cache(selected_keyword)
