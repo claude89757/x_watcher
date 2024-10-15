@@ -319,6 +319,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
     )
 
     # 从数据库中获取已存储的用户ID
+    logger.info(f"从数据库中获取已存储的用户ID")
     existing_user_ids = set(db.get_existing_user_ids_for_keyword(keyword))
     logger.info(f"从数据库中获取到 {len(existing_user_ids)} 个已存储的用户ID")
 
