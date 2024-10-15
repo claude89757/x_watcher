@@ -50,6 +50,8 @@ def data_collect():
             submit_task = st.form_submit_button("🚀 创建任务")
 
         if submit_task:
+            # 保存关键字到缓存
+            save_keyword_to_cache(search_keyword)
             try:
                 # 检查是否已存在相同关键字的运行中任务
                 running_tasks = db.get_running_tiktok_task_by_keyword(search_keyword)
@@ -88,8 +90,6 @@ def data_collect():
                     
                     if successful_triggers > 0:
                         st.success(f"✅ 成功触发 {successful_triggers} 个worker")
-                        # 保存关键字到缓存
-                        save_keyword_to_cache(search_keyword)
                     else:
                         st.error("❌ 未能触发任何worker")
                 else:
