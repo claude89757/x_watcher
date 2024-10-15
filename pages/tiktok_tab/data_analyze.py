@@ -92,7 +92,7 @@ def data_analyze(db):
     keywords = db.get_all_tiktok_keywords()
 
     # 创建四列布局
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
     with col1:
         # 创建下拉框让用户选择关键字，使用缓存的默认值
@@ -109,17 +109,17 @@ def data_analyze(db):
 
     with col2:
         # 选择总共要分类的评论数量
-        total_comments = st.selectbox("分类评论数量", 
+        total_comments = st.selectbox("评论数量", 
                                       options=comment_count_options, 
                                       index=0)  # 默认选择最大值
 
     with col3:
         # 选择每轮输入的数据量
-        batch_size = st.selectbox("每轮数据量", [10, 50, 100, 200], index=1)
+        batch_size = st.selectbox("批次大小", [10, 50, 100, 200], index=1)
 
     with col4:
         # 选择模型
-        model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
+        model = st.selectbox("模型选择", ["gpt-4o-mini", "gpt-4o"], index=0)
 
     # 显示可用的评论总数和预估问答次数
     estimated_rounds = (total_comments + batch_size - 1) // batch_size
@@ -134,15 +134,19 @@ def data_analyze(db):
                 save_descriptions_to_cache(selected_keyword, descriptions)
 
     # 输入产品描述和目标客户描述
-    product_description = st.text_area("产品描述", 
-                                       value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
-                                       height=100,
-                                       key="product_description")
+    col1, col2 = st.columns(2)
     
-    customer_description = st.text_area("目标客户描述", 
-                                        value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
-                                        height=100,
-                                        key="customer_description")
+    with col1:
+        product_description = st.text_area("产品描述", 
+                                           value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
+                                           height=100,
+                                           key="product_description")
+    
+    with col2:
+        customer_description = st.text_area("目标客户描述", 
+                                            value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
+                                            height=100,
+                                            key="customer_description")
 
     # 检查用户是否修改了描述
     if (descriptions and 
@@ -190,34 +194,48 @@ def data_analyze(db):
     {{comments}}
 
     请以CSV格式输出结果，包含以下列：
-    "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
+    "用户ID", "评论内容", "第一轮分类结果", "第二轮分类���果", "分析理由"
 
     请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。
     """
 
     # 显示完整的prompt示例
-    st.subheader("Prompt示例")
     col1, col2 = st.columns(2)
 
     with col1:
         st.text_area("第一轮分析Prompt", prompt_template_first_round, height=300)
         example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=10)
-        example_comments_text_first = "\n".join([f"{i+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for i, comment in enumerate(example_comments_first)])
-        st.text_area("第一轮分析示例数据", example_comments_text_first, height=150)
+        if example_comments_first:
+            df_example_first = pd.DataFrame(example_comments_first)
+            df_example_first = df_example_first[['user_id', 'reply_content']]  # 只选择需要的列
+            st.dataframe(df_example_first)
+        else:
+            st.write("没有找到第一轮分析的示例数据")
 
     with col2:
         st.text_area("第二轮分析Prompt", prompt_template_second_round, height=300)
         example_comments_second = db.get_potential_customers(selected_keyword, limit=10)
-        example_comments_text_second = "\n".join([f"{i+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for i, comment in enumerate(example_comments_second)])
-        st.text_area("第二轮分析示例数据", example_comments_text_second, height=150)
+        if example_comments_second:
+            df_example_second = pd.DataFrame(example_comments_second)
+            df_example_second = df_example_second[['user_id', 'reply_content', 'classification']]  # 只选择需要的列
+            st.dataframe(df_example_second)
+        else:
+            st.write("没有找到第二轮分析的示例数据")
 
     # 创建两列布局用于显示分析按钮和结果
     col1, col2 = st.columns(2)
+
+    potential_customers_count = db.get_potential_customers_count(selected_keyword)
 
     with col1:
         if st.button("开始第一轮分析", type="primary"):
             first_round_analyze(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round)
 
+        if potential_customers_count > 0:
+            st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+        else:
+            st.info("未发现潜在客户，无需进行第二轮分析")
+        
         # 显示第一轮分析结果
         st.subheader("查看第一轮分析结果")
         if st.button("加载第一轮分析结果", key="load_first_round"):
@@ -235,13 +253,12 @@ def data_analyze(db):
 
     with col2:
         # 显示第二轮分析按钮
-        potential_customers_count = db.get_potential_customers_count(selected_keyword)
         if potential_customers_count > 0:
             st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
             if st.button("开始第二轮分析", type="primary"):
                 second_round_analyze(db, selected_keyword, model, batch_size, prompt_template_second_round)
         else:
-            st.info("未发现潜在客户，无需进行第二轮分析")
+            st.warning("未发现潜在客户，无需进行第二轮分析")
 
         # 显示第二轮分析结果
         st.subheader("查看第二轮分析结果")
@@ -256,7 +273,7 @@ def data_analyze(db):
                 classification_counts = df_second_round['second_round_classification'].value_counts()
                 st.write(classification_counts)
             else:
-                st.info("没有找到第二轮分析的评论数据")
+                st.warning("没有找到第二轮分析的评论数据")
 
 def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
     # 获取过滤后的评论数据
