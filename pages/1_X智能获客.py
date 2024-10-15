@@ -74,7 +74,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(tabs)
 # 定义导航函数
 def navigate(direction):
     st.session_state.active_tab = (st.session_state.active_tab + direction) % len(tabs)
-    st.experimental_rerun()
+    st.rerun()
 
 # 在每个标签页中运行相应的py文件内容
 with tab1:
