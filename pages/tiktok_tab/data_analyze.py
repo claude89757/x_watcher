@@ -100,17 +100,14 @@ def data_analyze(db):
                                         index=keywords.index(default_keyword) if default_keyword in keywords else 0,
                                         key="analyze_keyword_select")
 
-     # 获取当前关键字的评论总数
+    # 获取当前关键字的评论总数
     total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
-    # 创建可选择的评论数量列表
-    comment_count_options = [100, 500, 1000, 2000, 5000, 10000]
-    comment_count_options = [opt for opt in comment_count_options if opt <= total_available_comments]
-    if total_available_comments not in comment_count_options:
-        comment_count_options.append(total_available_comments)
-    comment_count_options.sort()
     
+    # 创建可选择的评论数量列表
+    comment_count_options = [100, 500, 1000, 2000, 5000, 10000, total_available_comments]
+    comment_count_options = sorted(set([opt for opt in comment_count_options if opt <= total_available_comments]))
+
     with col2:
-        
         # 选择总共要分类的评论数量
         total_comments = st.selectbox("分类评论数量", 
                                       options=comment_count_options, 
@@ -124,9 +121,9 @@ def data_analyze(db):
         # 选择模型
         model = st.selectbox("选择模型", ["gpt-4o-mini", "gpt-4o"], index=0)
 
-    # 显示可用的评论总数
+    # 显示可用的评论总数和预估问答次数
     estimated_rounds = (total_comments + batch_size - 1) // batch_size
-    st.info(f"关键字 '{selected_keyword}' 共 {total_comments} 条评论待分析, 预估需进行 {estimated_rounds} 轮问答 ")
+    st.info(f"关键字 '{selected_keyword}' 共 {total_comments} 条评论待分析, 预估需进行 {estimated_rounds} 轮问答")
 
     # 获取或生成描述
     descriptions = load_descriptions_from_cache(selected_keyword)
@@ -136,22 +133,15 @@ def data_analyze(db):
             if descriptions:
                 save_descriptions_to_cache(selected_keyword, descriptions)
 
-    # 创建两列布局用于产品描述和目标客户描述
-    col1, col2 = st.columns(2)
-
-    with col1:
-        # 输入产品描述
-        product_description = st.text_area("产品描述", 
-                                            value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
-                                            height=150,
-                                            key="product_description")
-
-    with col2:
-        # 输入目标客户描述
-        customer_description = st.text_area("目标客户描述", 
-                                            value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
-                                            height=150,
-                                            key="customer_description")
+    # 输入产品描述和目标客户描述
+    product_description = st.text_area("产品描述", 
+                                       value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
+                                       height=100,
+                                       key="product_description")
+    customer_description = st.text_area("目标客户描述", 
+                                        value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
+                                        height=100,
+                                        key="customer_description")
 
     # 检查用户是否修改了描述
     if (descriptions and 
