@@ -4,6 +4,15 @@ import urllib
 from collectors.common.mysql import MySQLDatabase
 
 
+def get_status_emoji(status):
+    if status == 'active':
+        return "✅"
+    elif status == 'inactive':
+        return "❌"
+    else:
+        return "❓"
+
+
 def account_management(db: MySQLDatabase):
     st.header("账号管理")
 
@@ -40,14 +49,13 @@ def account_management(db: MySQLDatabase):
     accounts = db.get_tiktok_accounts()
     if accounts:
         for account in accounts:
-            with st.expander(f"账号: {account['username']} (ID: {account['id']})"):
-                col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+            status_emoji = get_status_emoji(account['status'])
+            with st.expander(f"{status_emoji} 账号: {account['username']} (ID: {account['id']}) - 状态: {account['status']}"):
+                col1, col2, col3 = st.columns([2, 1, 1])
                 with col1:
                     st.write(f"邮箱: {account['email']}")
                     st.write(f"当前登录主机IP: {account['login_ips']}")
                 with col2:
-                    st.write(f"状态: {account['status']}")
-                with col3:
                     if st.button("刷新状态", key=f"refresh_{account['id']}"):
                         login_ips = account['login_ips'].split(',') if account['login_ips'] else []
                         if not login_ips:
@@ -82,7 +90,7 @@ def account_management(db: MySQLDatabase):
                                         st.components.v1.iframe(vnc_url, width=800, height=600)
                             else:
                                 st.error("未能触发任何worker")
-                with col4:
+                with col3:
                     if st.button("删除", key=f"delete_{account['id']}"):
                         if db.delete_tiktok_account(account['id']):
                             st.success("账号删除成功")
