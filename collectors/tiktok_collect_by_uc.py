@@ -654,12 +654,6 @@ def check_account_status(account_id, username, email):
         # 随机暂停，模拟人类思考
         time.sleep(random.uniform(0.5, 1.5))
 
-        # 点击接收验证码
-        send_code_button = WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Send code')]"))
-        )
-        send_code_button.click()
-
         logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作，完成后请按回车键继续...")
         
         # 等待用户按回车键
