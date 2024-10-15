@@ -229,6 +229,20 @@ class MySQLDatabase:
         """
         self.execute_update(create_filtered_comments_table)
 
+        create_analyzed_comments_table = """
+        CREATE TABLE IF NOT EXISTS tiktok_analyzed_comments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            keyword VARCHAR(255),
+            user_id VARCHAR(255),
+            reply_content TEXT,
+            classification VARCHAR(50),
+            analysis_reason TEXT,
+            analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_comment (keyword, user_id, reply_content(255))
+        )
+        """
+        self.execute_update(create_analyzed_comments_table)
+
     def create_tiktok_task(self, keyword):
         """创建新的TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
@@ -800,6 +814,33 @@ class MySQLDatabase:
         query = """
         SELECT * FROM tiktok_filtered_comments
         WHERE keyword = %s
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
+    def save_analyzed_comments(self, keyword, analyzed_data):
+        """保存分析后的评论数据"""
+        query = """
+        INSERT INTO tiktok_analyzed_comments 
+        (keyword, user_id, reply_content, classification, analysis_reason)
+        VALUES (%s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        classification = VALUES(classification),
+        analysis_reason = VALUES(analysis_reason),
+        analyzed_at = CURRENT_TIMESTAMP
+        """
+        values = [
+            (keyword, row['用户ID'], row['评论内容'], row['分类结果'], row['分析理由'])
+            for _, row in analyzed_data.iterrows()
+        ]
+        return self.insert_many(query, values)
+
+    def get_analyzed_comments(self, keyword, limit=1000):
+        """获取指定关键词的分析后评论数据"""
+        query = """
+        SELECT * FROM tiktok_analyzed_comments
+        WHERE keyword = %s
+        ORDER BY analyzed_at DESC
         LIMIT %s
         """
         return self.execute_query(query, (keyword, limit))

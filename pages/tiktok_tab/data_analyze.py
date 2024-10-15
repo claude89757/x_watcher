@@ -213,6 +213,14 @@ def data_analyze():
                         # 使用 pandas 读取 CSV 内容
                         batch_results = pd.read_csv(csv_file)
                         results.append(batch_results)
+
+                        # 保存批次结果到数据库
+                        db.save_analyzed_comments(selected_keyword, batch_results)
+
+                        # 动态展示当前批次的分析结果
+                        st.subheader(f"批次 {i//batch_size + 1} 分析结果")
+                        st.dataframe(batch_results)
+
                     except Exception as e:
                         st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
                     
@@ -224,7 +232,7 @@ def data_analyze():
                 final_results = pd.concat(results, ignore_index=True)
 
                 # 显示分类结果
-                st.subheader("分类结果")
+                st.subheader("总体分类结果")
                 st.write(final_results)
 
                 # 显示统计信息
@@ -232,13 +240,23 @@ def data_analyze():
                 classification_counts = final_results['分类结果'].value_counts()
                 st.write(classification_counts)
 
-                # 可以选择将结果保存到数据库或导出为CSV
-                if st.button("保存分析结果"):
-                    # 这里添加保存结果的逻辑
-                    st.success("分析结果已保存")
-
             else:
                 st.warning("没有找到相关的过滤后的评论数据")
+
+        # 3. 增加展示分析结果的逻辑
+        st.subheader("查看已分析的评论")
+        if st.button("加载分析结果"):
+            analyzed_comments = db.get_analyzed_comments(selected_keyword)
+            if analyzed_comments:
+                df_analyzed = pd.DataFrame(analyzed_comments)
+                st.dataframe(df_analyzed)
+                
+                # 显示统计信息
+                st.subheader("已分析评论统计")
+                classification_counts = df_analyzed['classification'].value_counts()
+                st.write(classification_counts)
+            else:
+                st.info("没有找到已分析的评论数据")
 
     finally:
         # 确保在函数结束时关闭数据库连接
