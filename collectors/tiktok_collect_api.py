@@ -30,7 +30,7 @@ running_tasks = {}
 # 全局变量存储worker信息
 worker_ip = get_public_ip()
 worker_name = socket.gethostname()
-novnc_password = os.environ.get('VNC_PASSWORD', 'default_password')
+novnc_password = os.environ.get('VNC_PASSWORD', 'test123')
 
 # 设置最大并发任务数
 MAX_CONCURRENT_TASKS = 3
