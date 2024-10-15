@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import urllib
 from collectors.common.mysql import MySQLDatabase
 
 def account_management():
@@ -73,6 +74,16 @@ def account_management():
                                 
                                 if triggered_workers:
                                     st.success(f"账号状态刷新任务已触发。已触发的workers: {', '.join(triggered_workers)}")
+                                    
+                                    # 显示VNC窗口
+                                    for worker_ip in triggered_workers:
+                                        worker_info = db.get_worker_by_ip(worker_ip)
+                                        if worker_info:
+                                            st.subheader(f"Worker {worker_ip} VNC窗口")
+                                            novnc_password = worker_info['novnc_password']
+                                            encoded_password = urllib.parse.quote(novnc_password)
+                                            vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                                            st.components.v1.iframe(vnc_url, width=800, height=600)
                                 else:
                                     st.error("未能触发任何worker")
                     with col4:
