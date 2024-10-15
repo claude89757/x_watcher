@@ -190,10 +190,16 @@ def data_collect():
             # 动态展示评论数据
             st.subheader("评论数据")
             comments = db.get_tiktok_comments_by_keyword(search_keyword)
+            st.info(f"当前关键字 '{search_keyword}' 的评论数量：{len(comments)}")
             if comments:
+                # 显示当前关键字的评论数量
                 comment_df = pd.DataFrame(comments)
                 comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-                comment_df = comment_df[['user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
+                
+                # 重新排序列，将 'keyword' 放在第一列
+                comment_df = comment_df[['keyword', 'user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
+                
+                # 展示评论数据，包括关键字列
                 st.dataframe(comment_df, use_container_width=True)
             else:
                 st.write("暂无相关评论")
