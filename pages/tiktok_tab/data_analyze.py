@@ -199,7 +199,7 @@ def data_analyze(db):
                 current_prompt = prompt_template.replace("{comments}", comments_text)
                 
                 try:
-                    response = process_with_gpt(model, current_prompt)
+                    response = process_with_gpt(model, current_prompt, max_tokens=20000)
                     
                     # 去除可能存在的 ```csv 标记
                     response = response.strip()
@@ -326,7 +326,7 @@ def second_round_analyze(db, keyword, model, batch_size):
         current_prompt = prompt_template.replace("{comments}", comments_text)
         
         try:
-            response = process_with_gpt(model, current_prompt)
+            response = process_with_gpt(model, current_prompt, max_tokens=20000)
             
             # 去除可能存在的 ```csv 标记
             response = response.strip()
