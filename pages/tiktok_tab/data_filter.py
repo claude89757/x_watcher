@@ -42,8 +42,8 @@ def data_filter(db: MySQLDatabase):
             # 过滤和处理数据
             df = pd.DataFrame(comments)
             
-            # 1. 过滤长度小于10的评论
-            df = df[df['reply_content'].str.len() >= 10]
+            # 1. 过滤长度小于或等于5的评论
+            df = df[df['reply_content'].str.len() >= 5]
 
             # 2. 相同用户ID的评论合并成一条
             df = df.groupby('user_id').agg({
@@ -67,7 +67,7 @@ def data_filter(db: MySQLDatabase):
             # 数据过滤规则
             st.caption("数据过滤规则:")
             st.markdown("""
-            - 过滤长度小于10的评论
+            - 过滤长度小于5的评论
             - 相同用户ID的评论合并成一条
             - 重复评论用户或者评论内容相同的，去重
             """)
