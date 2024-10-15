@@ -11,21 +11,31 @@ def account_management():
         # 获取可用的worker IP列表
         available_workers = db.get_available_workers()
 
-        # 添加新账号
-        with st.form("add_account"):
-            st.subheader("添加新账号")
-            username = st.text_input("用户名")
-            password = st.text_input("密码", type="password")
-            email = st.text_input("邮箱")
-            status = st.selectbox("状态", ["active", "inactive"])
-            login_ips = st.multiselect("登录主机IP", options=available_workers)
-            submit = st.form_submit_button("添加账号")
+        # 使用会话状态来跟踪是否显示添加账号表单
+        if 'show_add_account_form' not in st.session_state:
+            st.session_state.show_add_account_form = False
 
-            if submit:
-                if db.add_tiktok_account(username, password, email, status, login_ips):
-                    st.success("账号添加成功")
-                else:
-                    st.error("账号添加失败")
+        # 添加账号按钮
+        if st.button("添加账号"):
+            st.session_state.show_add_account_form = not st.session_state.show_add_account_form
+
+        # 添加新账号
+        if st.session_state.show_add_account_form:
+            with st.expander("添加新账号", expanded=True):
+                with st.form("add_account"):
+                    username = st.text_input("用户名")
+                    password = st.text_input("密码", type="password")
+                    email = st.text_input("邮箱")
+                    status = st.selectbox("状态", ["active", "inactive"])
+                    login_ips = st.multiselect("登录主机IP", options=available_workers)
+                    submit = st.form_submit_button("提交")
+
+                    if submit:
+                        if db.add_tiktok_account(username, password, email, status, login_ips):
+                            st.success("账号添加成功")
+                            st.session_state.show_add_account_form = False  # 添加成功后关闭表单
+                        else:
+                            st.error("账号添加失败")
 
         # 显示现有账号
         st.subheader("现有账号")
