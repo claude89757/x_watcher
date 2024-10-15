@@ -138,13 +138,11 @@ def data_analyze(db):
     with col1:
         product_description = st.text_area("产品描述", 
                                            value=descriptions['product_description'] if descriptions else "请输入您的产品描述",
-                                           height=30,
                                            key="product_description")
     
     with col2:
         customer_description = st.text_area("目标客户描述", 
                                             value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
-                                            height=30, 
                                             key="customer_description")
 
     # 检查用户是否修改了描述
@@ -160,43 +158,39 @@ def data_analyze(db):
         st.success("已更新产品和客户描述缓存")
 
     # 构建完整的prompt
-    prompt_template_first_round = f"""
-    产品描述：{product_description}
-    目标客户：{customer_description}
+    prompt_template_first_round = f"""产品描述：{product_description}
+目标客户：{customer_description}
 
-    请分析以下评论数据，并将每条评论分类为"潜在客户"或"非目标客户"。
-    对于每条评论，请提供以下输出：
-    1. 用户ID
-    2. 原始评论内容
-    3. 分类结果（"潜在客户"或"非目标客户"）
-    4. 简短的分析理由（不超过20个字）
+请分析以下评论数据，并将每条评论分类为"潜在客户"或"非目标客户"。
+对于每条评论，请提供以下输出：
+1. 用户ID
+2. 原始评论内容
+3. 分类结果（"潜在客户"或"非目标客户"）
+4. 简短的分析理由（不超过20个字）
 
-    评论数据：
-    {{comments}}
+评论数据：
+{{comments}}
 
-    请以CSV格式输出结果，包含以下列：
-    "用户ID", "评论内容", "分类结果", "分析理由"
+请以CSV格式输出结果，包含以下列：
+"用户ID", "评论内容", "分类结果", "分析理由"
 
-    请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。
-    """
+请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。"""
 
-    prompt_template_second_round = f"""
-    请对以下被识别为"潜在客户"的评论进行更深入的分析，将每条评论分类为"高意向客户"、"中等意向客户"或"低意向客户"。
-    对于每条评论，请提供以下输出：
-    1. 用户ID
-    2. 原始评论内容
-    3. 第一轮分类结果（"潜在客户"）
-    4. 第二轮分类结果（"高意向客户"、"中等意向客户"或"低意向客户"）
-    5. 简短的分析理由（不超过20个字）
+    prompt_template_second_round = f"""请对以下被识别为"潜在客户"的评论进行更深入的分析，将每条评论分类为"高意向客户"、"中等意向客户"或"低意向客户"。
+对于每条评论，请提供以下输出：
+1. 用户ID
+2. 原始评论内容
+3. 第一轮分类结果（"潜在客户"）
+4. 第二轮分类结果（"高意向客户"、"中等意向客户"或"低意向客户"）
+5. 简短的分析理由（不超过20个字）
 
-    评论数据：
-    {{comments}}
+评论数据：
+{{comments}}
 
-    请以CSV格式输出结果，包���以下列：
-    "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
+请以CSV格式输出结果，包���以下列：
+"用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
-    请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。
-    """
+请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。"""
 
     # 显示完整的prompt示例
     col1, col2 = st.columns(2)
