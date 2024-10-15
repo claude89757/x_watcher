@@ -144,7 +144,7 @@ def data_analyze(db):
     with col2:
         customer_description = st.text_area("目标客户描述", 
                                             value=descriptions['customer_description'] if descriptions else "请描述您的目标客户",
-                                            height=30,
+                                            height=30, 
                                             key="customer_description")
 
     # 检查用户是否修改了描述
