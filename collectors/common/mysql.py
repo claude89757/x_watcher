@@ -692,7 +692,7 @@ class MySQLDatabase:
         """获取可用的 workers（状态为 active 且没有当前任务）"""
         query = """
         SELECT * FROM worker_infos 
-        WHERE status = 'active' AND (current_task_ids IS NULL OR current_task_ids = '')
+        WHERE status = 'active'
         ORDER BY last_heartbeat DESC
         """
         return self.execute_query(query)
@@ -767,12 +767,6 @@ class MySQLDatabase:
         query = "DELETE FROM tiktok_accounts WHERE id = %s"
         return self.execute_update(query, (account_id,))
 
-    def get_available_workers(self):
-        """获取可用的workers"""
-        query = "SELECT worker_ip FROM worker_infos WHERE status = 'active'"
-        results = self.execute_query(query)
-        return [result['worker_ip'] for result in results]
-
     def update_tiktok_account_login_ips(self, account_id, login_ips):
         """更新TikTok账号的登录主机IP"""
         query = "UPDATE tiktok_accounts SET login_ips = %s WHERE id = %s"
@@ -796,7 +790,7 @@ class MySQLDatabase:
         return result[0] if result else None
 
     def get_all_tiktok_keywords(self):
-        """获取所��TikTok关键字"""
+        """获取TikTok关键字"""
         query = "SELECT DISTINCT keyword FROM tiktok_tasks"
         results = self.execute_query(query)
         return [result['keyword'] for result in results]
