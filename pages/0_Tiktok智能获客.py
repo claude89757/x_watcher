@@ -38,7 +38,7 @@ from pages.tiktok_tab.data_analyze import data_analyze
 logger = setup_logger(__name__)
 
 # Configure Streamlit pages and state
-st.set_page_config(page_title="Tiktok��能获客", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Tiktok智能助手", page_icon="🤖", layout="wide")
 
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
