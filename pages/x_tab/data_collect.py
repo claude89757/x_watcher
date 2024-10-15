@@ -36,7 +36,6 @@ def data_collect():
     """
     评论收集tab
     """
-
     # 从URL读取缓存数据
     if 'access_code' not in st.session_state:
         st.session_state.access_code = st.query_params.get('access_code')
