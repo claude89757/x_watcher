@@ -361,7 +361,7 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                     rows = []
                     for row in csv_reader:
                         if len(row) == len(fixed_headers):
-                            cleaned_row = [remove_punctuation(remove_extra_quotes(cell)) for cell in row]
+                            cleaned_row = [remove_punctuation(cell) for cell in row]
                             rows.append(dict(zip(fixed_headers, cleaned_row)))
                         else:
                             total_ignored += 1
@@ -452,7 +452,7 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                 rows = []
                 for row in csv_reader:
                     if len(row) == len(fixed_headers):
-                        cleaned_row = [remove_punctuation(remove_extra_quotes(cell)) for cell in row]
+                        cleaned_row = [remove_punctuation(cell) for cell in row]
                         rows.append(dict(zip(fixed_headers, cleaned_row)))
                     else:
                         total_ignored += 1
