@@ -184,6 +184,7 @@ def force_stop_all_tasks():
 
 def check_and_execute_tasks():
     """检查并执行待处理的任务"""
+    logger.info(f"检查并执行待处理的任务...")
     if get_chrome_process_count() == 0:
         db = MySQLDatabase()
         db.connect()
