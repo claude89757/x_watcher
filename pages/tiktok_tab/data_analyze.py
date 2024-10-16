@@ -222,65 +222,17 @@ def data_analyze(db: MySQLDatabase):
         else:
             pass
 
-    # 创建两列布局用于显示分析按钮和结果
-    col1, col2 = st.columns(2)
-
-    potential_customers_count = db.get_potential_customers_count(selected_keyword)
-    if potential_customers_count > 0:
-        st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
-        
-        # 获取第二轮分析结果的简要数据
-        second_round_results = db.get_second_round_analyzed_comments(selected_keyword)
-        if second_round_results:
-            df_second_round = pd.DataFrame(second_round_results)
-            high_intent_customers_count = df_second_round[df_second_round['second_round_classification'] == '高意向客户'].shape[0]
-            st.success(f"第二轮分析完成，发现 {high_intent_customers_count} 个高意向客户")
-        else:
-            st.warning("尚未进行第二轮分析")
-    else:
-        pass
+    # 创建一列布局用于显示分析按钮和结果
+    col1, _ = st.columns(2)
 
     with col1:
-        if st.button("开始第一轮分析", type="primary"):
-            first_round_analyze(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round)
+        if st.button("开始分析", type="primary"):
+            analyze_comments(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round, prompt_template_second_round)
         
-        # 使用expander来显示第一轮分析结果
-        with st.expander("查看第一轮分析结果", expanded=False):
-            if st.button("加载第一轮分析结果", key="load_first_round"):
-                analyzed_comments = db.get_analyzed_comments(selected_keyword)
-                if analyzed_comments:
-                    df_analyzed = pd.DataFrame(analyzed_comments)
-                    st.dataframe(df_analyzed)
-                    
-                    # 显示统计信息
-                    st.subheader("第一轮分析统计")
-                    classification_counts = df_analyzed['classification'].value_counts()
-                    st.write(classification_counts)
-                else:
-                    st.info("没有找到已分析的评论数据")
-
-    with col2:
-        # 显示第二轮分析按钮
-        if potential_customers_count > 0:
-            if st.button("开始第二轮分析", type="primary"):
-                second_round_analyze(db, selected_keyword, model, batch_size, prompt_template_second_round)
-        else:
-            st.warning("未发现潜在客户，无需进行第二轮分析")
-
-        # 使用expander来显示第二轮分析结果
-        with st.expander("查看第二轮分析结果", expanded=False):
-            if st.button("加载第二轮分析结果", key="load_second_round"):
-                second_round_analyzed_comments = db.get_second_round_analyzed_comments(selected_keyword)
-                if second_round_analyzed_comments:
-                    df_second_round = pd.DataFrame(second_round_analyzed_comments)
-                    st.dataframe(df_second_round)
-                    
-                    # 显示统计信息
-                    st.subheader("第二轮分析统计")
-                    classification_counts = df_second_round['second_round_classification'].value_counts()
-                    st.write(classification_counts)
-                else:
-                    st.warning("没有找到第二轮分析的评论数据")
+    # 使用expander来显示分析结果，默认折叠
+    with st.expander("查看分析结果", expanded=False):
+        if st.button("加载分析结果", key="load_analysis"):
+            display_analysis_results(db, selected_keyword)
 
     # 添加清空分析结果的按钮（移到最后）
     st.subheader("清空分析结果")
@@ -317,6 +269,55 @@ def data_analyze(db: MySQLDatabase):
                 st.error("清空第二轮分析结果失败")
             status_text.empty()
             progress_bar.empty()
+
+def analyze_comments(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
+    # 第一轮分析
+    st.info("开始第一轮分析...")
+    first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template_first)
+    
+    # 获取潜在客户数量
+    potential_customers_count = db.get_potential_customers_count(keyword)
+    st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+    
+    if potential_customers_count > 0:
+        # 第二轮分析
+        st.info("开始第二轮分析...")
+        second_round_analyze(db, keyword, model, batch_size, prompt_template_second)
+        
+        # 获取高意向客户数量
+        high_intent_customers_count = db.get_high_intent_customers_count(keyword)
+        st.success(f"第二轮分析完成，发现 {high_intent_customers_count} 个高意向客户")
+    else:
+        st.warning("未发现潜在客户，跳过第二轮分析")
+
+def display_analysis_results(db, keyword):
+    # 显示第一轮分析结果
+    st.subheader("第一轮分析结果")
+    analyzed_comments = db.get_analyzed_comments(keyword)
+    if analyzed_comments:
+        df_analyzed = pd.DataFrame(analyzed_comments)
+        st.dataframe(df_analyzed)
+        
+        # 显示统计信息
+        st.write("第一轮分析统计")
+        classification_counts = df_analyzed['classification'].value_counts()
+        st.write(classification_counts)
+    else:
+        st.info("没有找到第一轮分析的评论数据")
+
+    # 显示第二轮分析结果
+    st.subheader("第二轮分析结果")
+    second_round_analyzed_comments = db.get_second_round_analyzed_comments(keyword)
+    if second_round_analyzed_comments:
+        df_second_round = pd.DataFrame(second_round_analyzed_comments)
+        st.dataframe(df_second_round)
+        
+        # 显示统计信息
+        st.write("第二轮分析统计")
+        classification_counts = df_second_round['second_round_classification'].value_counts()
+        st.write(classification_counts)
+    else:
+        st.info("没有找到第二轮分析的评论数据")
 
 def remove_punctuation(text):
     """移除字符串开头和结尾的标点符号"""

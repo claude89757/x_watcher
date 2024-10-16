@@ -35,9 +35,6 @@ def send_msg(db: MySQLDatabase):
     high_intent_customers = db.get_second_round_analyzed_comments(selected_keyword)
     high_intent_df = pd.DataFrame(high_intent_customers)
     
-    # 检查数据框的列
-    st.write("数据框的列:", high_intent_df.columns)
-
     if high_intent_df.empty:
         st.warning(f"未找到关键词 '{selected_keyword}' 的高意向客户。请先进行评论分析或选择其他关键词。")
         return  # 提前结束函数
@@ -48,7 +45,7 @@ def send_msg(db: MySQLDatabase):
     else:
         st.warning("无法找到用于筛选高意向客户的列。显示所有客户数据。")
     
-    st.write(f"找到 {len(high_intent_df)} 个高意向客户")
+    st.success(f"{len(high_intent_df)} 个高意向客户")
     
     # 显示高意向客户数据
     display_columns = ['user_id', 'reply_content']
