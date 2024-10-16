@@ -230,7 +230,7 @@ def data_analyze(db: MySQLDatabase):
         # 添加自动刷新
         st.empty()
         time.sleep(5)
-        st.experimental_rerun()
+        st.rerun()
 
     # 使用expander来显示分析结果，默认折叠
     with st.expander("查看分析结果", expanded=False):
