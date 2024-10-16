@@ -296,12 +296,12 @@ def display_analysis_results(db, keyword):
     analyzed_comments = db.get_analyzed_comments(keyword)
     if analyzed_comments:
         df_analyzed = pd.DataFrame(analyzed_comments)
-        st.dataframe(df_analyzed)
         
         # 显示统计信息
-        st.write("第一轮分析统计")
         classification_counts = df_analyzed['classification'].value_counts()
-        st.write(classification_counts)
+        st.success(f"第一轮分析统计：潜在客户 {classification_counts.get('潜在客户', 0)} 个，非目标客户 {classification_counts.get('非目标客户', 0)} 个")
+        
+        st.dataframe(df_analyzed)
     else:
         st.info("没有找到第一轮分析的评论数据")
 
@@ -310,12 +310,12 @@ def display_analysis_results(db, keyword):
     second_round_analyzed_comments = db.get_second_round_analyzed_comments(keyword)
     if second_round_analyzed_comments:
         df_second_round = pd.DataFrame(second_round_analyzed_comments)
-        st.dataframe(df_second_round)
         
         # 显示统计信息
-        st.write("第二轮分析统计")
         classification_counts = df_second_round['second_round_classification'].value_counts()
-        st.write(classification_counts)
+        st.success(f"第二轮分析统计：高意向客户 {classification_counts.get('高意向客户', 0)} 个，中等意向客户 {classification_counts.get('中等意向客户', 0)} 个，低意向客户 {classification_counts.get('低意向客户', 0)} 个")
+        
+        st.dataframe(df_second_round)
     else:
         st.info("没有找到第二轮分析的评论数据")
 
@@ -366,7 +366,7 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                             cleaned_row = [remove_punctuation(cell) for cell in row]
                             row_dict = dict(zip(fixed_headers, cleaned_row))
                             
-                            # 只保存分类结果为"潜在客户"���"非目标客��"的数据
+                            # 只保存分类结果为"潜在客户"或"非目标客户"的数据
                             if row_dict['分类结果'] in ["潜在客户", "非目标客户"]:
                                 rows.append(row_dict)
                             else:
