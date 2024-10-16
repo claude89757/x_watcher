@@ -33,6 +33,7 @@ from pages.tiktok_tab.worker_vnc import worker_vnc
 from pages.tiktok_tab.account import account_management
 from pages.tiktok_tab.data_filter import data_filter
 from pages.tiktok_tab.data_analyze import data_analyze
+from pages.tiktok_tab.send_msg import send_msg
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -100,7 +101,7 @@ try:
         st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
     # 创建标签页
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "后台监控", "账号管理"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "发送私信", "后台监控", "账号管理"])
 
     with tab1:
         data_collect(db)
@@ -112,9 +113,12 @@ try:
         data_analyze(db)
 
     with tab4:
-        worker_vnc(db)
+        send_msg(db)
 
     with tab5:
+        worker_vnc(db)
+
+    with tab6:
         account_management(db)
 
 finally:
