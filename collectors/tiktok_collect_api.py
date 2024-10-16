@@ -184,28 +184,39 @@ def force_stop_all_tasks():
 
 def check_and_execute_tasks():
     """检查并执行待处理的任务"""
-    logger.info(f"检查并执行待处理的任务...")
+    logger.info("开始检查并执行待处理的任务...")
     if get_chrome_process_count() == 0:
         db = MySQLDatabase()
         db.connect()
         try:
-            tasks = db.get_pending_or_running_tasks()
+            # 获取待处理的任务
+            pending_tasks = db.get_pending_tiktok_tasks()
+            # 获取正在运行的任务
+            running_tasks = db.get_running_tiktok_tasks()
+            
+            # 合并待处理和正在运行的任务
+            tasks = pending_tasks + running_tasks
+            
             for task in tasks:
                 if get_chrome_process_count() >= MAX_CONCURRENT_CHROME:
                     break
                 
-                # 更新任务状态并执行
-                db.update_tiktok_task_status(task['id'], 'running')
-                db.update_tiktok_task_server_ip(task['id'], worker_ip)
+                # 如果任务状态为待处理，则更新为运行中
+                if task['status'] == 'pending':
+                    db.update_tiktok_task_status(task['id'], 'running')
+                    db.update_tiktok_task_server_ip(task['id'], worker_ip)
+                
                 task_thread = threading.Thread(target=process_task, args=(task['id'], task['keyword'], worker_ip))
                 task_thread.start()
                 
                 logger.info(f"自动开始执行任务: {task['id']}")
-                time.sleep(60)
+                time.sleep(60)  # 等待60秒后再处理下一个任务
         except Exception as e:
             logger.error(f"检查和执行任务时发生错误: {str(e)}")
         finally:
             db.disconnect()
+    else:
+        logger.info("当前有Chrome进程正在运行，跳过任务检查")
 
 if __name__ == '__main__':
     register_worker()
