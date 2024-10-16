@@ -8,6 +8,7 @@ from io import StringIO
 import csv
 import logging
 import io
+import time
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
@@ -106,7 +107,7 @@ def data_analyze(db: MySQLDatabase):
     # 获取当前关键字的评论总数
     total_available_comments = db.get_filtered_tiktok_comments_count(selected_keyword)
     
-    # 创建可选��的论数量列表
+    # 创建可选的评论数量列表
     comment_count_options = [100, 500, 1000, 2000, 5000, 10000, total_available_comments]
     comment_count_options = sorted(set([opt for opt in comment_count_options if opt <= total_available_comments]))
 
@@ -117,7 +118,7 @@ def data_analyze(db: MySQLDatabase):
                                       index=0)  # 默选择最大值
 
     with col3:
-        # 选择每轮输入的数据量
+        # 选择每轮���入的数据量
         batch_size = st.selectbox("批次大小", [10, 50, 100, 200], index=1)
 
     with col4:
@@ -193,7 +194,7 @@ def data_analyze(db: MySQLDatabase):
 请以CSV格式输出结果，包含以下列：
 "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
-请确保输出的CSV格式正确��每个字段都用双引号包围，并用逗号分隔。"""
+请确保输出的CSV格式正确每个字段都用双引号包围，并用逗号分隔。"""
 
     # 显示完整的prompt示例
     col1, col2 = st.columns(2)
@@ -285,24 +286,36 @@ def data_analyze(db: MySQLDatabase):
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("清空第一轮分析结果", key="clear_first_round"):
-            confirm_clear_first = st.button("确认清空第一轮分析结果？", key="confirm_clear_first", type="primary")
-            if confirm_clear_first:
-                del_res = db.clear_first_round_analysis_by_keyword(selected_keyword)
-                if del_res:
-                    st.success(f"已清空关键字 '{selected_keyword}' 的第一轮分析结果")
-                else:
-                    st.error("清空第一轮分析结果失败")
+        if st.button("清空第一轮分析结果", key="clear_first_round_button"):
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            for i in range(101):
+                status_text.text(f"正在清空第一轮分析结果... {i}%")
+                progress_bar.progress(i)
+                time.sleep(0.01)  # 模拟操作耗时
+            del_res = db.clear_first_round_analysis_by_keyword(selected_keyword)
+            if del_res:
+                st.success(f"已清空关键字 '{selected_keyword}' 的第一轮分析结果")
+            else:
+                st.error("清空第一轮分析结果失败")
+            status_text.empty()
+            progress_bar.empty()
     
     with col2:
-        if st.button("清空第二轮分析结果", key="clear_second_round"):
-            confirm_clear_second = st.button("确认清空第二轮分析结果？", key="confirm_clear_second", type="primary")
-            if confirm_clear_second:
-                del_res = db.clear_second_round_analysis_by_keyword(selected_keyword)
-                if del_res:
-                    st.success(f"已清空关键字 '{selected_keyword}' 的第二轮分析结果")
-                else:
-                    st.error("清空第二轮分析结果失败")
+        if st.button("清空第二轮分析结果", key="clear_second_round_button"):
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            for i in range(101):
+                status_text.text(f"正在清空第二轮分析结果... {i}%")
+                progress_bar.progress(i)
+                time.sleep(0.01)  # 模拟操作耗时
+            del_res = db.clear_second_round_analysis_by_keyword(selected_keyword)
+            if del_res:
+                st.success(f"已清空关键字 '{selected_keyword}' 的第二轮分析结果")
+            else:
+                st.error("清空第二轮分析结果失败")
+            status_text.empty()
+            progress_bar.empty()
 
 def remove_extra_quotes(text):
     """移除字符串开头和结尾的多余引号"""
@@ -476,14 +489,14 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
         st.subheader("第二轮分析总体结果")
         st.write(final_results)
 
-        # 显示统计信息
+        # 显示���计信息
         st.subheader("第二轮分析统计")
         classification_counts = final_results['第二轮分类结果'].value_counts()
         st.write(classification_counts)
 
         # 显示忽略的评论信息
         if total_ignored > 0:
-            st.warning(f"第二轮分��中共有 {total_ignored} 条评论因格式问题被忽略。")
+            st.warning(f"第二轮中共有 {total_ignored} 条评论因格式问题被忽略。")
             if ignored_comments:
                 st.warning(f"第二轮被忽略的评论示例：\n" + "\n".join([str(comment) for comment in ignored_comments]))
     else:
