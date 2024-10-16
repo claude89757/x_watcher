@@ -214,7 +214,7 @@ def data_analyze(db: MySQLDatabase):
 
     with col2:
         st.text_area("第二轮分析Prompt（筛选高意向客户）", prompt_template_second_round, height=250)
-        example_comments_second = db.get_potential_customers(selected_keyword, limit=10)
+        example_comments_second = db.get_potential_customers(selected_keyword, limit=1000)
         if example_comments_second:
             df_example_second = pd.DataFrame(example_comments_second)
             df_example_second = df_example_second[['user_id', 'reply_content', 'classification']]  # 只选择需要的列
