@@ -6,6 +6,7 @@ import logging
 import os
 import socket
 import psutil
+import signal
 
 app = Flask(__name__)
 
@@ -154,6 +155,31 @@ def check_tiktok_account():
         return jsonify({"error": "Internal server error"}), 500
     finally:
         db.disconnect()
+
+def kill_chrome_processes():
+    """强制终止所有Chrome进程"""
+    killed_count = 0
+    for proc in psutil.process_iter(['name']):
+        if 'chrome' in proc.info['name'].lower():
+            try:
+                proc.send_signal(signal.SIGTERM)
+                killed_count += 1
+            except psutil.NoSuchProcess:
+                pass
+    return killed_count
+
+@app.route('/force_stop_all_tasks', methods=['POST'])
+def force_stop_all_tasks():
+    try:
+        # 终止所有Chrome进程
+        killed_count = kill_chrome_processes()
+        return jsonify({
+            "message": f"强制停止了 {killed_count} 个Chrome进程"
+        }), 200
+    except Exception as e:
+        logger.error(f"强制停止任务时发生错误: {str(e)}")
+        return jsonify({"error": "内部服务器错误"}), 500
+
 
 if __name__ == '__main__':
     register_worker()
