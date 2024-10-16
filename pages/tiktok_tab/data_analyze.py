@@ -72,7 +72,7 @@ def load_descriptions_from_cache(keyword):
     return None
 
 def save_descriptions_to_cache(keyword, descriptions):
-    """保存描述到缓存文件"""
+    """保存述到缓存文件"""
     cache = {}
     if os.path.exists(DESCRIPTION_CACHE_FILE):
         with open(DESCRIPTION_CACHE_FILE, 'r') as f:
@@ -185,7 +185,7 @@ def data_analyze(db: MySQLDatabase):
 评论数据：
 {{comments}}
 
-请以CSV格式输出结果，包含以下列：
+请以CSV格式输出结果，包以下列：
 "用户ID", "评论内容", "分类结果", "分析理由"
 
 请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。"""
@@ -204,7 +204,7 @@ def data_analyze(db: MySQLDatabase):
 请以CSV格式输出结果，包含以下列：
 "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
-请确保输出的CSV格式正确每个字段都用双引号包围，并用逗号分隔。"""
+请确保输出的CSV格式正确个字段都用双引号包围，并用逗号分隔。"""
 
     # 显示完整的prompt示例
     col1, col2 = st.columns(2)
@@ -290,32 +290,47 @@ def run_analysis(db, keyword, model, batch_size, total_comments, prompt_template
     try:
         # 第一轮分析
         analysis_status = "正在进行第一轮分析..."
+        logging.info("开始第一轮分析")
         first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template_first)
         
         # 获取潜在客户数量
         potential_customers_count = db.get_potential_customers_count(keyword)
+        logging.info(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
         analysis_status = f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户"
         
         if potential_customers_count > 0:
             # 第二轮分析
             analysis_status = "正在进行第二轮分析..."
+            logging.info("开始第二轮分析")
             second_round_analyze(db, keyword, model, batch_size, prompt_template_second)
             
-            # 获取高意向客户数量
-            high_intent_customers_count = db.get_high_intent_customers_count(keyword)
-            medium_intent_customers_count = db.get_medium_intent_customers_count(keyword)
-            low_intent_customers_count = db.get_low_intent_customers_count(keyword)
-            
-            analysis_status = (f"分析完成。第二轮分析结果：\n"
-                               f"高意向客户: {high_intent_customers_count} 个\n"
-                               f"中等意向客户: {medium_intent_customers_count} 个\n"
-                               f"低意向客户: {low_intent_customers_count} 个")
+            # 获取高、中、低意向客户数量
+            second_round_results = db.get_second_round_analyzed_comments(keyword)
+            if second_round_results:
+                df_second_round = pd.DataFrame(second_round_results)
+                classification_counts = df_second_round['second_round_classification'].value_counts()
+                high_intent_customers_count = classification_counts.get('高意向客户', 0)
+                medium_intent_customers_count = classification_counts.get('中等意向客户', 0)
+                low_intent_customers_count = classification_counts.get('低意向客户', 0)
+                
+                analysis_status = (f"分析完成。第二轮分析结果：\n"
+                                   f"高意向客户: {high_intent_customers_count} 个\n"
+                                   f"中等意向客户: {medium_intent_customers_count} 个\n"
+                                   f"低意向客户: {low_intent_customers_count} 个")
+            else:
+                analysis_status = "第二轮分析完成，但未找到分析结果"
+            logging.info(analysis_status)
         else:
             analysis_status = "分析完成。未发现潜在客户，跳过第二轮分析"
+            logging.warning(analysis_status)
         
         analysis_progress = 100
+    except Exception as e:
+        logging.error(f"分析过程中发生错误: {str(e)}")
+        analysis_status = f"分析过程中发生错误: {str(e)}"
     finally:
         is_analysis_running = False
+        logging.info("分析任务结束")
 
 def display_analysis_results(db, keyword):
     # 显示第一轮分析结果
@@ -353,8 +368,9 @@ def remove_punctuation(text):
 def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
     global analysis_progress, analysis_status
     
-    # 获取过滤后的评论数据
+    # ��取过滤后的��论数据
     filtered_comments = db.get_filtered_tiktok_comments_by_keyword(keyword, limit=total_comments)
+    logging.info(f"获取到 {len(filtered_comments)} 条过滤后的评论")
 
     ignored_comments = []
     total_ignored = 0
@@ -382,7 +398,7 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                 
                 # 使用 csv.reader 来解析 CSV 内容，并去除多余的引号
                 csv_reader = csv.reader(io.StringIO(csv_content))
-                next(csv_reader)  # 跳过 GPT 生成的标题行
+                next(csv_reader)  # 跳过 GPT 生成的标行
                 
                 rows = []
                 for row in csv_reader:
@@ -403,9 +419,10 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                     
                     # 保存批次结果到数据库
                     db.save_analyzed_comments(keyword, pd.DataFrame(rows))
+                    logging.info(f"成功保存第 {i//batch_size + 1} 批次的分析结果")
 
             except Exception as e:
-                st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
+                logging.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
             
             progress = (i + batch_size) / len(filtered_comments)
             analysis_progress = int(progress * 50)  # 第一轮占总进度的50%
@@ -418,9 +435,10 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
     global analysis_progress, analysis_status
     
     potential_customers = db.get_potential_customers(keyword)
+    logging.info(f"获取到 {len(potential_customers)} 个潜在客户进行第二轮分析")
     
     if not potential_customers:
-        st.warning("没有找到潜在客户数据进行第二轮分析")
+        logging.warning("没有找到潜在客户数据进行第二轮分析")
         return
 
     ignored_comments = []
@@ -469,10 +487,12 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
             
             # 保存批次结果到数据库
             db.save_second_round_analyzed_comments(keyword, pd.DataFrame(rows))
+            logging.info(f"成功保存第二轮分析第 {i//batch_size + 1} 批次的结果")
 
         except Exception as e:
-            st.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
+            logging.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
         
         progress = (i + batch_size) / len(potential_customers)
         analysis_progress = 50 + int(progress * 50)  # 第二轮占总进度的50%
         analysis_status = f"第二轮分析：已处理 {min(i+batch_size, len(potential_customers))}/{len(potential_customers)} 条评论"
+        logging.info(analysis_status)
