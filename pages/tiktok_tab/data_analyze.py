@@ -284,7 +284,7 @@ def analyze_comments(db, keyword, model, batch_size, total_comments, prompt_temp
     analysis_thread = threading.Thread(target=run_analysis, args=(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second))
     analysis_thread.start()
 
-def run_analysis(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
+def run_analysis(db: MySQLDatabase, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
     global analysis_progress, analysis_status, is_analysis_running
     
     try:
