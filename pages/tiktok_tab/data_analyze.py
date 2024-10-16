@@ -234,41 +234,30 @@ def data_analyze(db: MySQLDatabase):
         if st.button("加载分析结果", key="load_analysis"):
             display_analysis_results(db, selected_keyword)
 
-    # 添加清空分析结果的按钮（移到最后）
-    st.subheader("清空分析结果")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("清空第一轮分析结果", key="clear_first_round_button"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            for i in range(101):
-                status_text.text(f"正在清空第一轮分析结果... {i}%")
-                progress_bar.progress(i)
-                time.sleep(0.01)  # 模拟操作耗时
-            del_res = db.clear_first_round_analysis_by_keyword(selected_keyword)
-            if del_res:
-                st.success(f"已清空关键字 '{selected_keyword}' 的第一轮分析结果")
-            else:
-                st.error("清空第一轮分析结果失败")
-            status_text.empty()
-            progress_bar.empty()
-    
-    with col2:
-        if st.button("清空第二轮分析结果", key="clear_second_round_button"):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            for i in range(101):
-                status_text.text(f"正在清空第二轮分析结果... {i}%")
-                progress_bar.progress(i)
-                time.sleep(0.01)  # 模拟操作耗时
-            del_res = db.clear_second_round_analysis_by_keyword(selected_keyword)
-            if del_res:
-                st.success(f"已清空关键字 '{selected_keyword}' 的第二轮分析结果")
-            else:
-                st.error("清空第二轮分析结果失败")
-            status_text.empty()
-            progress_bar.empty()
+    # 将清空分析结果的按钮移到这里，并合并两轮清空操作
+    if st.button("清空所有分析结果", key="clear_all_analysis_button"):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        for i in range(101):
+            status_text.text(f"正在清空所有分析结果... {i}%")
+            progress_bar.progress(i)
+            time.sleep(0.01)  # 模拟操作耗时
+        
+        # 清空第一轮和第二轮分析结果
+        del_res_first = db.clear_first_round_analysis_by_keyword(selected_keyword)
+        del_res_second = db.clear_second_round_analysis_by_keyword(selected_keyword)
+        
+        if del_res_first and del_res_second:
+            st.success(f"已清空关键字 '{selected_keyword}' 的所有分析结果")
+        elif del_res_first:
+            st.warning(f"已清空关键字 '{selected_keyword}' 的第一轮分析结果，但第二轮清空失败")
+        elif del_res_second:
+            st.warning(f"已清空关键字 '{selected_keyword}' 的第二轮分析结果，但第一轮清空失败")
+        else:
+            st.error("清空分析结果失败")
+        
+        status_text.empty()
+        progress_bar.empty()
 
 def analyze_comments(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
     # 第一轮分析

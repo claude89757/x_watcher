@@ -954,12 +954,14 @@ class MySQLDatabase:
     def clear_first_round_analysis_by_keyword(self, keyword):
         """清空指定关键字的第一轮分析结果"""
         query = "DELETE FROM tiktok_analyzed_comments WHERE keyword = %s"
-        return self.execute_update(query, (keyword,))
+        result = self.execute_update(query, (keyword,))
+        return result > 0  # 如果影响的行数大于0，则返回True
 
     def clear_second_round_analysis_by_keyword(self, keyword):
         """清空指定关键字的第二轮分析结果"""
         query = "DELETE FROM tiktok_second_round_analyzed_comments WHERE keyword = %s"
-        return self.execute_update(query, (keyword,))
+        result = self.execute_update(query, (keyword,))
+        return result > 0  # 如果影响的行数大于0，则返回True
 
 # 使用示例
 if __name__ == "__main__":
