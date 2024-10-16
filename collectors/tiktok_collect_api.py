@@ -7,6 +7,8 @@ import os
 import socket
 import psutil
 import signal
+import time
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
@@ -180,7 +182,39 @@ def force_stop_all_tasks():
         logger.error(f"强制停止任务时发生错误: {str(e)}")
         return jsonify({"error": "内部服务器错误"}), 500
 
+def check_and_execute_tasks():
+    """检查并执行待处理的任务"""
+    if get_chrome_process_count() == 0:
+        db = MySQLDatabase()
+        db.connect()
+        try:
+            tasks = db.get_pending_or_running_tasks()
+            for task in tasks:
+                if get_chrome_process_count() >= MAX_CONCURRENT_CHROME:
+                    break
+                
+                # 更新任务状态并执行
+                db.update_tiktok_task_status(task['id'], 'running')
+                db.update_tiktok_task_server_ip(task['id'], worker_ip)
+                task_thread = threading.Thread(target=process_task, args=(task['id'], task['keyword'], worker_ip))
+                task_thread.start()
+                
+                logger.info(f"自动开始执行任务: {task['id']}")
+                time.sleep(60)
+        except Exception as e:
+            logger.error(f"检查和执行任务时发生错误: {str(e)}")
+        finally:
+            db.disconnect()
 
 if __name__ == '__main__':
     register_worker()
-    app.run(host='0.0.0.0', port=5000)
+    
+    # 创建并启动定时任务
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(check_and_execute_tasks, 'interval', minutes=1)
+    scheduler.start()
+    
+    try:
+        app.run(host='0.0.0.0', port=5000)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
