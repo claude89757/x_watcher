@@ -183,25 +183,6 @@ def data_collect(db: MySQLDatabase):
         st.write("📭 暂无任务")
 
     if search_keyword:
-        # 获取任务总视频数
-        total_videos = db.get_total_videos_for_keyword(search_keyword)
-
-        # 添加进度条
-        processed_videos = db.get_processed_videos_for_keyword(search_keyword)
-        progress = processed_videos / total_videos if total_videos > 0 else 0
-        st.progress(progress)
-        
-        # 添加整体进展统计
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("总视频数", total_videos)
-        with col2:
-            st.metric("已处理视频", processed_videos)
-        with col3:
-            st.metric("待处理视频", total_videos - processed_videos)
-        with col4:
-            st.metric("完成百分比", f"{progress:.2%}")
-        
         # 动态展示评论数据
         st.subheader("评论数据")
         comments = db.get_tiktok_comments_by_keyword(search_keyword)
