@@ -303,9 +303,15 @@ def run_analysis(db, keyword, model, batch_size, total_comments, prompt_template
             
             # 获取高意向客户数量
             high_intent_customers_count = db.get_high_intent_customers_count(keyword)
-            analysis_status = f"第二轮分析完成，发现 {high_intent_customers_count} 个高意向客户"
+            medium_intent_customers_count = db.get_medium_intent_customers_count(keyword)
+            low_intent_customers_count = db.get_low_intent_customers_count(keyword)
+            
+            analysis_status = (f"分析完成。第二轮分析结果：\n"
+                               f"高意向客户: {high_intent_customers_count} 个\n"
+                               f"中等意向客户: {medium_intent_customers_count} 个\n"
+                               f"低意向客户: {low_intent_customers_count} 个")
         else:
-            analysis_status = "未发现潜在客户，跳过第二轮分析"
+            analysis_status = "分析完成。未发现潜在客户，跳过第二轮分析"
         
         analysis_progress = 100
     finally:
