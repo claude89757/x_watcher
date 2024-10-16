@@ -4,6 +4,18 @@ from common.azure_openai import process_with_gpt
 from collectors.common.mysql import MySQLDatabase
 import time
 import json
+import os
+
+# 定义缓存文件路径
+DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
+
+def load_descriptions_from_cache(keyword):
+    """从缓存文件加载描述"""
+    if os.path.exists(DESCRIPTION_CACHE_FILE):
+        with open(DESCRIPTION_CACHE_FILE, 'r') as f:
+            cache = json.load(f)
+            return cache.get(keyword, None)
+    return None
 
 def generate_messages(model, prompt, product_info, user_comments, additional_prompt):
     """使用选定的GPT模型为多个用户生成个性化消息"""
@@ -56,12 +68,17 @@ def send_msg(db: MySQLDatabase):
     # 选择模型
     model = st.selectbox("选择GPT模型", ["gpt-4o-mini", "gpt-4o"])
     
+    # 从缓存加载产品描述
+    cached_descriptions = load_descriptions_from_cache(selected_keyword)
+    default_product_info = cached_descriptions['product_description'] if cached_descriptions else ""
+    default_additional_prompt = cached_descriptions['customer_description'] if cached_descriptions else ""
+
     # 输入产品/服务信息和额外的提示信息
     col1, col2 = st.columns(2)
     with col1:
-        product_info = st.text_area("输入产品/服务信息", "")
+        product_info = st.text_area("输入产品/服务信息", value=default_product_info)
     with col2:
-        additional_prompt = st.text_area("额外的提示信息（可选）", "")
+        additional_prompt = st.text_area("额外的提示信息（可选）", value=default_additional_prompt)
     
     # 可编辑的prompt模板
     default_prompt = """基于以下信息为多个用户生成个性化的TikTok私信内容:
@@ -85,7 +102,7 @@ def send_msg(db: MySQLDatabase):
 }}
 
 生成的消息:"""
-    prompt = st.text_area("编辑Prompt模板", default_prompt.format(product_info=product_info, additional_prompt=additional_prompt), height=300)
+    prompt = st.text_area("编辑Prompt模板", default_prompt, height=300)
     
     # 选择每批处理的客户数量
     batch_size = st.selectbox("每批处理的客户数量", [5, 10, 20, 50], index=1)
