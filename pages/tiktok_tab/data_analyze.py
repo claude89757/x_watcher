@@ -118,7 +118,7 @@ def data_analyze(db: MySQLDatabase):
                                       index=0)  # 默选择最大值
 
     with col3:
-        # 选择每轮���入的数据量
+        # 选择每轮入的数据量
         batch_size = st.selectbox("批次大小", [10, 50, 100, 200], index=1)
 
     with col4:
@@ -317,13 +317,9 @@ def data_analyze(db: MySQLDatabase):
             status_text.empty()
             progress_bar.empty()
 
-def remove_extra_quotes(text):
-    """移除字符串开头和结尾的多余引号"""
-    if text.startswith('"') and text.endswith('"'):
-        return text[1:-1]
-    elif text.startswith("'") and text.endswith("'"):
-        return text[1:-1]
-    return text
+def remove_punctuation(text):
+    """移除字符串开头和结尾的标点符号"""
+    return text.strip('.,;:!?"\' ')
 
 def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
     # 获取过滤后的评论数据
@@ -365,7 +361,7 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                     rows = []
                     for row in csv_reader:
                         if len(row) == len(fixed_headers):
-                            cleaned_row = [remove_extra_quotes(cell) for cell in row]
+                            cleaned_row = [remove_punctuation(remove_extra_quotes(cell)) for cell in row]
                             rows.append(dict(zip(fixed_headers, cleaned_row)))
                         else:
                             total_ignored += 1
@@ -456,7 +452,7 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                 rows = []
                 for row in csv_reader:
                     if len(row) == len(fixed_headers):
-                        cleaned_row = [remove_extra_quotes(cell) for cell in row]
+                        cleaned_row = [remove_punctuation(remove_extra_quotes(cell)) for cell in row]
                         rows.append(dict(zip(fixed_headers, cleaned_row)))
                     else:
                         total_ignored += 1
@@ -489,7 +485,7 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
         st.subheader("第二轮分析总体结果")
         st.write(final_results)
 
-        # 显示���计信息
+        # 显示计信息
         st.subheader("第二轮分析统计")
         classification_counts = final_results['第二轮分类结果'].value_counts()
         st.write(classification_counts)
