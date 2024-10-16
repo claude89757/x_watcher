@@ -330,9 +330,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
     comments_data = []
     comments_batch = []
     scroll_attempts = 0
-    max_scroll_attempts = 20  # 最大滚动尝试次数
+    max_scroll_attempts = 10  # 最大滚动尝试次数
     consecutive_no_new_comments = 0
-    max_consecutive_no_new = 10  # 连续无新评论的最大次数
+    max_consecutive_no_new = 5  # 连续无新评论的最大次数
 
     last_comments_count = 0
     seen_comments = set()
