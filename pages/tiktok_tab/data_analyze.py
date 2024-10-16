@@ -9,6 +9,7 @@ import csv
 import logging
 import io
 import time
+from datetime import datetime
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
@@ -212,6 +213,8 @@ def data_analyze(db: MySQLDatabase):
 
     with col1:
         if st.button("开始分析", type="primary"):
+            # 在开始分析按钮之前添加警告提示
+            st.warning("警告：分析过程中请勿刷新页面，否则可能导致分析中断。")
             analyze_comments(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round, prompt_template_second_round)
         
     # 使用expander来显示分析结果，默认折叠
