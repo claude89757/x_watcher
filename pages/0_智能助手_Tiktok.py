@@ -80,7 +80,7 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 添加大标题
-st.title("Tiktok智能助手")
+st.title("Tiktok智能助手 🤖")
 
 # 初始化数据库连接
 db = MySQLDatabase()
