@@ -899,9 +899,9 @@ class MySQLDatabase:
         query = """
         SELECT COUNT(*) as count
         FROM tiktok_analyzed_comments
-        WHERE keyword = '%s' AND classification = '潜在客户'
+        WHERE keyword = %s AND classification = '潜在客户'
         """
-        result = self.execute_query(query % keyword)
+        result = self.execute_query(query, (keyword,))
         return result[0]['count'] if result else 0
 
     def get_potential_customers(self, keyword, limit=1000):
