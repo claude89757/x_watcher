@@ -9,9 +9,16 @@ import csv
 import logging
 import io
 import time
+import threading
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
+
+# 在文件开头添加以下全局变量
+analysis_thread = None
+analysis_progress = 0
+analysis_status = ""
+is_analysis_running = False
 
 def generate_descriptions(keyword):
     """生成产品描述和目标客户描述"""
@@ -65,7 +72,7 @@ def load_descriptions_from_cache(keyword):
     return None
 
 def save_descriptions_to_cache(keyword, descriptions):
-    """保存描述到缓存文件"""
+    """保存述到缓存文件"""
     cache = {}
     if os.path.exists(DESCRIPTION_CACHE_FILE):
         with open(DESCRIPTION_CACHE_FILE, 'r') as f:
@@ -178,7 +185,7 @@ def data_analyze(db: MySQLDatabase):
 评论数据：
 {{comments}}
 
-请以CSV格式输出结果，包含以下列：
+请以CSV格式输出结果，包以下列：
 "用户ID", "评论内容", "分类结果", "分析理由"
 
 请确保输出的CSV格式正确，每个字段都用双引号包围，并用逗号分隔。"""
@@ -197,30 +204,16 @@ def data_analyze(db: MySQLDatabase):
 请以CSV格式输出结果，包含以下列：
 "用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"
 
-请确保输出的CSV格式正确每个字段都用双引号包围，并用逗号分隔。"""
+请确保输出的CSV格式正确个字段都用双引号包围，并用逗号分隔。"""
 
     # 显示完整的prompt示例
     col1, col2 = st.columns(2)
 
     with col1:
         st.text_area("第一轮分析Prompt（筛选潜在客户）", prompt_template_first_round, height=250)
-        example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=1000)
-        if example_comments_first:
-            df_example_first = pd.DataFrame(example_comments_first)
-            df_example_first = df_example_first[['user_id', 'reply_content']]  # 只选择需要的列
-            st.dataframe(df_example_first)
-        else:
-            st.write("没有找到第一轮分析的示例数据")
 
     with col2:
         st.text_area("第二轮分析Prompt（筛选高意向客户）", prompt_template_second_round, height=250)
-        example_comments_second = db.get_potential_customers(selected_keyword, limit=1000)
-        if example_comments_second:
-            df_example_second = pd.DataFrame(example_comments_second)
-            df_example_second = df_example_second[['user_id', 'reply_content', 'classification']]  # 只选择需要的列
-            st.dataframe(df_example_second)
-        else:
-            pass
 
     # 创建一列布局用于显示分析按钮和结果
     col1, _ = st.columns(2)
@@ -228,7 +221,17 @@ def data_analyze(db: MySQLDatabase):
     with col1:
         if st.button("开始分析", type="primary"):
             analyze_comments(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round, prompt_template_second_round)
+    
+    # 添加进度显示
+    if is_analysis_running:
+        progress_bar = st.progress(analysis_progress)
+        st.info(analysis_status)
         
+        # 添加自动刷新
+        st.empty()
+        time.sleep(5)
+        st.rerun()
+
     # 使用expander来显示分析结果，默认折叠
     with st.expander("查看分析结果", expanded=False):
         if st.button("加载分析结果", key="load_analysis"):
@@ -271,24 +274,63 @@ def data_analyze(db: MySQLDatabase):
             progress_bar.empty()
 
 def analyze_comments(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
-    # 第一轮分析
-    st.info("开始第一轮分析...")
-    first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template_first)
+    global analysis_thread, is_analysis_running
     
-    # 获取潜在客户数量
-    potential_customers_count = db.get_potential_customers_count(keyword)
-    st.success(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+    if is_analysis_running:
+        st.warning("已有分析任务正在进行中，请等待当前任务完成。")
+        return
     
-    if potential_customers_count > 0:
-        # 第二轮分析
-        st.info("开始第二轮分析...")
-        second_round_analyze(db, keyword, model, batch_size, prompt_template_second)
+    is_analysis_running = True
+    analysis_thread = threading.Thread(target=run_analysis, args=(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second))
+    analysis_thread.start()
+
+def run_analysis(db: MySQLDatabase, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
+    global analysis_progress, analysis_status, is_analysis_running
+    
+    try:
+        # 第一轮分析
+        analysis_status = "正在进行第一轮分析..."
+        logging.info("开始第一轮分析")
+        first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template_first)
         
-        # 获取高意向客户数量
-        high_intent_customers_count = db.get_high_intent_customers_count(keyword)
-        st.success(f"第二轮分析完成，发现 {high_intent_customers_count} 个高意向客户")
-    else:
-        st.warning("未发现潜在客户，跳过第二轮分析")
+        # 获取潜在客户数量
+        potential_customers_count = db.get_potential_customers_count(keyword)
+        logging.info(f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户")
+        analysis_status = f"第一轮分析完成，发现 {potential_customers_count} 个潜在客户"
+        
+        if potential_customers_count > 0:
+            # 第二轮分析
+            analysis_status = "正在进行第二轮分析..."
+            logging.info("开始第二轮分析")
+            second_round_analyze(db, keyword, model, batch_size, prompt_template_second)
+            
+            # 获取高、中、低意向客户数量
+            second_round_results = db.get_second_round_analyzed_comments(keyword)
+            if second_round_results:
+                df_second_round = pd.DataFrame(second_round_results)
+                classification_counts = df_second_round['second_round_classification'].value_counts()
+                high_intent_customers_count = classification_counts.get('高意向客户', 0)
+                medium_intent_customers_count = classification_counts.get('中等意向客户', 0)
+                low_intent_customers_count = classification_counts.get('低意向客户', 0)
+                
+                analysis_status = (f"分析完成。第二轮分析结果：\n"
+                                   f"高意向客户: {high_intent_customers_count} 个\n"
+                                   f"中等意向客户: {medium_intent_customers_count} 个\n"
+                                   f"低意向客户: {low_intent_customers_count} 个")
+            else:
+                analysis_status = "第二轮分析完成，但未找到分析结果"
+            logging.info(analysis_status)
+        else:
+            analysis_status = "分析完成。未发现潜在客户，跳过第二轮分析"
+            logging.warning(analysis_status)
+        
+        analysis_progress = 100
+    except Exception as e:
+        logging.error(f"分析过程中发生错误: {str(e)}")
+        analysis_status = f"分析过程中发生错误: {str(e)}"
+    finally:
+        is_analysis_running = False
+        logging.info("分析任务结束")
 
 def display_analysis_results(db, keyword):
     # 显示第一轮分析结果
@@ -324,106 +366,18 @@ def remove_punctuation(text):
     return text.strip('.,;:!?"\' ')
 
 def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
-    # 获取过滤后的评论数据
+    global analysis_progress, analysis_status
+    
+    # ��取过滤后的��论数据
     filtered_comments = db.get_filtered_tiktok_comments_by_keyword(keyword, limit=total_comments)
+    logging.info(f"获取到 {len(filtered_comments)} 条过滤后的评论")
 
     ignored_comments = []
     total_ignored = 0
 
     if filtered_comments:
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        results = []
         for i in range(0, len(filtered_comments), batch_size):
-            with st.spinner(f'正在处理第 {i//batch_size + 1} 批次...'):
-                batch = filtered_comments[i:i+batch_size]
-                comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
-                
-                current_prompt = prompt_template.replace("{comments}", comments_text)
-                
-                try:
-                    response = process_with_gpt(model, current_prompt, max_tokens=5000)
-                    
-                    # 去除可能存在的 ```csv 标记
-                    response = response.strip()
-                    if response.startswith("```csv"):
-                        response = response[7:]
-                    if response.endswith("```"):
-                        response = response[:-3]
-                    csv_content = response.strip()
-                    
-                    # 使用固定的列名
-                    fixed_headers = ["用户ID", "评论内容", "分类结果", "分析理由"]
-                    
-                    # 使用 csv.reader 来解析 CSV 内容，并去除多余的引号
-                    csv_reader = csv.reader(io.StringIO(csv_content))
-                    next(csv_reader)  # 跳过 GPT 生成的标题行
-                    
-                    rows = []
-                    for row in csv_reader:
-                        if len(row) == len(fixed_headers):
-                            cleaned_row = [remove_punctuation(cell) for cell in row]
-                            row_dict = dict(zip(fixed_headers, cleaned_row))
-                            
-                            # 只保存分类结果为"潜在客户"或"非目标客户"的数据
-                            if row_dict['分类结果'] in ["潜在客户", "非目标客户"]:
-                                rows.append(row_dict)
-                            else:
-                                logging.warning(f"忽略分类结果不符合预期的行: {row_dict}")
-                        else:
-                            total_ignored += 1
-                            if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
-                                ignored_comments.append(row)
-                            logging.warning(f"忽略字段数量不匹配的行: {row}")
-                    
-                    # 使用处理后的数据创建 DataFrame
-                    if rows:
-                        batch_results = pd.DataFrame(rows)
-                        results.append(batch_results)
-
-                        # 保存批次结果到数据库
-                        db.save_analyzed_comments(keyword, batch_results)
-                    else:
-                        logging.warning("本批次没有有效的数据行")
-
-                except Exception as e:
-                    st.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
-                
-                progress = (i + batch_size) / len(filtered_comments)
-                progress_bar.progress(min(progress, 1.0))
-                status_text.text(f"已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论")
-
-        # 合并所有结果
-        if results:
-            # 显示忽略的评论信息
-            if total_ignored > 0:
-                st.warning(f"共有 {total_ignored} 条评论因格式问题被忽略。")
-                if ignored_comments:
-                    st.warning(f"被忽略的评论示例：\n" + "\n".join([str(comment) for comment in ignored_comments]))
-        else:
-            st.warning("没有成功处理任何评论数据")
-
-    else:
-        st.warning("没有找到相关的过滤后的评论数据")
-
-def second_round_analyze(db, keyword, model, batch_size, prompt_template):
-    potential_customers = db.get_potential_customers(keyword)
-    
-    if not potential_customers:
-        st.warning("没有找到潜在客户数据进行第二轮分析")
-        return
-
-    ignored_comments = []
-    total_ignored = 0
-
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-
-    results = []
-    for i in range(0, len(potential_customers), batch_size):
-        with st.spinner(f'正在处理第 {i//batch_size + 1} 批次...'):
-            batch = potential_customers[i:i+batch_size]
+            batch = filtered_comments[i:i+batch_size]
             comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
             
             current_prompt = prompt_template.replace("{comments}", comments_text)
@@ -440,11 +394,11 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                 csv_content = response.strip()
                 
                 # 使用固定的列名
-                fixed_headers = ["用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"]
+                fixed_headers = ["用户ID", "评论内容", "分类结果", "分析理由"]
                 
                 # 使用 csv.reader 来解析 CSV 内容，并去除多余的引号
                 csv_reader = csv.reader(io.StringIO(csv_content))
-                next(csv_reader)  # 跳过 GPT 生成的标题行
+                next(csv_reader)  # 跳过 GPT 生成的标行
                 
                 rows = []
                 for row in csv_reader:
@@ -452,40 +406,93 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                         cleaned_row = [remove_punctuation(cell) for cell in row]
                         row_dict = dict(zip(fixed_headers, cleaned_row))
                         
-                        # 只保存第二轮分类结果为"高意向客户"、"中等意向客户"或"低意向客户"的数据
-                        if row_dict['第二轮分类结果'] in ["高意向客户", "中等意向客户", "低意向客户"]:
+                        # 只保存分类结果为"潜在客户"或"非目标客户"的数据
+                        if row_dict['分类结果'] in ["潜在客户", "非目标客户"]:
                             rows.append(row_dict)
                         else:
-                            logging.warning(f"忽略第二轮分类结果不符合预期的行: {row_dict}")
+                            logging.warning(f"忽略分类结果不符合预期的行: {row_dict}")
                     else:
                         total_ignored += 1
                         if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
                             ignored_comments.append(row)
                         logging.warning(f"忽略字段数量不匹配的行: {row}")
-                
-                # 使用处理后的数据创建 DataFrame
-                if rows:
-                    batch_results = pd.DataFrame(rows)
-                    results.append(batch_results)
-
+                    
                     # 保存批次结果到数据库
-                    db.save_second_round_analyzed_comments(keyword, batch_results)
-                else:
-                    logging.warning("本批次没有有效的数据行")
+                    db.save_analyzed_comments(keyword, pd.DataFrame(rows))
+                    logging.info(f"成功保存第 {i//batch_size + 1} 批次的分析结果")
 
             except Exception as e:
-                st.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
+                logging.error(f"处理批次 {i//batch_size + 1} 时发生错误: {str(e)}")
             
-            progress = (i + batch_size) / len(potential_customers)
-            progress_bar.progress(min(progress, 1.0))
-            status_text.text(f"已处理 {min(i+batch_size, len(potential_customers))}/{len(potential_customers)} 条评论")
+            progress = (i + batch_size) / len(filtered_comments)
+            analysis_progress = int(progress * 50)  # 第一轮占总进度的50%
+            analysis_status = f"第一轮分析：已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论"
 
-    # 合并所有结果
-    if results:
-        # 显示忽略的评论信息
-        if total_ignored > 0:
-            st.warning(f"第二轮中共有 {total_ignored} 条评论因格式问题被忽略。")
-            if ignored_comments:
-                st.warning(f"第二轮被忽略的评论示例：\n" + "\n".join([str(comment) for comment in ignored_comments]))
     else:
-        st.warning("没有成功处理任何评论数据")
+        st.warning("没有找到相关的过滤后的评论数据")
+
+def second_round_analyze(db, keyword, model, batch_size, prompt_template):
+    global analysis_progress, analysis_status
+    
+    potential_customers = db.get_potential_customers(keyword)
+    logging.info(f"获取到 {len(potential_customers)} 个潜在客户进行第二轮分析")
+    
+    if not potential_customers:
+        logging.warning("没有找到潜在客户数据进行第二轮分析")
+        return
+
+    ignored_comments = []
+    total_ignored = 0
+
+    for i in range(0, len(potential_customers), batch_size):
+        batch = potential_customers[i:i+batch_size]
+        comments_text = "\n".join([f"{j+1}. 用户ID: {comment['user_id']}, 评论内容: {comment['reply_content']}" for j, comment in enumerate(batch)])
+        
+        current_prompt = prompt_template.replace("{comments}", comments_text)
+        
+        try:
+            response = process_with_gpt(model, current_prompt, max_tokens=5000)
+            
+            # 去除可能存在的 ```csv 标记
+            response = response.strip()
+            if response.startswith("```csv"):
+                response = response[7:]
+            if response.endswith("```"):
+                response = response[:-3]
+            csv_content = response.strip()
+            
+            # 使用固定的列名
+            fixed_headers = ["用户ID", "评论内容", "第一轮分类结果", "第二轮分类结果", "分析理由"]
+            
+            # 使用 csv.reader 来解析 CSV 内容，并去除多余的引号
+            csv_reader = csv.reader(io.StringIO(csv_content))
+            next(csv_reader)  # 跳过 GPT 生成的标题行
+            
+            rows = []
+            for row in csv_reader:
+                if len(row) == len(fixed_headers):
+                    cleaned_row = [remove_punctuation(cell) for cell in row]
+                    row_dict = dict(zip(fixed_headers, cleaned_row))
+                    
+                    # 只保存第二轮分类结果为"高意向客户"、"中等意向客户"或"低意向客户"的数据
+                    if row_dict['第二轮分类结果'] in ["高意向客户", "中等意向客户", "低意向客户"]:
+                        rows.append(row_dict)
+                    else:
+                        logging.warning(f"忽略第二轮分类结果不符合预期的行: {row_dict}")
+                else:
+                    total_ignored += 1
+                    if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
+                        ignored_comments.append(row)
+                    logging.warning(f"忽略字段数量不匹配的行: {row}")
+            
+            # 保存批次结果到数据库
+            db.save_second_round_analyzed_comments(keyword, pd.DataFrame(rows))
+            logging.info(f"成功保存第二轮分析第 {i//batch_size + 1} 批次的结果")
+
+        except Exception as e:
+            logging.error(f"处理第二轮分析批次 {i//batch_size + 1} 时发生错误: {str(e)}")
+        
+        progress = (i + batch_size) / len(potential_customers)
+        analysis_progress = 50 + int(progress * 50)  # 第二轮占总进度的50%
+        analysis_status = f"第二轮分析：已处理 {min(i+batch_size, len(potential_customers))}/{len(potential_customers)} 条评论"
+        logging.info(analysis_status)
