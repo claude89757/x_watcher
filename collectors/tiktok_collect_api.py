@@ -30,7 +30,7 @@ worker_ip = get_public_ip()
 worker_name = socket.gethostname()
 
 # 设置最大并发Chrome进程数
-MAX_CONCURRENT_CHROME = 2
+MAX_CONCURRENT_CHROME = 6
 
 def get_chrome_process_count():
     """获取当前运行的Chrome进程数"""
