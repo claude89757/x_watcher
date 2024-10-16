@@ -204,7 +204,7 @@ def data_analyze(db: MySQLDatabase):
 
     with col1:
         st.text_area("第一轮分析Prompt（筛选潜在客户）", prompt_template_first_round, height=250)
-        example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=10)
+        example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=1000)
         if example_comments_first:
             df_example_first = pd.DataFrame(example_comments_first)
             df_example_first = df_example_first[['user_id', 'reply_content']]  # 只选择需要的列
