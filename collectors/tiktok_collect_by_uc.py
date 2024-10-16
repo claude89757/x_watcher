@@ -82,12 +82,13 @@ def setup_driver():
     
     logger.info("正在设置WebDriver选项")
     
-    driver = uc.Chrome(options=options)
-    logger.info("WebDriver已设置成")
+    # 使用全局定义的 CHROME_DRIVER 常量
+    driver = uc.Chrome(driver_executable_path=CHROME_DRIVER, options=options)
+    logger.info(f"WebDriver已设置成功，使用驱动程序路径: {CHROME_DRIVER}")
 
     # 设置浏览器全屏
     driver.maximize_window()
-    logger.info("浏器已设置为全屏模式")
+    logger.info("浏览器已设置为全屏模式")
 
     return driver
 
@@ -287,7 +288,7 @@ def search_tiktok_videos(driver, keyword):
     time.sleep(30)
  
     # 使用BeautifulSoup解析页面
-    logger.info("开始解析页面")
+    logger.info("开始解析页���")
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     video_links = []
     for link in soup.find_all('a', href=True):
