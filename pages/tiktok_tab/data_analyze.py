@@ -364,7 +364,13 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                     for row in csv_reader:
                         if len(row) == len(fixed_headers):
                             cleaned_row = [remove_punctuation(cell) for cell in row]
-                            rows.append(dict(zip(fixed_headers, cleaned_row)))
+                            row_dict = dict(zip(fixed_headers, cleaned_row))
+                            
+                            # 只保存分类结果为"潜在客户"���"非目标客��"的数据
+                            if row_dict['分类结果'] in ["潜在客户", "非目标客户"]:
+                                rows.append(row_dict)
+                            else:
+                                logging.warning(f"忽略分类结果不符合预期的行: {row_dict}")
                         else:
                             total_ignored += 1
                             if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
@@ -444,7 +450,13 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                 for row in csv_reader:
                     if len(row) == len(fixed_headers):
                         cleaned_row = [remove_punctuation(cell) for cell in row]
-                        rows.append(dict(zip(fixed_headers, cleaned_row)))
+                        row_dict = dict(zip(fixed_headers, cleaned_row))
+                        
+                        # 只保存第二轮分类结果为"高意向客户"、"中等意向客户"或"低意向客户"的数据
+                        if row_dict['第二轮分类结果'] in ["高意向客户", "中等意向客户", "低意向客户"]:
+                            rows.append(row_dict)
+                        else:
+                            logging.warning(f"忽略第二轮分类结果不符合预期的行: {row_dict}")
                     else:
                         total_ignored += 1
                         if len(ignored_comments) < 5:  # 只保存前5个被忽略的评论作为示例
