@@ -27,7 +27,6 @@ logger.addHandler(console_handler)
 # 全局变量存储worker信息
 worker_ip = get_public_ip()
 worker_name = socket.gethostname()
-novnc_password = os.environ.get('VNC_PASSWORD', 'test123')
 
 # 设置最大并发Chrome进程数
 MAX_CONCURRENT_CHROME = 2
@@ -40,7 +39,7 @@ def register_worker():
     db = MySQLDatabase()
     db.connect()
     try:
-        db.add_or_update_worker(worker_ip, worker_name, status='active', novnc_password=novnc_password)
+        db.add_or_update_worker(worker_ip, worker_name, status='active')
         logger.info(f"Worker registered: IP {worker_ip}, Name {worker_name}")
     finally:
         db.disconnect()

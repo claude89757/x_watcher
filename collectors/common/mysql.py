@@ -653,18 +653,17 @@ class MySQLDatabase:
         query = "SELECT * FROM tiktok_tasks WHERE status = 'running'"
         return self.execute_query(query)
 
-    def add_or_update_worker(self, worker_ip, worker_name=None, status='inactive', novnc_password=None):
+    def add_or_update_worker(self, worker_ip, worker_name=None, status='inactive'):
         """添加或更新 worker 信息"""
         query = """
         INSERT INTO worker_infos (worker_ip, worker_name, status, novnc_password, last_heartbeat)
-        VALUES (%s, %s, %s, %s, NOW())
+        VALUES (%s, %s, %s, NOW())
         ON DUPLICATE KEY UPDATE
         worker_name = VALUES(worker_name),
         status = VALUES(status),
-        novnc_password = VALUES(novnc_password),
         last_heartbeat = NOW()
         """
-        params = (worker_ip, worker_name, status, novnc_password)
+        params = (worker_ip, worker_name, status)
         return self.execute_update(query, params)
 
     def get_worker_list(self):
