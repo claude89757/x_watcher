@@ -284,9 +284,21 @@ def analyze_comments(db, keyword, model, batch_size, total_comments, prompt_temp
         st.info("开始第二轮分析...")
         second_round_analyze(db, keyword, model, batch_size, prompt_template_second)
         
-        # 获取高意向客户数量
-        high_intent_customers_count = db.get_high_intent_customers_count(keyword)
-        st.success(f"第二轮分析完成，发现 {high_intent_customers_count} 个高意向客户")
+        # 获取第二轮分析结果
+        second_round_results = db.get_second_round_analyzed_comments(keyword)
+        if second_round_results:
+            df_second_round = pd.DataFrame(second_round_results)
+            classification_counts = df_second_round['second_round_classification'].value_counts()
+            high_intent_customers_count = classification_counts.get('高意向客户', 0)
+            medium_intent_customers_count = classification_counts.get('中等意向客户', 0)
+            low_intent_customers_count = classification_counts.get('低意向客户', 0)
+            
+            st.success(f"第二轮分析完成，发现：\n"
+                       f"高意向客户: {high_intent_customers_count} 个\n"
+                       f"中等意向客户: {medium_intent_customers_count} 个\n"
+                       f"低意向客户: {low_intent_customers_count} 个")
+        else:
+            st.warning("第二轮分析完成，但未找到分析结果")
     else:
         st.warning("未发现潜在客户，跳过第二轮分析")
 
