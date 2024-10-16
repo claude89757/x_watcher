@@ -19,6 +19,9 @@ import pandas as pd
 import streamlit as st
 import requests
 
+# 使用AgGrid展示任务状态
+from st_aggrid import AgGrid, GridOptionsBuilder
+
 from common.config import CONFIG
 from common.cos import list_latest_files
 from common.cos import download_file
@@ -131,14 +134,51 @@ def data_collect():
                 elif 'FAILED' in status:
                     status_icon = '❌'
                 else:
-                    status_icon = status
+                    status_icon = '❓'
 
-                task_data.append({"任务名称": task_name, "状态": f"{status_icon} {status}"})
+                task_data.append({
+                    "任务名称": task_name, 
+                    "状态": f"{status_icon} {status}",
+                    "操作": None  # 稍后会填充此列
+                })
 
-            # 使用表格展示任务状态
-            st.table(task_data)
+            # 创建DataFrame
+            df = pd.DataFrame(task_data)
+            
+            gb = GridOptionsBuilder.from_dataframe(df)
+            gb.configure_pagination(paginationAutoPageSize=True)
+            gb.configure_side_bar()
+            gb.configure_selection('single', use_checkbox=True)
+            gridOptions = gb.build()
+            
+            grid_response = AgGrid(
+                df,
+                gridOptions=gridOptions,
+                data_return_mode='AS_INPUT', 
+                update_mode='MODEL_CHANGED', 
+                fit_columns_on_grid_load=False,
+                theme='streamlit',
+                height=400,
+                allow_unsafe_jscode=True
+            )
+
+            selected = grid_response['selected_rows']
+            if selected:
+                st.write("选中的任务:", selected[0]['任务名称'])
+                if '🔄' in selected[0]['状态']:
+                    if st.button("停止任务"):
+                        # 这里添加停止任务的逻辑
+                        st.write("正在停止任务...")
+                elif '❌' in selected[0]['状态']:
+                    if st.button("重试任务"):
+                        # 这里添加重试任务的逻辑
+                        st.write("正在重试任务...")
+                elif '✅' in selected[0]['状态']:
+                    if st.button("查看结果"):
+                        # 这里添加查看结果的逻辑
+                        st.write("正在加载结果...")
     else:
-        pass
+        st.info("当前没有任务")
 
     if not running_task:
         if st.button(label=collect_data_button_label):
@@ -156,7 +196,7 @@ def data_collect():
                         )
                         task_num += 1
                         # status_text.text(f"Triggered {task_num} tasks for keyword: {st.session_state.search_keyword}")
-                        # (todo(claudexie): 查询进度)等待数据收集��等待
+                        # (todo(claudexie): 查询进度)等待数据收集等待
                         st.success(data_collection_complete_message)
                         time.sleep(3)
                         st.rerun()

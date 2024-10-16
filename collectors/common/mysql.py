@@ -31,7 +31,7 @@ class MySQLDatabase:
 
     def log_sql(self, query, params=None):
         """记录 SQL 查询"""
-        if isinstance(params, str):  # 处理批量插入的情况
+        if isinstance(params, str):  # 处理批量插入情况
             formatted_query = f"{query} {params}"
         elif params:
             # 使用 pymysql.converters.escape_string 来正确转义参数值
@@ -421,7 +421,7 @@ class MySQLDatabase:
                 processing_result = cursor.fetchone()
 
                 if processing_result:
-                    logger.info(f"找到正在理中的本机视频：ID {processing_result['id']}, URL {processing_result['video_url']}")
+                    logger.info(f"找正在理中的本机视频：ID {processing_result['id']}, URL {processing_result['video_url']}")
                     return processing_result
 
                 # 步骤2：如果没有正在处理的本机视频，则查找新的待处理视频
@@ -656,10 +656,10 @@ class MySQLDatabase:
     def add_or_update_worker(self, worker_ip, worker_name=None, status='inactive'):
         """添加或更新 worker 信息"""
         query = """
-        INSERT INTO worker_infos (worker_ip, worker_name, status, novnc_password, last_heartbeat)
+        INSERT INTO worker_infos (worker_ip, worker_name, status, last_heartbeat)
         VALUES (%s, %s, %s, NOW())
         ON DUPLICATE KEY UPDATE
-        worker_name = VALUES(worker_name),
+        worker_name = COALESCE(VALUES(worker_name), worker_name),
         status = VALUES(status),
         last_heartbeat = NOW()
         """
