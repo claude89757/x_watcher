@@ -288,7 +288,8 @@ def data_analyze(db: MySQLDatabase):
         if st.button("清空第一轮分析结果", key="clear_first_round"):
             confirm_clear_first = st.button("确认清空第一轮分析结果？", key="confirm_clear_first", type="primary")
             if confirm_clear_first:
-                if db.clear_first_round_analysis_by_keyword(selected_keyword):
+                del_res = db.clear_first_round_analysis_by_keyword(selected_keyword)
+                if del_res:
                     st.success(f"已清空关键字 '{selected_keyword}' 的第一轮分析结果")
                 else:
                     st.error("清空第一轮分析结果失败")
@@ -297,7 +298,8 @@ def data_analyze(db: MySQLDatabase):
         if st.button("清空第二轮分析结果", key="clear_second_round"):
             confirm_clear_second = st.button("确认清空第二轮分析结果？", key="confirm_clear_second", type="primary")
             if confirm_clear_second:
-                if db.clear_second_round_analysis_by_keyword(selected_keyword):
+                del_res = db.clear_second_round_analysis_by_keyword(selected_keyword)
+                if del_res:
                     st.success(f"已清空关键字 '{selected_keyword}' 的第二轮分析结果")
                 else:
                     st.error("清空第二轮分析结果失败")
