@@ -48,7 +48,7 @@ def account_management(db: MySQLDatabase):
                         st.error("账号添加失败")
 
     # 显示现有账号
-    st.subheader("现有账号")
+    st.subheader("爬虫账号列表")
     accounts = db.get_tiktok_accounts()
     if accounts:
         for account in accounts:
