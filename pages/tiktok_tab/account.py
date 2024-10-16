@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import urllib
 from collectors.common.mysql import MySQLDatabase
+import time
 
 
 def get_status_emoji(status):
@@ -90,7 +91,20 @@ def account_management(db: MySQLDatabase):
                                         novnc_password = worker_info['novnc_password']
                                         encoded_password = urllib.parse.quote(novnc_password)
                                         vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                                        st.components.v1.iframe(vnc_url, width=800, height=600)
+                                        
+                                        # 使用st.empty()创建一个可更新的容器
+                                        vnc_container = st.empty()
+                                        
+                                        # 显示VNC窗口
+                                        vnc_container.components.v1.iframe(vnc_url, width=800, height=600)
+                                        
+                                        # 等待5分钟
+                                        time.sleep(300)
+                                        
+                                        # 5分钟后清空容器，effectively关闭VNC窗口
+                                        vnc_container.empty()
+                                        
+                                        st.info(f"Worker {worker_ip} 的VNC窗口已自动关闭。")
                             else:
                                 st.error("未能触发任何worker")
                 with col3:
