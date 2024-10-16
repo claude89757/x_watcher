@@ -194,6 +194,10 @@ def check_and_execute_tasks():
             # 获取正在运行的任务
             running_tasks = db.get_running_tiktok_tasks()
             
+            # 确保 pending_tasks 和 running_tasks 都是列表
+            pending_tasks = list(pending_tasks) if pending_tasks else []
+            running_tasks = list(running_tasks) if running_tasks else []
+            
             # 合并待处理和正在运行的任务
             tasks = pending_tasks + running_tasks
             
