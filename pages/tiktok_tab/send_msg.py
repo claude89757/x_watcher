@@ -34,13 +34,27 @@ def send_msg(db: MySQLDatabase):
     # 获取高意向客户数据
     high_intent_customers = db.get_second_round_analyzed_comments(selected_keyword)
     high_intent_df = pd.DataFrame(high_intent_customers)
-    high_intent_df = high_intent_df[high_intent_df['second_round_classification'] == '高意向客户']
+    
+    # 检查数据框的列
+    st.write("数据框的列:", high_intent_df.columns)
+
+    if high_intent_df.empty:
+        st.warning(f"未找到关键词 '{selected_keyword}' 的高意向客户。请先进行评论分析或选择其他关键词。")
+        return  # 提前结束函数
+    
+    # 根据可用的列筛选高意向客户
+    if 'second_round_classification' in high_intent_df.columns:
+        high_intent_df = high_intent_df[high_intent_df['second_round_classification'] == '高意向客户']
+    else:
+        st.warning("无法找到用于筛选高意向客户的列。显示所有客户数据。")
     
     st.write(f"找到 {len(high_intent_df)} 个高意向客户")
     
     # 显示高意向客户数据
-    if not high_intent_df.empty:
-        st.dataframe(high_intent_df[['user_id', 'reply_content', 'analysis_reason']])
+    display_columns = ['user_id', 'reply_content']
+    if 'analysis_reason' in high_intent_df.columns:
+        display_columns.append('analysis_reason')
+    st.dataframe(high_intent_df[display_columns])
     
     # 选择模型
     model = st.selectbox("选择GPT模型", ["gpt-4o-mini", "gpt-4o"])
@@ -78,7 +92,7 @@ def send_msg(db: MySQLDatabase):
     # 选择要发送消息的客户数量
     total_customers = st.number_input("选择要发送消息的客户总数", min_value=1, max_value=len(high_intent_df), value=min(10, len(high_intent_df)))
     
-    # 选择每批处理的客户数量
+    # ��择每批处理的客户数量
     batch_size = st.selectbox("每批处理的客户数量", [5, 10, 20, 50], index=1)
     
     if 'generated_messages' not in st.session_state:
