@@ -258,7 +258,7 @@ class MySQLDatabase:
         self.execute_update(create_second_round_analyzed_comments_table)
 
     def create_tiktok_task(self, keyword):
-        """创建TikTok任务,如果已存在相同关键字的待处理任务则返回该任务ID"""
+        """创建TikTok任务,如果已存在相同关键字待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
         check_query = f"""
         SELECT id FROM tiktok_tasks 
@@ -300,16 +300,45 @@ class MySQLDatabase:
 
     def delete_tiktok_task(self, task_id):
         """删除TikTok任务及相关数据"""
-        queries = [
-            f"DELETE FROM tiktok_task_logs WHERE task_id = {task_id}",
-            f"DELETE FROM tiktok_comments WHERE video_id IN (SELECT id FROM tiktok_videos WHERE task_id = {task_id})",
-            f"DELETE FROM tiktok_videos WHERE task_id = {task_id}",
-            f"DELETE FROM tiktok_tasks WHERE id = {task_id}"
-        ]
         try:
-            for query in queries:
-                self.execute_update(query)
+            with self.connection.cursor() as cursor:
+                # 1. 删除与任务相关的评论数据
+                cursor.execute("""
+                    DELETE tc FROM tiktok_comments tc
+                    JOIN tiktok_videos tv ON tc.video_id = tv.id
+                    WHERE tv.task_id = %s
+                """, (task_id,))
+
+                # 2. 删除与任务相关的过滤后的评论数据
+                cursor.execute("""
+                    DELETE tfc FROM tiktok_filtered_comments tfc
+                    JOIN tiktok_videos tv ON tfc.video_id = tv.id
+                    WHERE tv.task_id = %s
+                """, (task_id,))
+
+                # 3. 删除与任务相关的分析后的评论数据
+                cursor.execute("""
+                    DELETE tac FROM tiktok_analyzed_comments tac
+                    WHERE tac.keyword = (SELECT keyword FROM tiktok_tasks WHERE id = %s)
+                """, (task_id,))
+
+                # 4. 删除与任务相关的第二轮分析后的评论数据
+                cursor.execute("""
+                    DELETE tsrac FROM tiktok_second_round_analyzed_comments tsrac
+                    WHERE tsrac.keyword = (SELECT keyword FROM tiktok_tasks WHERE id = %s)
+                """, (task_id,))
+
+                # 5. 删除与任务相关的视频数据
+                cursor.execute("DELETE FROM tiktok_videos WHERE task_id = %s", (task_id,))
+
+                # 6. 删除任务日志
+                cursor.execute("DELETE FROM tiktok_task_logs WHERE task_id = %s", (task_id,))
+
+                # 7. 最后删除任务本身
+                cursor.execute("DELETE FROM tiktok_tasks WHERE id = %s", (task_id,))
+
             self.connection.commit()
+            logger.info(f"成功删除任务 ID: {task_id} 及其所有相关数据")
             return True
         except Exception as e:
             logger.error(f"删除任务时出错: {e}")

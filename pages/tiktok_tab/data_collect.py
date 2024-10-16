@@ -176,9 +176,9 @@ def data_collect(db: MySQLDatabase):
                     if st.button('🗑️ 删除'): 
                         if db.delete_tiktok_task(selected_task_id):
                             st.success(f"✅ 成功删除任务 ID: {selected_task_id}")
+                            st.rerun()
                         else:
-                            st.error(f"❌ 在数据库中删除任务 ID: {selected_task_id} 失败")
-                        st.rerun()
+                            st.error(f"❌ 删除任务 ID: {selected_task_id} 失败。请检查数据库日志以获取更多信息。")
     else:
         st.write("📭 暂无任务")
 
