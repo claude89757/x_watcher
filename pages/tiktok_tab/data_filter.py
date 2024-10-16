@@ -11,6 +11,9 @@ def preprocess_comment(comment):
 
 
 def data_filter(db: MySQLDatabase):
+    """
+    本页面用于过滤和处理TikTok评论数据。
+    """
     # 全局面板
     st.info("本页面用于过滤和处理TikTok评论数据。")
 

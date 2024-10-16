@@ -14,7 +14,10 @@ def get_status_emoji(status):
 
 
 def account_management(db: MySQLDatabase):
-    st.header("账号管理")
+    """
+    本页面用于管理TikTok账号。
+    """
+    st.info("本页面用于管理TikTok账号。")
 
     # 获取可用的worker IP列表
     available_worker_ips = db.get_available_worker_ips()

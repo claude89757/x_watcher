@@ -75,6 +75,9 @@ def save_descriptions_to_cache(keyword, descriptions):
         json.dump(cache, f)
 
 def data_analyze(db: MySQLDatabase):
+    """
+    本页面用于分析和分类TikTok评论数据。
+    """
     # 全局面板
     st.info("本页面用于分析和分类TikTok评论数据。")
 

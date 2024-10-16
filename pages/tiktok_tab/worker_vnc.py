@@ -4,6 +4,12 @@ from collectors.common.mysql import MySQLDatabase
 
 
 def worker_vnc(db: MySQLDatabase):    
+    """
+    本页面用于查看和连接到活跃的 worker 的 VNC 画面。
+    """
+    # 全局面板 
+    st.info("本页面用于查看和连接到活跃的 worker 的 VNC 画面。")
+
     # 获取所有活跃的 workers
     active_workers = db.get_worker_list()
     
