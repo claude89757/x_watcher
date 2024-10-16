@@ -101,7 +101,7 @@ try:
         st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
     # 创建标签页
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "发送私信", "后台监控", "账号管理"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "批量私信_AI", "后台监控", "账号管理"])
 
     with tab1:
         data_collect(db)
