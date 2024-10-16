@@ -200,7 +200,7 @@ def data_analyze(db: MySQLDatabase):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.text_area("第一轮分析Prompt", prompt_template_first_round, height=250)
+        st.text_area("第一轮分析Prompt（筛选潜在客户）", prompt_template_first_round, height=250)
         example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=10)
         if example_comments_first:
             df_example_first = pd.DataFrame(example_comments_first)
@@ -210,14 +210,14 @@ def data_analyze(db: MySQLDatabase):
             st.write("没有找到第一轮分析的示例数据")
 
     with col2:
-        st.text_area("第二轮分析Prompt", prompt_template_second_round, height=250)
+        st.text_area("第二轮分析Prompt（筛选高意向客户）", prompt_template_second_round, height=250)
         example_comments_second = db.get_potential_customers(selected_keyword, limit=10)
         if example_comments_second:
             df_example_second = pd.DataFrame(example_comments_second)
             df_example_second = df_example_second[['user_id', 'reply_content', 'classification']]  # 只选择需要的列
             st.dataframe(df_example_second)
         else:
-            st.write("没有找到第二轮分析的示例数据")
+            pass
 
     # 创建两列布局用于显示分析按钮和结果
     col1, col2 = st.columns(2)
@@ -235,9 +235,7 @@ def data_analyze(db: MySQLDatabase):
         else:
             st.warning("尚未进行第二轮分析")
     else:
-        st.warning("未发现潜在客户，无需进行第二轮分析")
-
-    
+        pass
 
     with col1:
         if st.button("开始第一轮分析", type="primary"):
@@ -388,17 +386,6 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
 
         # 合并所有结果
         if results:
-            final_results = pd.concat(results, ignore_index=True)
-
-            # 显示分类结果
-            st.subheader("总体分类结果")
-            st.write(final_results)
-
-            # 显示统计信息
-            st.subheader("统计信息")
-            classification_counts = final_results['分类结果'].value_counts()
-            st.write(classification_counts)
-
             # 显示忽略的评论信息
             if total_ignored > 0:
                 st.warning(f"共有 {total_ignored} 条评论因格式问题被忽略。")
@@ -479,17 +466,6 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
 
     # 合并所有结果
     if results:
-        final_results = pd.concat(results, ignore_index=True)
-
-        # 显示第二轮分类结果
-        st.subheader("第二轮分析总体结果")
-        st.write(final_results)
-
-        # 显示计信息
-        st.subheader("第二轮分析统计")
-        classification_counts = final_results['第二轮分类结果'].value_counts()
-        st.write(classification_counts)
-
         # 显示忽略的评论信息
         if total_ignored > 0:
             st.warning(f"第二轮中共有 {total_ignored} 条评论因格式问题被忽略。")
