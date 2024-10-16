@@ -85,6 +85,8 @@ def data_collect(db: MySQLDatabase):
     tasks = db.get_all_tiktok_tasks()
 
     if tasks:
+        # 创建一个DataFrame来存储任务信息
+        task_data = []
         for task in tasks:
             status_emoji = {
                 'pending': '⏳',
@@ -94,55 +96,82 @@ def data_collect(db: MySQLDatabase):
                 'failed': '❌'
             }.get(task['status'], '❓')
             
-            with st.expander(f"{status_emoji} 任务ID: {task['id']} | 关键词: {task['keyword']} | 状态: {task['status']} | 触发时间: {task['created_at'].strftime('%Y-%m-%d %H:%M:%S')}"):
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    if task['status'] == 'pending':
-                        if st.button('▶️ 开始', key=f'start_{task["id"]}'):
-                            db.update_tiktok_task_status(task['id'], 'running')
-                            st.rerun()
-                    elif task['status'] == 'running':
-                        if st.button('⏸️ 暂停', key=f'pause_{task["id"]}'):
-                            db.update_tiktok_task_status(task['id'], 'paused')
-                            st.rerun()
-                    elif task['status'] == 'paused':
-                        if st.button('▶️ 继续', key=f'resume_{task["id"]}'):
-                            try:
-                                # 获取所有可用的worker
-                                available_workers = db.get_available_workers()
-                                successful_resumes = 0
-                                
-                                for worker in available_workers:
-                                    try:
-                                        worker_ip = worker['worker_ip']
-                                        response = requests.post(
-                                            f"http://{worker_ip}:5000/resume_tiktok_task",
-                                            json={"task_id": task['id']},
-                                            headers={"Content-Type": "application/json"}
-                                        )
-                                        response.raise_for_status()
-                                        successful_resumes += 1
-                                    except requests.RequestException as e:
-                                        st.error(f"❌ 在worker {worker_ip} 上恢复任务失败: {str(e)}")
-                                
-                                if successful_resumes > 0:
-                                    st.success(f"✅ 成功在 {successful_resumes} 个worker上恢复任务 ID: {task['id']}")
-                                    db.update_tiktok_task_status(task['id'], 'running')
-                                    st.rerun()
-                                else:
-                                    st.error("❌ 未能在任何worker上恢复任务")
-                            except Exception as e:
-                                st.error(f"恢复任务失败: {str(e)}")
-                with col2:
-                    if st.button('🗑️ 删除', key=f'delete_{task["id"]}'): 
-                        # 在数据库中删除任务
-                        if db.delete_tiktok_task(task['id']):
-                            st.success(f"✅ 成功删除任务 ID: {task['id']}")
-                        else:
-                            st.error(f"❌ 在数据库中删除任务 ID: {task['id']} 失败")
+            task_data.append({
+                "ID": task['id'],
+                "关键词": task['keyword'],
+                "状态": f"{status_emoji} {task['status']}",
+                "触发时间": task['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
+                "更新时间": task['updated_at'].strftime('%Y-%m-%d %H:%M:%S'),
+                "操作": task['id']  # 用于生成唯一的按钮键
+            })
+        
+        df = pd.DataFrame(task_data)
+        
+        # 使用st.data_editor来显示可编辑的表格
+        edited_df = st.data_editor(
+            df,
+            column_config={
+                "操作": st.column_config.Column(
+                    "操作",
+                    width="medium",
+                    help="任务操作",
+                    required=True,
+                )
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+        
+        # 处理任务操作
+        for _, row in edited_df.iterrows():
+            task_id = row['操作']
+            task_status = row['状态'].split()[-1]  # 获取状态文本
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if task_status == 'pending':
+                    if st.button('▶️ 开始', key=f'start_{task_id}'):
+                        db.update_tiktok_task_status(task_id, 'running')
                         st.rerun()
-                with col3:
-                    st.write(f"🕒 更新时间: {task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')}")
+                elif task_status == 'running':
+                    if st.button('⏸️ 暂停', key=f'pause_{task_id}'):
+                        db.update_tiktok_task_status(task_id, 'paused')
+                        st.rerun()
+                elif task_status == 'paused':
+                    if st.button('▶️ 继续', key=f'resume_{task_id}'):
+                        try:
+                            # 获取所有可用的worker
+                            available_workers = db.get_available_workers()
+                            successful_resumes = 0
+                            
+                            for worker in available_workers:
+                                try:
+                                    worker_ip = worker['worker_ip']
+                                    response = requests.post(
+                                        f"http://{worker_ip}:5000/resume_tiktok_task",
+                                        json={"task_id": task_id},
+                                        headers={"Content-Type": "application/json"}
+                                    )
+                                    response.raise_for_status()
+                                    successful_resumes += 1
+                                except requests.RequestException as e:
+                                    st.error(f"❌ 在worker {worker_ip} 上恢复任务失败: {str(e)}")
+                            
+                            if successful_resumes > 0:
+                                st.success(f"✅ 成功在 {successful_resumes} 个worker上恢复任务 ID: {task_id}")
+                                db.update_tiktok_task_status(task_id, 'running')
+                                st.rerun()
+                            else:
+                                st.error("❌ 未能在任何worker上恢复任务")
+                        except Exception as e:
+                            st.error(f"恢复任务失败: {str(e)}")
+            with col2:
+                if st.button('🗑️ 删除', key=f'delete_{task_id}'): 
+                    if db.delete_tiktok_task(task_id):
+                        st.success(f"✅ 成功删除任务 ID: {task_id}")
+                    else:
+                        st.error(f"❌ 在数据库中删除任务 ID: {task_id} 失败")
+                    st.rerun()
     else:
         st.write("📭 暂无任务")
 
