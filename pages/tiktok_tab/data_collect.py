@@ -135,22 +135,7 @@ def data_collect(db: MySQLDatabase):
                             except Exception as e:
                                 st.error(f"恢复任务失败: {str(e)}")
                 with col2:
-                    if st.button('🗑️ 删除', key=f'delete_{task["id"]}'):
-                        # 获取所有worker
-                        all_workers = db.get_worker_list()
-                        
-                        for worker in all_workers:
-                            try:
-                                worker_ip = worker['worker_ip']
-                                response = requests.post(
-                                    f"http://{worker_ip}:5000/delete_tiktok_task",
-                                    json={"task_id": task['id']},
-                                    headers={"Content-Type": "application/json"}
-                                )
-                                response.raise_for_status()
-                            except requests.RequestException as e:
-                                st.error(f"❌ 在worker {worker_ip} 上删除任务失败: {str(e)}")
-                        
+                    if st.button('🗑️ 删除', key=f'delete_{task["id"]}'): 
                         # 在数据库中删除任务
                         if db.delete_tiktok_task(task['id']):
                             st.success(f"✅ 成功删除任务 ID: {task['id']}")

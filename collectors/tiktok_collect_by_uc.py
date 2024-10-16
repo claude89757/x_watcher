@@ -535,38 +535,42 @@ def process_task(task_id, keyword, server_ip):
         while True:
             # 检查任务状态
             task_status = db.get_tiktok_task_status(task_id)
-            if task_status == 'paused':
-                logger.info(f"任务 {task_id} 已暂停, 先退出浏览器...")
-                break
-            elif task_status in ['completed', 'failed']:
-                logger.info(f"任务 {task_id} 已结束,状态: {task_status}")
-                break
+           
+            if task_status == 'running':
+                logger.info(f"正在获取任务 {task_id} 的下一个待处理视频")
+                next_video = db.get_next_pending_video(task_id, server_ip)
+                if not next_video:
+                    logger.info(f"任务 {task_id} 没有更多待处理的视频，退出循环")
+                    break  # 没有更多待处理的视频
 
-            logger.info(f"正在获取任务 {task_id} 的下一个待处理视频")
-            next_video = db.get_next_pending_video(task_id, server_ip)
-            if not next_video:
-                logger.info(f"任务 {task_id} 没有更多待处理的视频，退出循环")
-                break  # 没有更多待处理的视频
-
-            video_id, video_url, status = next_video['id'], next_video['video_url'], next_video['status']
-            if status == 'processing':
-                logger.info(f"继续处理之前未完成的视频：ID {video_id}, URL {video_url}")
+                video_id, video_url, status = next_video['id'], next_video['video_url'], next_video['status']
+                if status == 'processing':
+                    logger.info(f"继续处理之前未完成的视频：ID {video_id}, URL {video_url}")
+                else:
+                    logger.info(f"开始处理新的视频：ID {video_id}, URL {video_url}")
+                try:
+                    comments = collect_comments(driver, video_url, video_id, keyword, db, user_id, task_id)
+                    logger.info(f"任务 {task_id} 收集到 {len(comments)} 条来自 {video_url} 的评论")
+                    db.mark_video_completed(video_id)
+                    video_count += 1
+                    db.update_task_progress(task_id, 1)
+                except Exception as e:
+                    logger.error(f"处理视频 {video_url} 时出错: {str(e)}")
+                    db.update_tiktok_video_status(video_id, 'failed')
             else:
-                logger.info(f"开始处理新的视频：ID {video_id}, URL {video_url}")
-
-            try:
-                comments = collect_comments(driver, video_url, video_id, keyword, db, user_id, task_id)
-                db.mark_video_completed(video_id)
-                video_count += 1
-                db.update_task_progress(task_id, 1)
-            except Exception as e:
-                logger.error(f"处理视频 {video_url} 时出错: {str(e)}")
-                db.update_tiktok_video_status(video_id, 'failed')
+                logger.info(f"任务 {task_id} 知状态 {task_status}, 退出浏览器...")
+                break
 
         logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
         if task_status == 'running':
+            # 任务状态为running，更新为completed
             db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
-
+        elif task_status == 'paused':
+            # 任务状态为paused，更新为paused
+            db.update_tiktok_task_details(task_id, status='paused', end_time=datetime.now())
+        elif task_status == 'failed':
+            # 任务状态为failed，更新为failed
+            db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
     except Exception as e:
         logger.error(f"处理任务时发生错误: {str(e)}")
         # db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
