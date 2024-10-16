@@ -56,6 +56,13 @@ def send_msg(db: MySQLDatabase):
     # 选择模型
     model = st.selectbox("选择GPT模型", ["gpt-4o-mini", "gpt-4o"])
     
+    # 输入产品/服务信息和额外的提示信息
+    col1, col2 = st.columns(2)
+    with col1:
+        product_info = st.text_area("输入产品/服务信息", "")
+    with col2:
+        additional_prompt = st.text_area("额外的提示信息（可选）", "")
+    
     # 可编辑的prompt模板
     default_prompt = """基于以下信息为多个用户生成个性化的TikTok私信内容:
 
@@ -78,18 +85,9 @@ def send_msg(db: MySQLDatabase):
 }}
 
 生成的消息:"""
-    prompt = st.text_area("编辑Prompt模板", default_prompt, height=300)
+    prompt = st.text_area("编辑Prompt模板", default_prompt.format(product_info=product_info, additional_prompt=additional_prompt), height=300)
     
-    # 输入产品/服务信息
-    product_info = st.text_area("输入产品/服务信息", "")
-    
-    # 额外的提示信息
-    additional_prompt = st.text_area("额外的提示信息（可选）", "")
-    
-    # 选择要发送消息的客户数量
-    total_customers = st.number_input("选择要发送消息的客户总数", min_value=1, max_value=len(high_intent_df), value=min(10, len(high_intent_df)))
-    
-    # ��择每批处理的客户数量
+    # 选择每批处理的客户数量
     batch_size = st.selectbox("每批处理的客户数量", [5, 10, 20, 50], index=1)
     
     if 'generated_messages' not in st.session_state:
@@ -98,6 +96,8 @@ def send_msg(db: MySQLDatabase):
     if st.button("生成私信"):
         progress_bar = st.progress(0)
         status_text = st.empty()
+        
+        total_customers = len(high_intent_df)
         
         for i in range(0, total_customers, batch_size):
             batch = high_intent_df.iloc[i:min(i+batch_size, total_customers)]
@@ -115,31 +115,39 @@ def send_msg(db: MySQLDatabase):
             
         st.success(f"成功生成 {total_customers} 条私信!")
 
-    # 显示生成的私信并允许编辑
+    # 显示生成的私信并允许编辑和选择
     if st.session_state.generated_messages:
         st.subheader("生成的私信内容")
         edited_messages = {}
+        selected_messages = {}
         for user_id, message in st.session_state.generated_messages.items():
-            edited_message = st.text_area(f"给用户 {user_id} 的私信", message, key=f"edit_{user_id}")
-            edited_messages[user_id] = edited_message
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                edited_message = st.text_area(f"给用户 {user_id} 的私信", message, key=f"edit_{user_id}")
+                edited_messages[user_id] = edited_message
+            with col2:
+                selected = st.checkbox("选择发送", key=f"select_{user_id}")
+                if selected:
+                    selected_messages[user_id] = edited_message
 
-        if st.button("发送私信"):
+        if st.button("发送选中的私信"):
             progress_bar = st.progress(0)
             status_text = st.empty()
 
-            for i, (user_id, message) in enumerate(edited_messages.items()):
+            for i, (user_id, message) in enumerate(selected_messages.items()):
                 # 这里应该是实际发送消息的逻辑
                 # 由于我们没有实际的发送功能，这里只是模拟发送
                 st.write(f"发送给用户 {user_id} 的消息: {message}")
                 
                 # 更新进度
-                progress = (i + 1) / len(edited_messages)
+                progress = (i + 1) / len(selected_messages)
                 progress_bar.progress(progress)
-                status_text.text(f"已发送 {i+1}/{len(edited_messages)} 条私信")
+                status_text.text(f"已发送 {i+1}/{len(selected_messages)} 条私信")
                 
                 # 模拟发送延迟
                 time.sleep(1)
             
-            st.success(f"成功发送 {len(edited_messages)} 条私信!")
+            st.success(f"成功发送 {len(selected_messages)} 条私信!")
             # 清空已发送的消息
-            st.session_state.generated_messages = {}
+            for user_id in selected_messages.keys():
+                del st.session_state.generated_messages[user_id]
