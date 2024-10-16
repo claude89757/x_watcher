@@ -94,7 +94,7 @@ def account_management(db: MySQLDatabase):
                             else:
                                 st.error("未能触发任何worker")
                 with col3:
-                    if st.button("删除", key=f"delete_{account['id']}"):
+                    if st.button("删除", key=f"delete_{account['id']}", type="primary"):
                         if db.delete_tiktok_account(account['id']):
                             st.success("账号删除成功")
                         else:

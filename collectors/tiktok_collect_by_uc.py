@@ -288,7 +288,7 @@ def search_tiktok_videos(driver, keyword):
     time.sleep(30)
  
     # 使用BeautifulSoup解析页面
-    logger.info("开始解析页���")
+    logger.info("开始解析页")
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     video_links = []
     for link in soup.find_all('a', href=True):
@@ -639,45 +639,56 @@ def check_account_status(account_id, username, email):
     try:
         driver = setup_driver()
         
-        # 导航到TikTok登录页面
-        driver.get("https://www.tiktok.com/login/phone-or-email/email")
-        
-        # 点击忘记密码按钮
-        forgot_password_button = WebDriverWait(driver, 15).until(
-            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Forgot password?')]"))
-        )
-        forgot_password_button.click()
-        
-        # 等待邮箱输入框出现
-        email_input = WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.NAME, "email"))
-        )
-        
-        # 输入邮箱
-        simulate_human_input(driver, email_input, email)
-        
-        # 随机暂停，模拟人类思考
-        time.sleep(random.uniform(0.5, 1.5))
-
-        logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作，完成后请按回车键继续...")
-        
-        # 等待用户按回车键
-        input("验证完成后请按回车键继续...")
-        
-        logger.info("继续执行自动化操作...")
-        
-        # 直接检查登录状态
-        user_id = check_login_status(driver)
+        # 尝试使用本地cookies登录
+        user_id = login_by_local_cookies(driver)
         
         if user_id:
-            # 登录成功，保存cookies
-            save_cookies(driver, username)
-            
+            # 登录成功
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active，并已保存cookies")
+            logger.info(f"账号 {username} 状态更新为 active，使用本地cookies登录成功")
         else:
-            db.update_tiktok_account_status(account_id, 'inactive')
-            logger.info(f"账号 {username} 状态更新为 inactive（登录失败）")
+            # 登录失败,尝试重新登录
+            logger.info(f"使用本地cookies登录失败,尝试重新登录账号 {username}")
+            
+            # 导航到TikTok登录页面
+            driver.get("https://www.tiktok.com/login/phone-or-email/email")
+            
+            # 点击忘记密码按钮
+            forgot_password_button = WebDriverWait(driver, 15).until(
+                EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Forgot password?')]"))
+            )
+            forgot_password_button.click()
+            
+            # 等待邮箱输入框出现
+            email_input = WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.NAME, "email"))
+            )
+            
+            # 输入邮箱
+            simulate_human_input(driver, email_input, email)
+            
+            # 随机暂停，模拟人类思考
+            time.sleep(random.uniform(0.5, 1.5))
+
+            logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作，完成后请按回车键继续...")
+            
+            # 等待用户按回车键
+            input("验证完成后请按回车键继续...")
+            
+            logger.info("继续执行自动化操作...")
+            
+            # 检查登录状态
+            user_id = check_login_status(driver)
+            
+            if user_id:
+                # 登录成功，保存cookies
+                save_cookies(driver, username)
+                
+                db.update_tiktok_account_status(account_id, 'active')
+                logger.info(f"账号 {username} 状态更新为 active，并已保存新的cookies")
+            else:
+                db.update_tiktok_account_status(account_id, 'inactive')
+                logger.info(f"账号 {username} 状态更新为 inactive（登录失败）")
 
     except Exception as e:
         logger.error(f"检查账号 {username} 状态时发生错误: {str(e)}")
