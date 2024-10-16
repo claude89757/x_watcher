@@ -216,8 +216,7 @@ def data_analyze(db: MySQLDatabase):
         
     # 使用expander来显示分析结果，默认折叠
     with st.expander("查看分析结果", expanded=False):
-        if st.button("加载分析结果", key="load_analysis"):
-            display_analysis_results(db, selected_keyword)
+        display_analysis_results(db, selected_keyword)
 
     # 将清空分析结果的按钮移到这里，并合并两轮清空操作
     if st.button("清空所有分析结果", key="clear_all_analysis_button"):
