@@ -254,8 +254,19 @@ def data_analyze(db: MySQLDatabase):
                     st.subheader("第一轮分析统计")
                     classification_counts = df_analyzed['classification'].value_counts()
                     st.write(classification_counts)
+
+                    # 清空第一轮分析结果
+                    if st.button("清空第一轮分析结果", key="clear_first_round"):
+                        if st.button("确认清空第一轮分析结果？", key="confirm_clear_first"):
+                            if db.clear_first_round_analysis_by_keyword(selected_keyword):
+                                st.success(f"已清空关键字 '{selected_keyword}' 的第一轮分析结果")
+                            else:
+                                st.error("清空第一轮分析结果失败")
+
                 else:
                     st.info("没有找到已分析的评论数据")
+
+                    
 
     with col2:
         # 显示第二轮分析按钮
@@ -277,6 +288,14 @@ def data_analyze(db: MySQLDatabase):
                     st.subheader("第二轮分析统计")
                     classification_counts = df_second_round['second_round_classification'].value_counts()
                     st.write(classification_counts)
+
+                    # 清空第二轮分析结果
+                    if st.button("清空第二轮分析结果", key="clear_second_round"):
+                        if st.button("确认清空第二轮分析结果？", key="confirm_clear_second"):
+                            if db.clear_second_round_analysis_by_keyword(selected_keyword):
+                                st.success(f"已清空关键字 '{selected_keyword}' 的第二轮分析结果")
+                            else:
+                                st.error("清空第二轮分析结果失败")
                 else:
                     st.warning("没有找到第二轮分析的评论数据")
 

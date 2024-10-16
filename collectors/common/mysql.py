@@ -948,6 +948,16 @@ class MySQLDatabase:
         results = self.execute_query(query)
         return [result['worker_ip'] for result in results] if results else []
 
+    def clear_first_round_analysis_by_keyword(self, keyword):
+        """清空指定关键字的第一轮分析结果"""
+        query = "DELETE FROM tiktok_analyzed_comments WHERE keyword = %s"
+        return self.execute_update(query, (keyword,))
+
+    def clear_second_round_analysis_by_keyword(self, keyword):
+        """清空指定关键字的第二轮分析结果"""
+        query = "DELETE FROM tiktok_second_round_analyzed_comments WHERE keyword = %s"
+        return self.execute_update(query, (keyword,))
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
