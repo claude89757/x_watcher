@@ -204,23 +204,8 @@ def data_analyze(db: MySQLDatabase):
 
     with col1:
         st.text_area("第一轮分析Prompt（筛选潜在客户）", prompt_template_first_round, height=250)
-        example_comments_first = db.get_filtered_tiktok_comments_by_keyword(selected_keyword, limit=1000)
-        if example_comments_first:
-            df_example_first = pd.DataFrame(example_comments_first)
-            df_example_first = df_example_first[['user_id', 'reply_content']]  # 只选择需要的列
-            st.dataframe(df_example_first)
-        else:
-            st.write("没有找到第一轮分析的示例数据")
-
     with col2:
         st.text_area("第二轮分析Prompt（筛选高意向客户）", prompt_template_second_round, height=250)
-        example_comments_second = db.get_potential_customers(selected_keyword, limit=1000)
-        if example_comments_second:
-            df_example_second = pd.DataFrame(example_comments_second)
-            df_example_second = df_example_second[['user_id', 'reply_content', 'classification']]  # 只选择需要的列
-            st.dataframe(df_example_second)
-        else:
-            pass
 
     # 创建一列布局用于显示分析按钮和结果
     col1, _ = st.columns(2)
