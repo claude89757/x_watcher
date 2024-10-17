@@ -248,6 +248,10 @@ def process_with_gpt(model: str, prompt: str, max_tokens: int = 2000, temperatur
     :return: GPT模型的响应内容。
     """
     try:
+        logger.info(f"开始处理数据，使用模型：{model}")
+        logger.info(f"输入==============================================")
+        logger.info(prompt)
+        logger.info(f"输入==============================================")
         response = openai.ChatCompletion.create(
             model=model,
             messages=[
