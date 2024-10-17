@@ -35,7 +35,7 @@ def data_collect(db: MySQLDatabase):
                 return data.get('keyword', '')
         return ''
 
-    # 从缓存加载默认关键字
+    # 从缓存加载默认关字
     default_keyword = load_keyword_from_cache()
 
     # 创建任务表单
@@ -97,160 +97,138 @@ def data_collect(db: MySQLDatabase):
             st.error("❌ 无法获取有效的任务ID")
 
 
-    # 创建一个动态更新的容器
-    dynamic_content = st.empty()
-
-    # 定义一个更新函数
-    def update_content():
-        with dynamic_content.container():
-            running_tasks = get_running_tasks(db.get_all_tiktok_tasks())
-            if running_tasks:
-                st.info("🚀 运作中的任务状态")
-                for task in running_tasks:
-                    with st.container():
-                        # 进度条
-                        total_videos = db.get_total_videos_for_keyword(task['keyword'])
-                        processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
-                        pending_videos = total_videos - processed_videos
-                        progress = processed_videos / total_videos if total_videos > 0 else 0
-                        
-                        st.progress(progress)
-                        
-                        # 任务信息
-                        col1, col2 = st.columns([2, 2])
-                        with col1:
-                            st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
-                            st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
-                        
-                        with col2:
-                            comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
-                            st.write(f"已收集评论: {comments_count}")
-                            
-                            start_time = task['created_at']
-                            current_time = datetime.now()
-                            duration = current_time - start_time
-                            hours, remainder = divmod(duration.seconds, 3600)
-                            minutes, seconds = divmod(remainder, 60)
-                            duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-                            st.write(f"运行时间: {duration_str}")
-                        
-                    
-                    st.markdown("---")  # 添加分隔线
-        
-            else:
-                st.info("当前没有正在运行的任务", icon="ℹ️")
-
-    # 初次调用更新函数
-    update_content()
-
-    # 添加可见的手动刷新按钮
-    if st.button("刷新任务状态"):
-        update_content()
+    # 定义一个更新函数来刷新任务列表
+    def update_task_list():
+        tasks = db.get_all_tiktok_tasks()
+        if tasks:
+            task_data = []
+            current_time = datetime.now()
+            for task in tasks:
+                status_emoji = {
+                    'pending': '⏳',
+                    'running': '▶️',
+                    'paused': '⏸️',
+                    'completed': '✅',
+                    'failed': '❌'
+                }.get(task['status'], '❓')
+                
+                total_videos = db.get_total_videos_for_keyword(task['keyword'])
+                processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
+                pending_videos = total_videos - processed_videos
+                comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
+                
+                # 计算运行时间
+                if task['status'] in ['running', 'completed']:
+                    start_time = task['created_at'] if task['status'] == 'running' else task['created_at']
+                    duration = current_time - start_time
+                    hours, remainder = divmod(duration.total_seconds(), 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    run_time = f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
+                else:
+                    run_time = "00:00:00"
+                
+                task_data.append({
+                    "ID": task['id'],
+                    "关键词": task['keyword'],
+                    "状态": f"{status_emoji} {task['status']}",
+                    "总视频数": total_videos,
+                    "待检查视频": pending_videos,
+                    "已检查视频": processed_videos,
+                    "已收集评论数": comments_count,
+                    "已运行时间": run_time,
+                    "触发时间": task['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
+                    "更新时间": task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+                })
+            
+            df = pd.DataFrame(task_data)
+            return df
+        else:
+            return None
 
     # 任务列表
     st.subheader("任务列表")
-    tasks = db.get_all_tiktok_tasks()
+    
+    # 创建一个动态更新的容器
+    task_list_container = st.empty()
 
-    if tasks:
-        # 创建一个DataFrame来存储任务信息
-        task_data = []
-        for task in tasks:
-            status_emoji = {
-                'pending': '⏳',
-                'running': '▶️',
-                'paused': '⏸️',
-                'completed': '✅',
-                'failed': '❌'
-            }.get(task['status'], '❓')
-            
-            # 获取任务相关的统计数据
-            total_videos = db.get_total_videos_for_keyword(task['keyword'])
-            processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
-            pending_videos = total_videos - processed_videos
-            comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
-            
-            task_data.append({
-                "ID": task['id'],
-                "关键词": task['keyword'],
-                "状态": f"{status_emoji} {task['status']}",
-                "总视频数": total_videos,
-                "待检查视频": pending_videos,
-                "已检查视频": processed_videos,
-                "已收集评论数": comments_count,
-                "触发时间": task['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
-                "更新时间": task['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
-            })
-        
-        df = pd.DataFrame(task_data)
-        
-        # 显示任务列表
-        st.dataframe(df, use_container_width=True, hide_index=True)
-        
-        # 任务操作（默认折叠）
-        with st.expander("任务操作", expanded=False):
-            col1, col2 = st.columns(2)
-            with col1:
-                selected_task_id = st.selectbox("选择任务ID", [task['id'] for task in tasks])
-            with col2:
-                selected_task = next((task for task in tasks if task['id'] == selected_task_id), None)
-                if selected_task:
-                    st.write(f"当前状态: {selected_task['status']}")
-
-            if selected_task:
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    if selected_task['status'] == 'pending':
-                        all_tasks = db.get_all_tiktok_tasks()
-                        running_tasks = get_running_tasks(all_tasks)
-                        if len(running_tasks) < MAX_RUNNING_TASKS:
-                            if st.button('▶️ 开始'):
-                                db.update_tiktok_task_status(selected_task_id, 'running')
-                                st.success(f"任务 {selected_task_id} 已开始")
-                                st.rerun()
-                        else:
-                            st.warning(f"⚠️ 当前已有 {MAX_RUNNING_TASKS} 个任务在运行，无法开始新任务。")
-                    elif selected_task['status'] == 'running':
-                        if st.button('⏸️ 暂停'):
-                            db.update_tiktok_task_status(selected_task_id, 'paused')
-                            st.success(f"任务 {selected_task_id} 已暂停")
-                            st.rerun()
-                    elif selected_task['status'] == 'paused':
-                        if st.button('▶️ 继续'):
-                            try:
-                                available_workers = db.get_available_workers()
-                                successful_resumes = 0
-                                
-                                for worker in available_workers:
-                                    try:
-                                        worker_ip = worker['worker_ip']
-                                        response = requests.post(
-                                            f"http://{worker_ip}:5000/resume_tiktok_task",
-                                            json={"task_id": selected_task_id},
-                                            headers={"Content-Type": "application/json"}
-                                        )
-                                        response.raise_for_status()
-                                        successful_resumes += 1
-                                    except requests.RequestException as e:
-                                        st.error(f"❌ 在worker {worker_ip} 上恢复任务失败: {str(e)}")
-                                
-                                if successful_resumes > 0:
-                                    st.success(f"✅ 成功在 {successful_resumes} 个worker上恢复任务 ID: {selected_task_id}")
-                                    db.update_tiktok_task_status(selected_task_id, 'running')
-                                    st.rerun()
-                                else:
-                                    st.error("❌ 未能在任何worker上恢复任务")
-                            except Exception as e:
-                                st.error(f"恢复任务失败: {str(e)}")
-                with col2:
-                    if st.button('🗑️ 删除'): 
-                        if db.delete_tiktok_task(selected_task_id):
-                            st.success(f"✅ 成功删除任务 ID: {selected_task_id}")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ 删除任务 ID: {selected_task_id} 失败。请检查数据库日志以获取更多信息。")
+    # 初次显示任务列表
+    df = update_task_list()
+    if df is not None:
+        task_list_container.dataframe(df, use_container_width=True, hide_index=True)
     else:
-        st.write("📭 暂无任务")
+        task_list_container.write("📭 暂无任务")
 
+    # 添加刷新任务状态按钮
+    if st.button("刷新任务状态"):
+        df = update_task_list()
+        if df is not None:
+            task_list_container.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            task_list_container.write("📭 暂无任务")
+
+    # 任务操作（默认折叠）
+    with st.expander("任务操作", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_task_id = st.selectbox("选择任务ID", [task['id'] for task in db.get_all_tiktok_tasks()])
+        with col2:
+            selected_task = next((task for task in db.get_all_tiktok_tasks() if task['id'] == selected_task_id), None)
+            if selected_task:
+                st.write(f"当前状态: {selected_task['status']}")
+
+        if selected_task:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if selected_task['status'] == 'pending':
+                    all_tasks = db.get_all_tiktok_tasks()
+                    running_tasks = get_running_tasks(all_tasks)
+                    if len(running_tasks) < MAX_RUNNING_TASKS:
+                        if st.button('▶️ 开始'):
+                            db.update_tiktok_task_status(selected_task_id, 'running')
+                            st.success(f"任务 {selected_task_id} 已开始")
+                            st.rerun()
+                    else:
+                        st.warning(f"⚠️ 当前已有 {MAX_RUNNING_TASKS} 个任务在运行，无法开始新任务。")
+                elif selected_task['status'] == 'running':
+                    if st.button('⏸️ 暂停'):
+                        db.update_tiktok_task_status(selected_task_id, 'paused')
+                        st.success(f"任务 {selected_task_id} 已暂停")
+                        st.rerun()
+                elif selected_task['status'] == 'paused':
+                    if st.button('▶️ 继续'):
+                        try:
+                            available_workers = db.get_available_workers()
+                            successful_resumes = 0
+                            
+                            for worker in available_workers:
+                                try:
+                                    worker_ip = worker['worker_ip']
+                                    response = requests.post(
+                                        f"http://{worker_ip}:5000/resume_tiktok_task",
+                                        json={"task_id": selected_task_id},
+                                        headers={"Content-Type": "application/json"}
+                                    )
+                                    response.raise_for_status()
+                                    successful_resumes += 1
+                                except requests.RequestException as e:
+                                    st.error(f"❌ 在worker {worker_ip} 上恢复任务失败: {str(e)}")
+                            
+                            if successful_resumes > 0:
+                                st.success(f"✅ 成功在 {successful_resumes} 个worker上恢复任务 ID: {selected_task_id}")
+                                db.update_tiktok_task_status(selected_task_id, 'running')
+                                st.rerun()
+                            else:
+                                st.error("❌ 未能在任何worker上恢复任务")
+                        except Exception as e:
+                            st.error(f"恢复任务失败: {str(e)}")
+            with col2:
+                if st.button('🗑️ 删除'): 
+                    if db.delete_tiktok_task(selected_task_id):
+                        st.success(f"✅ 成功删除任务 ID: {selected_task_id}")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ 删除任务 ID: {selected_task_id} 失败。请检查数据库日志以获取更多信息。")
+ 
     if search_keyword:
         # 动态展示评论数据
         st.subheader("评论数据")
