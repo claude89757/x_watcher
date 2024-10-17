@@ -46,7 +46,12 @@ from datetime import datetime, timedelta
 import requests
 import glob
 from selenium.webdriver.common.keys import Keys
+import atexit
+import signal
+import subprocess
 
+
+# 预处理评论数据
 def preprocess_comment(comment):
     """预处理评论数据"""
     # 只保留字母、数字、空格和部分标点符号
@@ -56,8 +61,52 @@ def preprocess_comment(comment):
     # 截断过长的评论
     return comment[:500] if len(comment) > 500 else comment
 
+# 存储所有Chrome相关进程
+chrome_processes = []
+
+def cleanup_chrome_processes():
+    """
+    清理所有Chrome相关进程。
+    这个函数会遍历chrome_processes列表,尝试终止每个进程。
+    如果进程在5秒内没有终止,则强制结束该进程。
+    """
+    for process in chrome_processes:
+        try:
+            process.terminate()
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+        except Exception as e:
+            logger.error(f"清理Chrome进程时发生错误: {str(e)}")
+
+# 注册cleanup_chrome_processes函数,确保在脚本退出时被调用
+atexit.register(cleanup_chrome_processes)
+
+def cleanup_zombie_processes():
+    """
+    清理系统中的僵尸进程。
+    这个函数会查找系统中的僵尸进程并尝试终止它们。
+    僵尸进程是已经结束但仍然在进程表中的进程。
+    """
+    try:
+        # 获取所有进程的状态信息
+        zombie_processes = subprocess.check_output(["ps", "-A", "-ostat,ppid,pid,cmd"]).decode()
+        # 筛选出状态为'Z'(僵尸)的进程
+        zombie_lines = [line for line in zombie_processes.splitlines() if 'Z' in line]
+        for line in zombie_lines:
+            # 提取进程ID并尝试终止该进程
+            pid = int(line.split()[2])
+            os.kill(pid, signal.SIGKILL)
+    except Exception as e:
+        logger.error(f"清理僵尸进程时发生错误: {str(e)}")
+
 def setup_driver():
-    """设置并返回一个Selenium WebDriver实例。"""
+    """
+    设置并返回一个Selenium WebDriver实例。
+    这个函数会根据当前操作系统设置适当的选项,
+    然后创建一个Chrome WebDriver实例。
+    如果创建失败,会清理所有Chrome进程并抛出异常。
+    """
     options = uc.ChromeOptions()
     
     # 根据操作系统设置无头模式
@@ -83,14 +132,19 @@ def setup_driver():
     logger.info("正在设置WebDriver选项")
     
     # 使用全局定义的 CHROME_DRIVER 常量
-    driver = uc.Chrome(driver_executable_path=CHROME_DRIVER, options=options)
-    logger.info(f"WebDriver已设置成功，使用驱动程序路径: {CHROME_DRIVER}")
-
-    # 设置浏览器全屏
-    driver.maximize_window()
-    logger.info("浏览器已设置为全屏模式")
-
-    return driver
+    try:
+        driver = uc.Chrome(driver_executable_path=CHROME_DRIVER, options=options)
+        # 将新创建的Chrome进程添加到全局列表中
+        chrome_processes.append(driver.service.process)
+        logger.info(f"WebDriver已设置成功，使用驱动程序路径: {CHROME_DRIVER}")
+        driver.maximize_window()
+        logger.info("浏览器已设置为全屏模式")
+        return driver
+    except Exception as e:
+        logger.error(f"设置WebDriver时发生错误: {str(e)}")
+        # 如果设置失败,清理所有Chrome进程
+        cleanup_chrome_processes()
+        raise
 
 def random_sleep(min_seconds=1, max_seconds=3):
     """随机等待一段时间，模拟人类行为。"""
@@ -517,6 +571,7 @@ def process_task(task_id, keyword, server_ip):
     db.connect()
     driver = None
     try:
+        cleanup_zombie_processes()  # 在开始任务前清理僵尸进程
         logger.info(f"开始处理任务 ID: {task_id}, 关键词: {keyword}, 服务器IP: {server_ip}")
         db.update_tiktok_task_details(task_id, status='running', start_time=datetime.now())
         db.add_tiktok_task_log(task_id, 'info', f"开始处理TikTok任务: {keyword}")
@@ -580,8 +635,12 @@ def process_task(task_id, keyword, server_ip):
             take_screenshot(driver, f"error_task_{task_id}")
     finally:
         if driver:
-            driver.quit()
+            try:
+                driver.quit()
+            except Exception as e:
+                logger.error(f"关闭WebDriver时发生错误: {str(e)}")
         db.disconnect()
+        cleanup_chrome_processes()  # 确保在任务结束时清理所有Chrome进程
 
 def main():
     username = "claudexie1"
