@@ -8,31 +8,61 @@
 """
 import traceback
 import csv
-
+import os
+import json
 import pandas as pd
-import requests
-import streamlit as st
+import openai
 from io import StringIO
+import streamlit as st
 
-from common.config import CONFIG
 from common.log_config import setup_logger
 
-# Configure logger
+# 配置日志
 logger = setup_logger(__name__)
 
+def get_openai_api_key():
+    """
+    从环境变量或本地文件缓存中获取 OPENAI_API_KEY
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+    
+    # 如果环境变量中没有，尝试从本地文件读取
+    cache_file = os.path.expanduser("~/.openai_api_key")
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, "r") as f:
+                data = json.load(f)
+                return data.get("api_key")
+        except Exception as e:
+            logger.error(f"从本地文件读取 API 密钥失败：{e}")
+    
+    logger.error("未找到 OPENAI_API_KEY，请设置环境变量或在本地文件中配置")
+    return None
+
+# 获取 API 密钥
+OPENAI_API_KEY = get_openai_api_key()
+
+# 设置 OpenAI API 密钥
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
+else:
+    logger.error("未设置 OPENAI_API_KEY，某些功能可能无法正常工作")
 
 def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_size: int = 100) -> pd.DataFrame:
     """
     发送数据到GPT模型，获取分析结果。
+    :param model: 使用的GPT模型名称。
     :param system_prompt: 系统级指令，用于提供分析上下文。
     :param data: 包含需要分析的数据的DataFrame。
-    :param batch_size: 每次发送的数据行数，默认1000行。
+    :param batch_size: 每次发送的数据行数，默认100行。
     :return: 包含分析结果的DataFrame。
     """
     results = []
-    max_tokens = 2000  # 假设每行输入和输出都很长
+    max_tokens = 2000
 
-    # 初始化 Streamlit 进度条和文本显示
+    # 初始化Streamlit进度条和文本显示
     progress_bar = st.progress(0)
     status_text = st.empty()
 
@@ -44,61 +74,43 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
         batch_csv = batch.to_csv(index=False)
 
         batch_prompt = f"{system_prompt}\n\n" \
-               f"Analyze the following data and provide the output in CSV format " \
-               f"with the following structure:" \
-               f"\n1. Original data with all columns intact." \
-               f"\n2. A new column named 'Analysis Explanation' " \
-               f"with insights or explanations for each row based on the data. " \
-               f"Each explanation should be enclosed in double quotes and limited to 20 characters." \
-               f"\n3. A new column named 'Classification Tag' with one of two fixed categories or tags: " \
-               f'"High Interest" or "Low Interest" indicating the potential interest level of each row in product XYZ. ' \
-               f"\n\nData:\n{batch_csv}"
+               f"分析以下数据并以CSV格式提供输出，结构如下：" \
+               f"\n1. 保持原始数据的所有列不变。" \
+               f"\n2. 新增一列名为'分析说明'，" \
+               f"为每行数据提供基于数据的见解或解释。" \
+               f"每个解释应用双引号括起，并限制在20个字符以内。" \
+               f"\n3. 新增一列名为'分类标签'，包含两个固定类别或标签之一：" \
+               f'"高兴趣"或"低兴趣"，表示每行对产品XYZ的潜在兴趣水平。' \
+               f"\n\n数据：\n{batch_csv}"
 
-
-        payload = {
-            "messages": [
-                {"role": "system", "content": batch_prompt}
-            ],
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "max_tokens": max_tokens
-        }
-
-        logger.info("input==============================================")
-        logger.info(batch_prompt)
-        logger.info("input==============================================")
-
-        url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
-              f"api-version=2024-02-15-preview"
         try:
-            response = requests.post(url,
-                                     headers={
-                                         "Content-Type": "application/json",
-                                         "api-key": CONFIG.get("azure_open_api_key"),
-                                     },
-                                     json=payload
+            response = openai.ChatCompletion.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": batch_prompt}
+                ],
+                temperature=0.7,
+                top_p=0.95,
+                max_tokens=max_tokens
             )
-            response.raise_for_status()
-            logger.info(f"response: {response.json()}")
-            response_content = response.json()['choices'][0]['message']['content']
+            response_content = response.choices[0].message.content
         except Exception as error:
-            # Log the full traceback and error details
             error_message = traceback.format_exc()
-            st.error(f"Batch{i // batch_size + 1}/{total_batches} failed: {error_message}")
-            logger.error(f"Exception details: {error_message}")
+            st.error(f"批次{i // batch_size + 1}/{total_batches}失败：{error_message}")
+            logger.error(f"异常详情：{error_message}")
             continue
 
+        # 处理响应内容
         if "```csv" in response_content:
             csv_content = response_content.split("```csv")[1].split("```")[0].strip()
         else:
             csv_content = response_content
 
-        # Debugging: Print the CSV content to verify format
-        logger.info("output==============================================")
+        logger.info("输出==============================================")
         logger.info(csv_content)
-        logger.info("output==============================================")
+        logger.info("输出==============================================")
 
-        # Handle potential parsing errors
+        # 处理CSV内容
         csv_rows = []
         try:
             csv_reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"')
@@ -107,33 +119,30 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
                     results.append(row)
                     csv_rows.append(row)
                 else:
-                    st.warning(f"Skipping row with unexpected number of fields: {row}")
+                    st.warning(f"跳过字段数量不符的行：{row}")
         except csv.Error as e:
-            st.error(f"Error parsing CSV: {e}")
+            st.error(f"CSV解析错误：{e}")
 
-        # 每次处理完一批后更新进度条和状态信息
+        # 更新进度和状态
         progress_percentage = (i + batch_size) / len(data)
         progress_bar.progress(min(progress_percentage, 1.0))
-        # 构建状态信息字符串
         status_message = (
-            f"> Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, "
-            f"received {len(csv_rows)} rows."
+            f"> 批次 {i // batch_size + 1}/{total_batches}：已发送 {len(batch)} 行，"
+            f"已接收 {len(csv_rows)} 行。"
         )
-        # 更新 Streamlit 状态文本为 Markdown 格式
         status_text.markdown(status_message)
 
-    # 合并所有 DataFrame
+    # 合并结果
     if results:
         result_df = pd.DataFrame(results[1:], columns=results[0])
     else:
         result_df = pd.DataFrame()
 
-    # 处理完成后，清除状态信息
+    # 清理进度显示
     progress_bar.empty()
-    status_text.text("Processing completed!")
+    status_text.text("处理完成！")
 
     return result_df
-
 
 def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataFrame, batch_size: int = 100) -> pd.DataFrame:
     """
@@ -145,7 +154,7 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
     :return: 包含推广短信的DataFrame。
     """
     results = []
-    max_tokens = 2000  # 假设每行输入和输出都很长
+    max_tokens = 2000
 
     # 初始化 Streamlit 进度条和文本显示
     progress_bar = st.progress(0)
@@ -159,43 +168,28 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
         batch_csv = batch.to_csv(index=False)
 
         batch_prompt = f"{system_prompt}\n\n" \
-                       f"Generate a promotional SMS for each user based on their information and comments. " \
-                       f"The output should be in CSV format with the following structure:" \
-                       f"\n1. Original data with all columns intact." \
-                       f"\n2. A new column named 'Promotional SMS' with a personalized promotional message " \
-                       f"for each user. Each message should be enclosed in double quotes." \
-                       f"\n\nData:\n{batch_csv}"
-        payload = {
-            "messages": [
-                {"role": "system", "content": batch_prompt}
-            ],
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "max_tokens": max_tokens
-        }
+                       f"根据每个用户的信息和评论生成推广短信。" \
+                       f"输出应为CSV格式，结构如下：" \
+                       f"\n1. 保持原始数据的所有列不变。" \
+                       f"\n2. 新增一列名为'推广短信'，包含为每个用户定制的推广信息。" \
+                       f"每条信息应用双引号括起。" \
+                       f"\n\n数据：\n{batch_csv}"
 
-        logger.info("input==============================================")
-        logger.info(batch_prompt)
-        logger.info("input==============================================")
-
-        url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
-              f"api-version=2024-02-15-preview"
         try:
-            response = requests.post(url,
-                                     headers={
-                                         "Content-Type": "application/json",
-                                         "api-key": CONFIG.get("azure_open_api_key"),
-                                     },
-                                     json=payload
+            response = openai.ChatCompletion.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": batch_prompt}
+                ],
+                temperature=0.7,
+                top_p=0.95,
+                max_tokens=max_tokens
             )
-            response.raise_for_status()
-            logger.info(f"response: {response.json()}")
-            response_content = response.json()['choices'][0]['message']['content']
+            response_content = response.choices[0].message.content
         except Exception as error:
-            # Log the full traceback and error details
             error_message = traceback.format_exc()
-            st.error(f"Batch {i // batch_size + 1}/{total_batches} failed: {error_message}")
-            logger.error(f"Exception details: {error_message}")
+            st.error(f"批次 {i // batch_size + 1}/{total_batches} 失败：{error_message}")
+            logger.error(f"异常详情：{error_message}")
             continue
 
         if "```csv" in response_content:
@@ -203,12 +197,11 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
         else:
             csv_content = response_content
 
-        # Debugging: Print the CSV content to verify format
-        logger.info("output==============================================")
+        logger.info("输出==============================================")
         logger.info(csv_content)
-        logger.info("output==============================================")
+        logger.info("输出==============================================")
 
-        # Handle potential parsing errors
+        # 处理CSV内容
         csv_rows = []
         try:
             csv_reader = csv.reader(StringIO(csv_content), delimiter=',', quotechar='"')
@@ -217,30 +210,28 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
                     results.append(row)
                     csv_rows.append(row)
                 else:
-                    st.warning(f"Skipping row with unexpected number of fields: {row}")
+                    st.warning(f"跳过字段数量不符的行：{row}")
         except csv.Error as e:
-            st.error(f"Error parsing CSV: {e}")
+            st.error(f"CSV解析错误：{e}")
 
-        # 每次处理完一批后更新进度条和状态信息
+        # 更新进度和状态
         progress_percentage = (i + batch_size) / len(user_data)
         progress_bar.progress(min(progress_percentage, 1.0))
-        # 构建状态信息字符串
         status_message = (
-            f"> Batch {i // batch_size + 1}/{total_batches}: Sent {len(batch)} rows, "
-            f"received {len(csv_rows)} rows."
+            f"> 批次 {i // batch_size + 1}/{total_batches}：已发送 {len(batch)} 行，"
+            f"已接收 {len(csv_rows)} 行。"
         )
-        # 更新 Streamlit 状态文本为 Markdown 格式
         status_text.markdown(status_message)
 
-    # 合并所有 DataFrame
+    # 合并结果
     if results:
         result_df = pd.DataFrame(results[1:], columns=results[0])
     else:
         result_df = pd.DataFrame()
 
-    # 处理完成后，清除状态信息
+    # 清理进度显示
     progress_bar.empty()
-    status_text.text("Processing completed!")
+    status_text.text("处理完成！")
 
     return result_df
 
@@ -250,45 +241,30 @@ def process_with_gpt(model: str, prompt: str, max_tokens: int = 2000, temperatur
     使用GPT模型处理单次请求数据。
     
     :param model: 使用的GPT模型名称。
-    :param prompt: 完整的提示，包括系统提示、用户提示和数据。
+    :param prompt: 完整的提示��包括系统提示、用户提示和数据。
     :param max_tokens: 模型返回的最大token数，默认2000。
     :param temperature: 控制输出随机性，默认0.7。
     :param top_p: 控制输出多样性，默认0.95。
     :return: GPT模型的响应内容。
     """
-    payload = {
-        "messages": [
-            {"role": "system", "content": prompt}
-        ],
-        "temperature": temperature,
-        "top_p": top_p,
-        "max_tokens": max_tokens
-    }
-
-    logger.info("input==============================================")
-    logger.info(prompt)
-    logger.info("input==============================================")
-
-    url = f"https://chatgpt3.openai.azure.com/openai/deployments/{model}/chat/completions?" \
-          f"api-version=2024-02-15-preview"
     try:
-        response = requests.post(url,
-                                 headers={
-                                     "Content-Type": "application/json",
-                                     "api-key": CONFIG.get("azure_open_api_key"),
-                                 },
-                                 json=payload
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": prompt}
+            ],
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens
         )
-        response.raise_for_status()
-        logger.info(f"response: {response.json()}")
-        response_content = response.json()['choices'][0]['message']['content']
+        response_content = response.choices[0].message.content
     except Exception as error:
         error_message = traceback.format_exc()
-        logger.error(f"GPT processing failed: {error_message}")
+        logger.error(f"GPT处理失败：{error_message}")
         raise
 
-    logger.info("output==============================================")
+    logger.info("输出==============================================")
     logger.info(response_content)
-    logger.info("output==============================================")
+    logger.info("输出==============================================")
 
     return response_content
