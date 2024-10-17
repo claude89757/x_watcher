@@ -3,7 +3,7 @@
 """
 @Time    : 2024/8/13 21:35
 @Author  : claudexie
-@File    : azure_openai.py
+@File    : openai.py
 @Software: PyCharm
 """
 import traceback

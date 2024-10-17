@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from common.azure_openai import process_with_gpt
+from common.openai import process_with_gpt
 from collectors.common.mysql import MySQLDatabase
 import time
 import json

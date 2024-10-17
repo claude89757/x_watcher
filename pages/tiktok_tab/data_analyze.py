@@ -3,7 +3,7 @@ import json
 import streamlit as st
 import pandas as pd
 from collectors.common.mysql import MySQLDatabase
-from common.azure_openai import process_with_gpt
+from common.openai import process_with_gpt
 from io import StringIO
 import csv
 import logging

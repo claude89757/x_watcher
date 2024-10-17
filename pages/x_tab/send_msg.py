@@ -16,7 +16,7 @@ import streamlit as st
 
 from common.config import CONFIG
 from common.log_config import setup_logger
-from common.azure_openai import generate_promotional_sms
+from common.openai import generate_promotional_sms
 from common.collector_sdk import check_x_login_status
 from common.collector_sdk import send_promotional_msg
 
