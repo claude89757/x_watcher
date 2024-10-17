@@ -10,9 +10,21 @@ import logging
 import io
 import time
 from datetime import datetime
+import threading
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
+
+# 全局变量用于存储任务状态
+task_status = {
+    'is_running': False,
+    'current_round': None,
+    'progress': 0,
+    'total_comments': 0,
+    'processed_comments': 0,
+    'start_time': None,
+    'end_time': None
+}
 
 def generate_descriptions(keyword):
     """生成产品描述和目标客户描述"""
@@ -74,6 +86,41 @@ def save_descriptions_to_cache(keyword, descriptions):
     cache[keyword] = descriptions
     with open(DESCRIPTION_CACHE_FILE, 'w') as f:
         json.dump(cache, f)
+
+def run_analysis_task(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
+    global task_status
+    task_status['is_running'] = True
+    task_status['start_time'] = datetime.now()
+    task_status['total_comments'] = total_comments
+    
+    try:
+        # 第一轮分析
+        task_status['current_round'] = '第一轮'
+        first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template_first)
+        
+        # 获取潜在客户数量
+        potential_customers_count = db.get_potential_customers_count(keyword)
+        
+        if potential_customers_count > 0:
+            # 第二轮分析
+            task_status['current_round'] = '第二轮'
+            second_round_analyze(db, keyword, model, batch_size, prompt_template_second)
+    
+    finally:
+        task_status['is_running'] = False
+        task_status['end_time'] = datetime.now()
+
+def start_analysis_if_not_running(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
+    global task_status
+    if not task_status['is_running']:
+        threading.Thread(target=run_analysis_task, args=(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second)).start()
+        return True
+    return False
+
+def update_task_progress(processed_comments):
+    global task_status
+    task_status['processed_comments'] = processed_comments
+    task_status['progress'] = min(processed_comments / task_status['total_comments'], 1.0)
 
 def data_analyze(db: MySQLDatabase):
     """
@@ -213,10 +260,19 @@ def data_analyze(db: MySQLDatabase):
 
     with col1:
         if st.button("开始分析", type="primary"):
-            # 在开始分析按钮之前添加警告提示
-            st.warning("警告：分析过程中请勿刷新页面，否则可能导致分析中断。")
-            analyze_comments(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round, prompt_template_second_round)
-        
+            if start_analysis_if_not_running(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round, prompt_template_second_round):
+                st.success("分析任务已开始在后台运行。您可以刷新页面查看进度。")
+            else:
+                st.warning("已有分析任务正在运行中。")
+
+    # 显示任务状态
+    if task_status['is_running']:
+        st.info(f"当前正在进行{task_status['current_round']}分析")
+        progress_bar = st.progress(task_status['progress'])
+        st.text(f"已处理 {task_status['processed_comments']}/{task_status['total_comments']} 条评论")
+    elif task_status['end_time']:
+        st.success(f"分析任务已完成。开始时间: {task_status['start_time']}, 结束时间: {task_status['end_time']}")
+
     # 使用expander来显示分析结果，默认折叠
     with st.expander("查看分析结果", expanded=False):
         display_analysis_results(db, selected_keyword)
