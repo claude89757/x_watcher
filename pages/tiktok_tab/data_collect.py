@@ -7,6 +7,7 @@ from collectors.common.mysql import MySQLDatabase
 from typing import List, Dict
 import time
 from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
 
 # 定义全局变量：同时运行的最大任务数
 MAX_RUNNING_TASKS = 2
@@ -97,74 +98,63 @@ def data_collect(db: MySQLDatabase):
             st.error("❌ 无法获取有效的任务ID")
 
 
-    # 在任务列表之前添加正在运行的任务进度条
-    st.info("🚀 运作中的任务状态")
-    running_tasks = get_running_tasks(db.get_all_tiktok_tasks())
-    
-    # 创建一个空容器来放置动态更新的内容
+    # 创建一个动态更新的容器
     dynamic_content = st.empty()
 
-    if running_tasks:
-        # 将动态内容放入空容器中
+    # 定义一个更新函数
+    def update_content():
         with dynamic_content.container():
-            for task in running_tasks:
-                with st.container():
-                    # 进度条
-                    total_videos = db.get_total_videos_for_keyword(task['keyword'])
-                    processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
-                    pending_videos = total_videos - processed_videos
-                    progress = processed_videos / total_videos if total_videos > 0 else 0
-                    
-                    st.progress(progress)
-                    
-                    # 任务信息
-                    col1, col2, col3 = st.columns([2, 2, 1])
-                    with col1:
-                        st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
-                        st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
-                    
-                    with col2:
-                        comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
-                        st.write(f"已收集评论: {comments_count}")
+            st.info("🚀 运作中的任务状态")
+            running_tasks = get_running_tasks(db.get_all_tiktok_tasks())
+            
+            if running_tasks:
+                for task in running_tasks:
+                    with st.container():
+                        # 进度条
+                        total_videos = db.get_total_videos_for_keyword(task['keyword'])
+                        processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
+                        pending_videos = total_videos - processed_videos
+                        progress = processed_videos / total_videos if total_videos > 0 else 0
                         
-                        start_time = task['created_at']
-                        current_time = datetime.now()
-                        duration = current_time - start_time
-                        hours, remainder = divmod(duration.seconds, 3600)
-                        minutes, seconds = divmod(remainder, 60)
-                        duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-                        st.write(f"运行时间: {duration_str}")
+                        st.progress(progress)
+                        
+                        # 任务信息
+                        col1, col2, col3 = st.columns([2, 2, 1])
+                        with col1:
+                            st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
+                            st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
+                        
+                        with col2:
+                            comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
+                            st.write(f"已收集评论: {comments_count}")
+                            
+                            start_time = task['created_at']
+                            current_time = datetime.now()
+                            duration = current_time - start_time
+                            hours, remainder = divmod(duration.seconds, 3600)
+                            minutes, seconds = divmod(remainder, 60)
+                            duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                            st.write(f"运行时间: {duration_str}")
+                        
+                        with col3:
+                            st.markdown("🔄 任务进行中...", unsafe_allow_html=True)
                     
-                    with col3:
-                        st.markdown("🔄 任务进行中...", unsafe_allow_html=True)
-                
-                st.markdown("---")  # 添加分隔线
+                    st.markdown("---")  # 添加分隔线
         
-        # 添加自动刷新脚本，只刷新动态内容
-        st.markdown("""
-        <script>
-        function refreshContent() {
-            const containers = window.parent.document.querySelectorAll('.stApp > div > div > div > div > div > div > div > div > div');
-            const dynamicContainer = containers[1];  // 假设动态内容在第二个容器中
-            if (dynamicContainer) {
-                const url = window.parent.location.href;
-                fetch(url)
-                    .then(response => response.text())
-                    .then(html => {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        const newContent = doc.querySelectorAll('.stApp > div > div > div > div > div > div > div > div > div')[1];
-                        if (newContent) {
-                            dynamicContainer.innerHTML = newContent.innerHTML;
-                        }
-                    });
-            }
-        }
-        setInterval(refreshContent, 3000);
-        </script>
-        """, unsafe_allow_html=True)
-    else:
-        st.info("当前没有正在运行的任务")
+            else:
+                st.info("当前没有正在运行的任务")
+
+    # 初次调用更新函数
+    update_content()
+
+    # 使用st.empty()创建一个隐藏的元素来触发刷新
+    refresh_trigger = st.empty()
+
+    # 每3秒触发一次刷新
+    if refresh_trigger.button('Refresh', key='refresh_button'):
+        update_content()
+    
+    st.write('<script>setInterval(function() {document.querySelector("button[kind=secondary]").click();}, 3000);</script>', unsafe_allow_html=True)
 
     # 任务列表
     st.subheader("任务列表")
