@@ -7,7 +7,6 @@ from collectors.common.mysql import MySQLDatabase
 from typing import List, Dict
 import time
 from datetime import datetime
-from streamlit_autorefresh import st_autorefresh
 
 # 定义全局变量：同时运行的最大任务数
 MAX_RUNNING_TASKS = 2
@@ -147,14 +146,26 @@ def data_collect(db: MySQLDatabase):
     # 初次调用更新函数
     update_content()
 
-    # 使用st.empty()创建一个隐藏的元素来触发刷新
-    refresh_trigger = st.empty()
+    # 添加一个隐藏的刷新按钮
+    refresh_placeholder = st.empty()
+    refresh_button = refresh_placeholder.button("Refresh", key="hidden_refresh", style="display:none;")
 
-    # 每3秒触发一次刷新
-    if refresh_trigger.button('Refresh', key='refresh_button'):
+    if refresh_button:
         update_content()
-    
-    st.write('<script>setInterval(function() {document.querySelector("button[kind=secondary]").click();}, 3000);</script>', unsafe_allow_html=True)
+
+    # 添加自动刷新的 JavaScript 代码
+    st.markdown("""
+    <script>
+    function autoRefresh() {
+        document.querySelector('button[kind=secondary]').click();
+    }
+    setInterval(autoRefresh, 3000);
+    </script>
+    """, unsafe_allow_html=True)
+
+    # 添加可见的手动刷新按钮
+    if st.button("手动刷新"):
+        update_content()
 
     # 任务列表
     st.subheader("任务列表")
