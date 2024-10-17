@@ -4,6 +4,10 @@ import requests
 import pandas as pd
 import streamlit as st
 from collectors.common.mysql import MySQLDatabase
+from typing import List, Dict
+
+# 定义全局变量：同时运行的最大任务数
+MAX_RUNNING_TASKS = 2
 
 
 def data_collect(db: MySQLDatabase):
@@ -12,6 +16,7 @@ def data_collect(db: MySQLDatabase):
     """
     # 全局面板
     st.info("本页面用于从TikTok收集数据并创建数据采集任务。")
+    st.info(f"当前设置：最多同时运行 {MAX_RUNNING_TASKS} 个任务")
 
     # 定义缓存文件路径
     KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
@@ -48,16 +53,22 @@ def data_collect(db: MySQLDatabase):
             st.warning(f"⚠️ 已存在关键词为 '{search_keyword}' 的运行中任务。任务ID: {running_tasks[0]['id']}")
             task_id = running_tasks[0]['id']
         else:
-            # 在MySQL中创建新任务
-            task_id = db.create_tiktok_task(search_keyword)
-            if task_id:
-                st.success(f"✅ 成功在数据库中创建任务。ID: {task_id}")
+            # 检查当前运行中的任务数量
+            all_tasks = db.get_all_tiktok_tasks()
+            running_tasks = get_running_tasks(all_tasks)
+            if len(running_tasks) >= MAX_RUNNING_TASKS:
+                st.error(f"❌ 当前已有 {MAX_RUNNING_TASKS} 个任务在运行，请等待其他任务完成后再创建新任务。")
             else:
-                st.error("❌ 在数据库中创建任务失败")
-                return  # 如果创建任务失败，直接返回
+                # 在MySQL中创建新任务
+                task_id = db.create_tiktok_task(search_keyword)
+                if task_id:
+                    st.success(f"✅ 成功在数据库中创建任务。ID: {task_id}")
+                else:
+                    st.error("❌ 在数据库中创建任务失败")
+                    return  # 如果创建任务失败，直接返回
 
         # 无论是新任务还是已存在的任务，都触发worker执行
-        if task_id:
+        if task_id and len(running_tasks) < MAX_RUNNING_TASKS:
             # 获取所有可用的worker
             available_workers = db.get_available_workers()
             successful_triggers = 0
@@ -79,6 +90,8 @@ def data_collect(db: MySQLDatabase):
                 st.success(f"✅ 成功触发 {successful_triggers} 个worker")
             else:
                 st.error("❌ 未能触发任何worker")
+        elif len(running_tasks) >= MAX_RUNNING_TASKS:
+            st.warning(f"⚠️ 当前已有 {MAX_RUNNING_TASKS} 个任务在运行，无法触发新任务。")
         else:
             st.error("❌ 无法获取有效的任务ID")
 
@@ -136,10 +149,15 @@ def data_collect(db: MySQLDatabase):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     if selected_task['status'] == 'pending':
-                        if st.button('▶️ 开始'):
-                            db.update_tiktok_task_status(selected_task_id, 'running')
-                            st.success(f"任务 {selected_task_id} 已开始")
-                            st.rerun()
+                        all_tasks = db.get_all_tiktok_tasks()
+                        running_tasks = get_running_tasks(all_tasks)
+                        if len(running_tasks) < MAX_RUNNING_TASKS:
+                            if st.button('▶️ 开始'):
+                                db.update_tiktok_task_status(selected_task_id, 'running')
+                                st.success(f"任务 {selected_task_id} 已开始")
+                                st.rerun()
+                        else:
+                            st.warning(f"⚠️ 当前已有 {MAX_RUNNING_TASKS} 个任务在运行，无法开始新任务。")
                     elif selected_task['status'] == 'running':
                         if st.button('⏸️ 暂停'):
                             db.update_tiktok_task_status(selected_task_id, 'paused')
@@ -203,3 +221,8 @@ def data_collect(db: MySQLDatabase):
     # 添加刷新按钮
     if st.button("刷新数据"):
         st.rerun()
+
+
+def get_running_tasks(tasks: List[Dict]) -> List[Dict]:
+    """获取所有正在运行的任务"""
+    return [task for task in tasks if task['status'] == 'running']
