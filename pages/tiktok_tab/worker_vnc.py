@@ -23,10 +23,6 @@ def worker_vnc(db: MySQLDatabase):
         
         # 显示选中 worker 的信息
         st.write(f"状态: {selected_worker_info['status']}")
-        if selected_worker_info['current_task_ids']:
-            st.write(f"当前任务: {selected_worker_info['current_task_ids']}")
-        else:
-            st.write("当前无任务")
         
         # 构造 VNC URL，包含密码参数
         worker_ip = selected_worker_info['worker_ip']
