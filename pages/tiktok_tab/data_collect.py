@@ -5,6 +5,8 @@ import pandas as pd
 import streamlit as st
 from collectors.common.mysql import MySQLDatabase
 from typing import List, Dict
+import time
+from datetime import datetime
 
 # 定义全局变量：同时运行的最大任务数
 MAX_RUNNING_TASKS = 2
@@ -94,6 +96,46 @@ def data_collect(db: MySQLDatabase):
         else:
             st.error("❌ 无法获取有效的任务ID")
 
+
+    # 在任务列表之前添加正在运行的任务进度条
+    st.markdown("""
+    <div style='background-color: #1E1E1E; padding: 10px; border-radius: 5px;'>
+        <h3 style='color: #00BFFF; margin: 0;'>🚀 活跃任务状态</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    running_tasks = get_running_tasks(db.get_all_tiktok_tasks())
+    
+    if running_tasks:
+        for task in running_tasks:
+            with st.container():
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    total_videos = db.get_total_videos_for_keyword(task['keyword'])
+                    processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
+                    pending_videos = total_videos - processed_videos
+                    progress = processed_videos / total_videos if total_videos > 0 else 0
+                    
+                    st.progress(progress)
+                    st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
+                    st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
+                
+                with col2:
+                    st.write("🔄")  # 添加旋转图标
+                    comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
+                    st.write(f"已收集评论: {comments_count}")
+                    
+                    # 计算任务运行时间
+                    start_time = task['created_at']
+                    current_time = datetime.now()
+                    duration = current_time - start_time
+                    hours, remainder = divmod(duration.seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    st.write(f"运行时间: {hours}小时{minutes}分钟")
+        
+        # 添加自动刷新脚本
+        st.write('<script>setInterval(function(){window.location.reload();}, 10000);</script>', unsafe_allow_html=True)
+    else:
+        st.info("当前没有正在运行的任务")
 
     # 任务列表
     st.subheader("任务列表")
