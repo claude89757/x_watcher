@@ -11,7 +11,7 @@ import csv
 import os
 import json
 import pandas as pd
-import openai
+from openai import OpenAI
 from io import StringIO
 import streamlit as st
 
@@ -41,14 +41,16 @@ def get_openai_api_key():
     logger.error("未找到 OPENAI_API_KEY，请设置环境变量或在本地文件中配置")
     return None
 
-# 获取 API 密钥
-OPENAI_API_KEY = get_openai_api_key()
-
-# 设置 OpenAI API 密钥
-if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
-else:
-    logger.error("未设置 OPENAI_API_KEY，某些功能可能无法正常工作")
+def get_openai_client():
+    """
+    创建并返回 OpenAI 客户端实例
+    """
+    api_key = get_openai_api_key()
+    if api_key:
+        return OpenAI(api_key=api_key)
+    else:
+        logger.error("未设置 OPENAI_API_KEY，无法创建 OpenAI 客户端")
+        return None
 
 def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_size: int = 100) -> pd.DataFrame:
     """
@@ -59,6 +61,11 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
     :param batch_size: 每次发送的数据行数，默认100行。
     :return: 包含分析结果的DataFrame。
     """
+    client = get_openai_client()
+    if not client:
+        st.error("无法创建 OpenAI 客户端，请检查 API 密钥设置")
+        return pd.DataFrame()
+
     results = []
     max_tokens = 2000
 
@@ -84,7 +91,7 @@ def send_text_to_gpt(model: str, system_prompt: str, data: pd.DataFrame, batch_s
                f"\n\n数据：\n{batch_csv}"
 
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": batch_prompt}
@@ -153,6 +160,11 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
     :param batch_size: 每次发送的数据行数，默认100行。
     :return: 包含推广短信的DataFrame。
     """
+    client = get_openai_client()
+    if not client:
+        st.error("无法创建 OpenAI 客户端，请检查 API 密钥设置")
+        return pd.DataFrame()
+
     results = []
     max_tokens = 2000
 
@@ -176,7 +188,7 @@ def generate_promotional_sms(model: str, system_prompt: str, user_data: pd.DataF
                        f"\n\n数据：\n{batch_csv}"
 
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": batch_prompt}
@@ -241,18 +253,23 @@ def process_with_gpt(model: str, prompt: str, max_tokens: int = 2000, temperatur
     使用GPT模型处理单次请求数据。
     
     :param model: 使用的GPT模型名称。
-    :param prompt: 完整的提示��包括系统提示、用户提示和数据。
+    :param prompt: 完整的提示，包括系统提示、用户提示和数据。
     :param max_tokens: 模型返回的最大token数，默认2000。
     :param temperature: 控制输出随机性，默认0.7。
     :param top_p: 控制输出多样性，默认0.95。
     :return: GPT模型的响应内容。
     """
+    client = get_openai_client()
+    if not client:
+        logger.error("无法创建 OpenAI 客户端，请检查 API 密钥设置")
+        return ""
+
     try:
         logger.info(f"开始处理数据，使用模型：{model}")
         logger.info(f"输入==============================================")
         logger.info(prompt)
         logger.info(f"输入==============================================")
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": prompt}
