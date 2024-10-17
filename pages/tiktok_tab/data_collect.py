@@ -103,10 +103,9 @@ def data_collect(db: MySQLDatabase):
     # 定义一个更新函数
     def update_content():
         with dynamic_content.container():
-            st.info("🚀 运作中的任务状态")
             running_tasks = get_running_tasks(db.get_all_tiktok_tasks())
-            
             if running_tasks:
+                st.info("🚀 运作中的任务状态")
                 for task in running_tasks:
                     with st.container():
                         # 进度条
@@ -139,7 +138,7 @@ def data_collect(db: MySQLDatabase):
                     st.markdown("---")  # 添加分隔线
         
             else:
-                st.info("当前没有正在运行的任务")
+                st.info("当前没有正在运行的任务", icon="ℹ️")
 
     # 初次调用更新函数
     update_content()
