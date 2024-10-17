@@ -98,42 +98,67 @@ def data_collect(db: MySQLDatabase):
 
 
     # 在任务列表之前添加正在运行的任务进度条
-    st.markdown("""
-    <div style='background-color: #1E1E1E; padding: 10px; border-radius: 5px;'>
-        <h3 style='color: #00BFFF; margin: 0;'>🚀 活跃任务状态</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    st.info("🚀 运作中的任务状态")
     running_tasks = get_running_tasks(db.get_all_tiktok_tasks())
     
+    # 创建一个空容器来放置动态更新的内容
+    dynamic_content = st.empty()
+
     if running_tasks:
-        for task in running_tasks:
-            with st.container():
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    total_videos = db.get_total_videos_for_keyword(task['keyword'])
-                    processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
-                    pending_videos = total_videos - processed_videos
-                    progress = processed_videos / total_videos if total_videos > 0 else 0
+        # 将动态内容放入空容器中
+        with dynamic_content.container():
+            for task in running_tasks:
+                with st.container():
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        total_videos = db.get_total_videos_for_keyword(task['keyword'])
+                        processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
+                        pending_videos = total_videos - processed_videos
+                        progress = processed_videos / total_videos if total_videos > 0 else 0
+                        
+                        st.progress(progress)
+                        st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
+                        st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
                     
-                    st.progress(progress)
-                    st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
-                    st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
-                
-                with col2:
-                    st.write("🔄")  # 添加旋转图标
-                    comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
-                    st.write(f"已收集评论: {comments_count}")
-                    
-                    # 计算任务运行时间
-                    start_time = task['created_at']
-                    current_time = datetime.now()
-                    duration = current_time - start_time
-                    hours, remainder = divmod(duration.seconds, 3600)
-                    minutes, seconds = divmod(remainder, 60)
-                    st.write(f"运行时间: {hours}小时{minutes}分钟")
+                    with col2:
+                        spinner_placeholder = st.empty()
+                        comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
+                        st.write(f"已收集评论: {comments_count}")
+                        
+                        start_time = task['created_at']
+                        current_time = datetime.now()
+                        duration = current_time - start_time
+                        hours, remainder = divmod(duration.seconds, 3600)
+                        minutes, seconds = divmod(remainder, 60)
+                        duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                        st.write(f"运行时间: {duration_str}")
+
+                        with spinner_placeholder:
+                            st.spinner("任务进行中...")
         
-        # 添加自动刷新脚本
-        st.write('<script>setInterval(function(){window.location.reload();}, 10000);</script>', unsafe_allow_html=True)
+        # 添加自动刷新脚本，只刷新动态内容
+        st.markdown("""
+        <script>
+        function refreshContent() {
+            const containers = window.parent.document.querySelectorAll('.stApp > div > div > div > div > div > div > div > div > div');
+            const dynamicContainer = containers[1];  // 假设动态内容在第二个容器中
+            if (dynamicContainer) {
+                const url = window.parent.location.href;
+                fetch(url)
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContent = doc.querySelectorAll('.stApp > div > div > div > div > div > div > div > div > div')[1];
+                        if (newContent) {
+                            dynamicContainer.innerHTML = newContent.innerHTML;
+                        }
+                    });
+            }
+        }
+        setInterval(refreshContent, 3000);
+        </script>
+        """, unsafe_allow_html=True)
     else:
         st.info("当前没有正在运行的任务")
 
