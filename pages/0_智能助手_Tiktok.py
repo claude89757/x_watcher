@@ -87,13 +87,6 @@ if 'db' not in st.session_state:
     st.session_state.db = MySQLDatabase()
     st.session_state.db.connect()
 
-# 在页面的最后，确保数据库连接被正确关闭
-def on_shutdown():
-    if 'db' in st.session_state:
-        st.session_state.db.disconnect()
-
-st.on_session_end(on_shutdown)
-
 # 使用数据库连接
 db = st.session_state.db
 
@@ -133,5 +126,7 @@ try:
         account_management(db)
 
 finally:
-    # 不要在这里关闭连接，让 on_shutdown 函数处理
-    pass
+    # 脚本结束时关闭数据库连接
+    if 'db' in st.session_state:
+        st.session_state.db.disconnect()
+        del st.session_state.db
