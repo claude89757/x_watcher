@@ -118,7 +118,7 @@ def data_collect(db: MySQLDatabase):
                         st.progress(progress)
                         
                         # 任务信息
-                        col1, col2, col3 = st.columns([2, 2, 1])
+                        col1, col2 = st.columns([2, 2])
                         with col1:
                             st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
                             st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
@@ -135,8 +135,6 @@ def data_collect(db: MySQLDatabase):
                             duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
                             st.write(f"运行时间: {duration_str}")
                         
-                        with col3:
-                            st.markdown("🔄 任务进行中...", unsafe_allow_html=True)
                     
                     st.markdown("---")  # 添加分隔线
         
@@ -146,25 +144,8 @@ def data_collect(db: MySQLDatabase):
     # 初次调用更新函数
     update_content()
 
-    # 添加一个隐藏的刷新按钮
-    refresh_placeholder = st.empty()
-    refresh_button = refresh_placeholder.button("Refresh", key="hidden_refresh", style="display:none;")
-
-    if refresh_button:
-        update_content()
-
-    # 添加自动刷新的 JavaScript 代码
-    st.markdown("""
-    <script>
-    function autoRefresh() {
-        document.querySelector('button[kind=secondary]').click();
-    }
-    setInterval(autoRefresh, 3000);
-    </script>
-    """, unsafe_allow_html=True)
-
     # 添加可见的手动刷新按钮
-    if st.button("手动刷新"):
+    if st.button("刷新任务状态"):
         update_content()
 
     # 任务列表
@@ -288,11 +269,6 @@ def data_collect(db: MySQLDatabase):
             st.dataframe(comment_df, use_container_width=True)
         else:
             st.write("暂无相关评论")
-
-    # 添加刷新按钮
-    if st.button("刷新数据"):
-        st.rerun()
-
 
 def get_running_tasks(tasks: List[Dict]) -> List[Dict]:
     """获取所有正在运行的任务"""
