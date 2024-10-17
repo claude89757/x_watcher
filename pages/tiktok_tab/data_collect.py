@@ -109,19 +109,21 @@ def data_collect(db: MySQLDatabase):
         with dynamic_content.container():
             for task in running_tasks:
                 with st.container():
-                    col1, col2 = st.columns([3, 1])
+                    # 进度条
+                    total_videos = db.get_total_videos_for_keyword(task['keyword'])
+                    processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
+                    pending_videos = total_videos - processed_videos
+                    progress = processed_videos / total_videos if total_videos > 0 else 0
+                    
+                    st.progress(progress)
+                    
+                    # 任务信息
+                    col1, col2, col3 = st.columns([2, 2, 1])
                     with col1:
-                        total_videos = db.get_total_videos_for_keyword(task['keyword'])
-                        processed_videos = db.get_processed_videos_for_keyword(task['keyword'])
-                        pending_videos = total_videos - processed_videos
-                        progress = processed_videos / total_videos if total_videos > 0 else 0
-                        
-                        st.progress(progress)
                         st.write(f"任务ID: {task['id']} - 关键词: {task['keyword']}")
                         st.write(f"进度: {processed_videos}/{total_videos} 视频已处理")
                     
                     with col2:
-                        spinner_placeholder = st.empty()
                         comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
                         st.write(f"已收集评论: {comments_count}")
                         
@@ -132,9 +134,11 @@ def data_collect(db: MySQLDatabase):
                         minutes, seconds = divmod(remainder, 60)
                         duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
                         st.write(f"运行时间: {duration_str}")
-
-                        with spinner_placeholder:
-                            st.spinner("任务进行中...")
+                    
+                    with col3:
+                        st.markdown("🔄 任务进行中...", unsafe_allow_html=True)
+                
+                st.markdown("---")  # 添加分隔线
         
         # 添加自动刷新脚本，只刷新动态内容
         st.markdown("""
