@@ -237,7 +237,7 @@ def data_analyze(db: MySQLDatabase):
             st.error("上一个分析任务失败。请检查日志以获取更多信息。")
 
     # 使用expander来显示分析结果，默认折叠
-    with st.expander("查看分析结果", expanded=False):
+    with st.expander("查看分析结果", expanded=True):
         display_analysis_results(db, selected_keyword)
 
     # 将清空分析结果的按钮移到这里，并合并两轮清空操作
