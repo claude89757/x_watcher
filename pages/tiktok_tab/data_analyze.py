@@ -15,17 +15,6 @@ import threading
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
 
-# 全局变量用于存储任务状态
-task_status = {
-    'is_running': False,
-    'current_round': None,
-    'progress': 0,
-    'total_comments': 0,
-    'processed_comments': 0,
-    'start_time': None,
-    'end_time': None
-}
-
 def generate_descriptions(keyword):
     """生成产品描述和目标客户描述"""
     prompt = f"""
@@ -87,40 +76,8 @@ def save_descriptions_to_cache(keyword, descriptions):
     with open(DESCRIPTION_CACHE_FILE, 'w') as f:
         json.dump(cache, f)
 
-def run_analysis_task(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
-    global task_status
-    task_status['is_running'] = True
-    task_status['start_time'] = datetime.now()
-    task_status['total_comments'] = total_comments
-    
-    try:
-        # 第一轮分析
-        task_status['current_round'] = '第一轮'
-        first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template_first)
-        
-        # 获取潜在客户数量
-        potential_customers_count = db.get_potential_customers_count(keyword)
-        
-        if potential_customers_count > 0:
-            # 第二轮分析
-            task_status['current_round'] = '第二轮'
-            second_round_analyze(db, keyword, model, batch_size, prompt_template_second)
-    
-    finally:
-        task_status['is_running'] = False
-        task_status['end_time'] = datetime.now()
-
-def start_analysis_if_not_running(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
-    global task_status
-    if not task_status['is_running']:
-        threading.Thread(target=run_analysis_task, args=(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second)).start()
-        return True
-    return False
-
-def update_task_progress(processed_comments):
-    global task_status
-    task_status['processed_comments'] = processed_comments
-    task_status['progress'] = min(processed_comments / task_status['total_comments'], 1.0)
+def update_task_progress(db, task_id, processed_comments):
+    db.update_analysis_task(task_id, processed_comments=processed_comments)
 
 def data_analyze(db: MySQLDatabase):
     """
@@ -266,12 +223,18 @@ def data_analyze(db: MySQLDatabase):
                 st.warning("已有分析任务正在运行中。")
 
     # 显示任务状态
-    if task_status['is_running']:
-        st.info(f"当前正在进行{task_status['current_round']}分析")
-        progress_bar = st.progress(task_status['progress'])
-        st.text(f"已处理 {task_status['processed_comments']}/{task_status['total_comments']} 条评论")
-    elif task_status['end_time']:
-        st.success(f"分析任务已完成。开始时间: {task_status['start_time']}, 结束时间: {task_status['end_time']}")
+    latest_task = db.execute_query("SELECT * FROM tiktok_analysis_tasks ORDER BY created_at DESC LIMIT 1")
+    if latest_task:
+        latest_task = latest_task[0]
+        if latest_task['status'] == 'running':
+            st.info(f"当前正在进行{latest_task['current_round']}轮分析")
+            progress = latest_task['processed_comments'] / latest_task['total_comments']
+            progress_bar = st.progress(progress)
+            st.text(f"已处理 {latest_task['processed_comments']}/{latest_task['total_comments']} 条评论")
+        elif latest_task['status'] == 'completed':
+            st.success(f"分析任务已完成。开始时间: {latest_task['start_time']}, 结束时间: {latest_task['end_time']}")
+        elif latest_task['status'] == 'failed':
+            st.error("上一个分析任务失败。请检查日志以获取更多信息。")
 
     # 使用expander来显示分析结果，默认折叠
     with st.expander("查看分析结果", expanded=False):
@@ -367,7 +330,7 @@ def remove_punctuation(text):
     """移除字符串开头和结尾的标点符号"""
     return text.strip('.,;:!?"\' ')
 
-def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_template):
+def first_round_analyze(db, task_id, keyword, model, batch_size, total_comments, prompt_template):
     # 获取过滤后的评论数据
     filtered_comments = db.get_filtered_tiktok_comments_by_keyword(keyword, limit=total_comments)
 
@@ -437,6 +400,7 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
                 progress = (i + batch_size) / len(filtered_comments)
                 progress_bar.progress(min(progress, 1.0))
                 status_text.text(f"已处理 {min(i+batch_size, len(filtered_comments))}/{len(filtered_comments)} 条评论")
+                update_task_progress(db, task_id, min(i+batch_size, len(filtered_comments)))
 
         # 合并所有结果
         if results:
@@ -451,7 +415,7 @@ def first_round_analyze(db, keyword, model, batch_size, total_comments, prompt_t
     else:
         st.warning("没有找到相关的过滤后的评论数据")
 
-def second_round_analyze(db, keyword, model, batch_size, prompt_template):
+def second_round_analyze(db, task_id, keyword, model, batch_size, prompt_template):
     potential_customers = db.get_potential_customers(keyword)
     
     if not potential_customers:
@@ -523,6 +487,7 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
             progress = (i + batch_size) / len(potential_customers)
             progress_bar.progress(min(progress, 1.0))
             status_text.text(f"已处理 {min(i+batch_size, len(potential_customers))}/{len(potential_customers)} 条评论")
+            update_task_progress(db, task_id, min(i+batch_size, len(potential_customers)))
 
     # 合并所有结果
     if results:
@@ -533,3 +498,34 @@ def second_round_analyze(db, keyword, model, batch_size, prompt_template):
                 st.warning(f"第二轮被忽略的评论示例：\n" + "\n".join([str(comment) for comment in ignored_comments]))
     else:
         st.warning("没有成功处理任何评论数据")
+
+def start_analysis_if_not_running(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
+    # 检查是否有正在运行的任务
+    running_task = db.execute_query("SELECT id FROM tiktok_analysis_tasks WHERE status = 'running' LIMIT 1")
+    if not running_task:
+        threading.Thread(target=run_analysis_task, args=(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second)).start()
+        return True
+    return False
+
+def run_analysis_task(db, keyword, model, batch_size, total_comments, prompt_template_first, prompt_template_second):
+    task_id = db.create_analysis_task(keyword, total_comments)
+    db.update_analysis_task(task_id, status='running', start_time=datetime.now())
+    
+    try:
+        # 第一轮分析
+        db.update_analysis_task(task_id, current_round='first')
+        first_round_analyze(db, task_id, keyword, model, batch_size, total_comments, prompt_template_first)
+        
+        # 获取潜在客户数量
+        potential_customers_count = db.get_potential_customers_count(keyword)
+        
+        if potential_customers_count > 0:
+            # 第二轮分析
+            db.update_analysis_task(task_id, current_round='second')
+            second_round_analyze(db, task_id, keyword, model, batch_size, prompt_template_second)
+    
+    except Exception as e:
+        db.update_analysis_task(task_id, status='failed', end_time=datetime.now())
+        logging.error(f"分析任务失败: {str(e)}")
+    else:
+        db.update_analysis_task(task_id, status='completed', end_time=datetime.now())
