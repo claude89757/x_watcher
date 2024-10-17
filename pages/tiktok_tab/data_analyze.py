@@ -218,7 +218,7 @@ def data_analyze(db: MySQLDatabase):
             analyze_comments(db, selected_keyword, model, batch_size, total_comments, prompt_template_first_round, prompt_template_second_round)
         
     # 使用expander来显示分析结果，默认折叠
-    with st.expander("查看分析结果", expanded=False):
+    with st.expander("查看分析结果", expanded=True):
         display_analysis_results(db, selected_keyword)
 
     # 将清空分析结果的按钮移到这里，并合并两轮清空操作
