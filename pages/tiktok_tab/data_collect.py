@@ -12,11 +12,10 @@ MAX_RUNNING_TASKS = 2
 
 def data_collect(db: MySQLDatabase):
     """
-    本页面用于从TikTok收集数据并创建数据采集任务。
+    本页面用于从TikTok收集数据并创建数据采集任务， 。
     """
     # 全局面板
-    st.info("本页面用于从TikTok收集数据并创建数据采集任务。")
-    st.info(f"当前设置：最多同时运行 {MAX_RUNNING_TASKS} 个任务")
+    st.info(f"本页面用于从TikTok收集数据并创建数据采集任务，最多同时运行 {MAX_RUNNING_TASKS} 个任务")
 
     # 定义缓存文件路径
     KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
