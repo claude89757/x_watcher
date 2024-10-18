@@ -288,7 +288,7 @@ class MySQLDatabase:
         self.execute_update(create_tiktok_messages_table)
 
     def create_tiktok_task(self, keyword):
-        """创建TikTok任务,如果已存在相同关键字待处理任务则返回该任务ID"""
+        """创建TikTok任务,如果已在相同关键字待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
         check_query = f"""
         SELECT id FROM tiktok_tasks 
@@ -825,6 +825,17 @@ class MySQLDatabase:
     def get_all_tiktok_keywords(self):
         """获取TikTok关键字"""
         query = "SELECT DISTINCT keyword FROM tiktok_tasks"
+        results = self.execute_query(query)
+        return [result['keyword'] for result in results]
+
+    def get_all_tiktok_message_keywords(self):
+        """获取在tiktok_messages表中存在的所有TikTok关键字"""
+        query = """
+        SELECT DISTINCT keyword 
+        FROM tiktok_messages 
+        WHERE status = 'pending'
+        ORDER BY keyword
+        """
         results = self.execute_query(query)
         return [result['keyword'] for result in results]
 

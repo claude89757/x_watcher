@@ -12,14 +12,12 @@ logger = setup_logger(__name__)
 def send_msg(db):
     st.info("自动批量关注、留言、发送推广信息给高意向客户")
 
-    # 获取所有TikTok账号
-    accounts = db.get_tiktok_accounts()
-    account_options = [f"{account['username']} (ID: {account['id']}, IP: {account['login_ips']})" for account in accounts]
-    selected_accounts = st.multiselect("选择发送账号", account_options)
-    account_ids = [int(account.split("ID: ")[1].split(",")[0]) for account in selected_accounts]
-
     # 获取关键词列表
-    keywords = db.get_all_tiktok_keywords()
+    keywords = db.get_all_tiktok_message_keywords()
+    if not keywords:
+        st.warning("没有找到待发送的推广消息")
+        return
+
     selected_keyword = st.selectbox("选择关键词", keywords)
 
     # 从数据库获取所有推广消息（包括已发送和未发送的）
@@ -54,6 +52,12 @@ def send_msg(db):
     
     with col3:
         wait_time = st.selectbox("每批等待时间（秒）", options=[30, 60, 120, 300], index=1)
+
+    # 获取所有TikTok账号
+    accounts = db.get_tiktok_accounts()
+    account_options = [f"{account['username']} (ID: {account['id']}, IP: {account['login_ips']})" for account in accounts]
+    selected_accounts = st.multiselect("选择发送账号", account_options)
+    account_ids = [int(account.split("ID: ")[1].split(",")[0]) for account in selected_accounts]
 
     if st.button("开始发送", key="send_msg_button", type="primary"):
         # 限制发送消息数量，只选择未成功发送的消息
@@ -150,4 +154,3 @@ def send_msg(db):
             st.warning("部分消息可能仍在处理中。")
         
         st.rerun()  # 重新运行页面以刷新数据
-
