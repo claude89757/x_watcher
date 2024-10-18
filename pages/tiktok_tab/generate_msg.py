@@ -196,7 +196,7 @@ def generate_msg(db: MySQLDatabase):
 
     # 显示生成的推广信息并允许批量编辑
     if st.session_state.generated_messages:
-        st.subheader("生成的推广信息")
+        st.subheader("推广信息")
         
         # 将所有消息合并成一个字符串，每条消息占一行
         all_messages_text = "\n".join([f"{user_id}: {message}" for user_id, message in st.session_state.generated_messages.items()])
@@ -229,4 +229,4 @@ def generate_msg(db: MySQLDatabase):
         st.session_state.generated_messages = {}
         save_messages_to_cache(selected_keyword, {})
         st.success("已清除所有生成的推广信息。")
-        st.experimental_rerun()
+        st.rerun()

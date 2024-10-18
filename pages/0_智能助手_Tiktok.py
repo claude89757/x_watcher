@@ -42,11 +42,25 @@ logger = setup_logger(__name__)
 # Configure Streamlit pages and state
 st.set_page_config(page_title="Tiktok智能助手", page_icon="🤖", layout="wide")
 
+# 定义缓存文件路径
+KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
+
+def load_keyword_from_cache():
+    """从缓存文件加载关键字"""
+    if os.path.exists(KEYWORD_CACHE_FILE):
+        with open(KEYWORD_CACHE_FILE, 'r') as f:
+            data = json.load(f)
+            return data.get('keyword', '')
+    return ''
+
+
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
 if 'language' not in st.session_state:
     st.session_state.language = st.query_params.get('language')
+if 'cached_keyword' not in st.session_state:
+    st.session_state.cached_keyword = load_keyword_from_cache()
 
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
@@ -83,32 +97,9 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # 添加大标题
 st.title("Tiktok智能助手 🤖")
 
-# 使用 st.session_state 来存储数据库连接
-if 'db' not in st.session_state:
-    st.session_state.db = MySQLDatabase()
-    st.session_state.db.connect()
-
-# 使用数据库连接
-db = st.session_state.db
-
-# 定义缓存文件路径
-KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
-
-def load_keyword_from_cache():
-    """从缓存文件加载关键字"""
-    if os.path.exists(KEYWORD_CACHE_FILE):
-        with open(KEYWORD_CACHE_FILE, 'r') as f:
-            data = json.load(f)
-            return data.get('keyword', '')
-    return ''
-
-# 在主函数的开始处添加以下代码
-if 'cached_keyword' not in st.session_state:
-    st.session_state.cached_keyword = load_keyword_from_cache()
-if 'current_tab' not in st.session_state:
-    st.session_state.current_tab = "评论收集"
-if 'tab_changed' not in st.session_state:
-    st.session_state.tab_changed = False
+# 创建数据库连接
+db = MySQLDatabase()
+db.connect()
 
 try:
     # 获取全局统计数据
@@ -154,6 +145,4 @@ try:
 
 finally:
     # 脚本结束时关闭数据库连接
-    if 'db' in st.session_state:
-        st.session_state.db.disconnect()
-        del st.session_state.db
+    db.disconnect()
