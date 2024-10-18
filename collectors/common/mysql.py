@@ -833,10 +833,13 @@ class MySQLDatabase:
         query = """
         SELECT DISTINCT keyword 
         FROM tiktok_messages 
+        WHERE keyword IS NOT NULL AND keyword != ''
         ORDER BY created_at
         """
         results = self.execute_query(query)
-        return [result['keyword'] for result in results]
+        if not results:
+            return []
+        return [result['keyword'] for result in results if result.get('keyword')]
 
     def save_filtered_comments(self, filtered_comments):
         """保存过滤后的评论到新表"""
