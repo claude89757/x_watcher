@@ -177,7 +177,7 @@ def load_cookies(driver, username):
         driver.get("https://www.tiktok.com")
         logger.info("已导航到TikTok页")
         
-        # 等待页面���载完成
+        # 等待页面载完成
         WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
         
         # 尝试加载JSON格式的cookies
@@ -205,7 +205,7 @@ def load_cookies(driver, username):
         for cookie in current_cookies:
             logger.info(f"Cookie: {cookie['name']} = {cookie['value'][:10]}... (domain: {cookie['domain']})")
         
-        logger.info(f"Cookies���从 {filename} 加载")
+        logger.info(f"Cookies从 {filename} 加载")
         return True
     except FileNotFoundError:
         logger.info(f"未找到 {filename} 文件")
@@ -271,17 +271,27 @@ def get_last_login_time():
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
         return None
 
-def login_by_local_cookies(driver):
-    """尝试使用本地cookies文件登录TikTok，成功则返回用户ID"""
+def login_by_local_cookies(driver, username=None):
+    """
+    尝试使用本地cookies文件登录TikTok，成功则返回用户ID
+    :param driver: WebDriver实例
+    :param username: 可选，指定用户名来加载特定的cookie文件
+    """
     # 清理所有cookies
     driver.delete_all_cookies()
     logger.info("已清理所有cookies")
 
-    # 遍历当前目录查找cookies文件
-    cookie_files = glob.glob('*cookies.json')
+    if username:
+        # 如果指定了用户名，只尝试加载该用户的cookie文件
+        cookie_files = [f"{username}-cookies.json"]
+        logger.info(f"尝试加载用户 {username} 的cookies文件")
+    else:
+        # 否则遍历当前目录查找所有cookies文件
+        cookie_files = glob.glob('*cookies.json')
+        logger.info("尝试加载所有可用的cookies文件")
     
     if not cookie_files:
-        error_message = "当前目录下没有找到cookies文件"
+        error_message = "没有找到可用的cookies文件"
         logger.error(error_message)
         raise Exception(error_message)
 
@@ -698,70 +708,74 @@ def check_account_status(account_id, username, email):
     try:
         driver = setup_driver()
         
-        # 尝试使用本地cookies登录
-        user_id = login_by_local_cookies(driver)
-        
-        if user_id:
-            # 登录成功
-            db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active，使用本地cookies登录成功")
-        else:
-            # 登录失败,尝试重新登录
-            logger.info(f"使用本地cookies登录失败,尝试重新登录账号 {username}")
-            
-            # 导航到TikTok登录页面
-            driver.get("https://www.tiktok.com/login/phone-or-email/email")
-            
-            # 点击忘记密码按钮
-            forgot_password_button = WebDriverWait(driver, 15).until(
-                EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Forgot password?')]"))
-            )
-            forgot_password_button.click()
-            
-            # 等待邮箱输入框出现
-            email_input = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.NAME, "email"))
-            )
-            
-            # 输入邮箱
-            simulate_human_input(driver, email_input, email)
-            
-            # 随机暂停，模拟人类思考
-            time.sleep(random.uniform(0.5, 1.5))
-
-            logger.info(f"已输入邮箱 {email}，等待人工完成验证和登录...")
-            
-            # 开始15分钟的循环检查
-            start_time = time.time()
-            login_success = False
-            check_count = 0
-            while time.time() - start_time < 900:  # 900秒 = 15分钟
-                check_count += 1
-                logger.info(f"第 {check_count} 次检查登录状态 (已经过 {int(time.time() - start_time)} 秒)")
-                try:
-                    # 检查用户头像元素
-                    profile_icon = WebDriverWait(driver, 5).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-e2e="profile-icon"]'))
-                    )
-                    logger.info("检测到用户头像，登录成功")
-                    login_success = True
-                    break
-                except:
-                    logger.info("未检测到用户头像，继续等待...")
-                    # 每次检查后打印当前页面URL
-                    current_url = driver.current_url
-                    logger.info(f"当前页面URL: {current_url}")
-                    time.sleep(5)  # 每5秒检查一次
-            
-            if login_success:
-                # 登录成功，保存cookies
-                save_cookies(driver, username)
-                
+        # 尝试使用本地cookies登录，指定用户名
+        try:
+            user_id = login_by_local_cookies(driver, username)
+            if user_id:
+                # 登录成功，更新账号状态
                 db.update_tiktok_account_status(account_id, 'active')
-                logger.info(f"账号 {username} 状态更新为 active，并已保存新的cookies")
-            else:
-                db.update_tiktok_account_status(account_id, 'inactive')
-                logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
+                logger.info(f"账号 {username} 使用本地cookies登录成功，状态更新为active")
+                return  # 登录成功，直接返回
+        except Exception as e:
+            logger.error(f"使用本地cookies登录失败: {str(e)}")
+            # 继续执行手动登录逻辑
+        
+        # 登录失败或发生异常，尝试手动登录
+        logger.info(f"尝试手动登录账号 {username}")
+        
+        # 导航到TikTok登录页面
+        driver.get("https://www.tiktok.com/login/phone-or-email/email")
+        
+        # 点击忘记密码按钮
+        forgot_password_button = WebDriverWait(driver, 15).until(
+            EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Forgot password?')]"))
+        )
+        forgot_password_button.click()
+        
+        # 等待邮箱输入框出现
+        email_input = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.NAME, "email"))
+        )
+        
+        # 输入邮箱
+        simulate_human_input(driver, email_input, email)
+        
+        # 随机暂停，模拟人类思考
+        time.sleep(random.uniform(0.5, 1.5))
+
+        logger.info(f"已输入邮箱 {email}，等待人工完成验证和登录...")
+        
+        # 开始15分钟的循环检查
+        start_time = time.time()
+        login_success = False
+        check_count = 0
+        while time.time() - start_time < 900:  # 900秒 = 15分钟
+            check_count += 1
+            logger.info(f"第 {check_count} 次检查登录状态 (已经过 {int(time.time() - start_time)} 秒)")
+            try:
+                # 检查用户头像元素
+                profile_icon = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-e2e="profile-icon"]'))
+                )
+                logger.info("检测到用户头像，登录成功")
+                login_success = True
+                break
+            except:
+                logger.info("未检测到用户头像，继续等待...")
+                # 每次检查后打印当前页面URL
+                current_url = driver.current_url
+                logger.info(f"当前页面URL: {current_url}")
+                time.sleep(5)  # 每5秒检查一次
+        
+        if login_success:
+            # 登录成功，保存cookies
+            save_cookies(driver, username)
+            
+            db.update_tiktok_account_status(account_id, 'active')
+            logger.info(f"账号 {username} 状态更新为 active，并已保存新的cookies")
+        else:
+            db.update_tiktok_account_status(account_id, 'inactive')
+            logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
 
     except Exception as e:
         logger.error(f"检查账号 {username} 状态时发生错误: {str(e)}")
@@ -843,7 +857,7 @@ def simulate_human_scroll(driver):
         scroll_up = min(random.randint(int(viewport_height * 0.3), int(viewport_height * 0.7)), current_position)
         current_position -= scroll_up
         driver.execute_script(f"window.scrollTo(0, {current_position});")
-        logger.info(f"模拟人类向上滚动到 {current_position} 像素")
+        logger.info(f"模拟人类上滚动到 {current_position} 像素")
         time.sleep(random.uniform(0.3, 0.8))
     
     # 最后确保回到顶部
@@ -874,7 +888,7 @@ def send_single_promotion_message(driver, user_id, message):
             )
             logger.info("找到关注按钮,正在点击")
             follow_button.click()
-            logger.info(f"成功关注用户 {user_id}")
+            logger.info(f"关注用户 {user_id}")
             follow_success = True
         except Exception as e:
             logger.error(f"关注用户失败: {str(e)}")
