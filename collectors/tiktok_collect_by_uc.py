@@ -757,23 +757,46 @@ def check_account_status(account_id, username, email):
             driver.quit()
         db.disconnect()
 
-def send_promotion_message(user_id, message, account_id):
+def send_promotion_messages(user_ids, message, account_id, batch_size=5, wait_time=60):
     db = MySQLDatabase()
     db.connect()
     driver = None
+    results = []
     try:
         driver = setup_driver()
         
         # 获取账号信息
         account = db.get_tiktok_account_by_id(account_id)
         if not account:
-            return {"success": False, "message": "账号不存在", "action": "none"}
+            return [{"success": False, "message": "账号不存在", "action": "none", "user_id": user_id} for user_id in user_ids]
         
         # 使用账号登录
         login_success = login_by_local_cookies(driver)
         if not login_success:
-            return {"success": False, "message": "登录失败", "action": "none"}
+            return [{"success": False, "message": "登录失败", "action": "none", "user_id": user_id} for user_id in user_ids]
         
+        # 分批处理用户
+        for i in range(0, len(user_ids), batch_size):
+            batch = user_ids[i:i+batch_size]
+            for user_id in batch:
+                result = send_single_promotion_message(driver, user_id, message)
+                results.append(result)
+            
+            # 等待指定时间
+            logger.info(f"已发送 {len(results)} 条消息，等待 {wait_time} 秒后继续...")
+            time.sleep(wait_time)
+        
+        return results
+    except Exception as e:
+        logger.error(f"批量发送推广消息时发生错误: {str(e)}")
+        return results + [{"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_id} for user_id in user_ids[len(results):]]
+    finally:
+        if driver:
+            driver.quit()
+        db.disconnect()
+
+def send_single_promotion_message(driver, user_id, message):
+    try:
         # 访问用户主页
         user_profile_url = f"https://www.tiktok.com/@{user_id}"
         driver.get(user_profile_url)
@@ -805,7 +828,7 @@ def send_promotion_message(user_id, message, account_id):
                 post_button.click()
                 
                 logger.info(f"成功在用户 {user_id} 的视频下留言")
-                return {"success": True, "message": "成功关注并留言", "action": "follow_and_comment"}
+                return {"success": True, "message": "成功关注并留言", "action": "follow_and_comment", "user_id": user_id}
             except Exception as e:
                 logger.error(f"留言失败: {str(e)}")
         except Exception as e:
@@ -829,18 +852,14 @@ def send_promotion_message(user_id, message, account_id):
             send_button.click()
             
             logger.info(f"成功发送私信给用户 {user_id}")
-            return {"success": True, "message": "成功发送私信", "action": "direct_message"}
+            return {"success": True, "message": "成功发送私信", "action": "direct_message", "user_id": user_id}
         except Exception as e:
             logger.error(f"发送私信失败: {str(e)}")
         
-        return {"success": False, "message": "关注、留言和私信都失败", "action": "none"}
+        return {"success": False, "message": "关注、留言和私信都失败", "action": "none", "user_id": user_id}
     except Exception as e:
-        logger.error(f"发送推广消息时发生错误: {str(e)}")
-        return {"success": False, "message": f"发生错误: {str(e)}", "action": "none"}
-    finally:
-        if driver:
-            driver.quit()
-        db.disconnect()
+        logger.error(f"发送推广消息给用户 {user_id} 时发生错误: {str(e)}")
+        return {"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_id}
 
 # for local test
 if __name__ == '__main__':

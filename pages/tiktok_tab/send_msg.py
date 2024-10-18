@@ -1,42 +1,26 @@
 import streamlit as st
 from common.log_config import setup_logger
 import requests
-import time
-import concurrent.futures
-import urllib.parse
 import pandas as pd
+import math
+import time
 
 # 配置日志
 logger = setup_logger(__name__)
-
-def send_single_message(user_id, message, account_id):
-    try:
-        response = requests.post(
-            "http://localhost:5000/send_promotion_message",
-            json={"user_id": user_id, "message": message, "account_id": account_id}
-        )
-        return response.json()
-    except Exception as e:
-        logger.error(f"发送消息给 {user_id} 时发生错误: {str(e)}")
-        return {"error": str(e)}
 
 def send_msg(db):
     st.info("自动批量关注、留言、发送推广信息给高意向客户")
 
     # 获取所有TikTok账号
     accounts = db.get_tiktok_accounts()
-    account_options = [f"{account['username']} (ID: {account['id']})" for account in accounts]
-    selected_account = st.selectbox("选择发送账号", account_options)
-    account_id = int(selected_account.split("ID: ")[1][:-1])
+    account_options = [f"{account['username']} (ID: {account['id']}, IP: {account['login_ips']})" for account in accounts]
+    selected_accounts = st.multiselect("选择发送账号", account_options)
+    account_ids = [int(account.split("ID: ")[1].split(",")[0]) for account in selected_accounts]
 
     # 获取高意向客户
     keywords = db.get_all_tiktok_keywords()
     selected_keyword = st.selectbox("选择关键词", keywords)
     high_intent_customers = db.get_potential_customers(selected_keyword)
-
-    # 设置并发数和间隔时间
-    concurrency = st.selectbox("并发数量", options=range(1, 11), index=2)
-    interval = st.selectbox("发送间隔(秒)", options=range(1, 61), index=4)
 
     # 从数据库获取推广消息
     messages = db.get_tiktok_messages(selected_keyword, status='pending')
@@ -52,57 +36,87 @@ def send_msg(db):
     selected_message_id = st.selectbox("选择要发送的消息", options=df['id'].tolist())
     selected_message = df[df['id'] == selected_message_id]['message'].values[0]
 
-    # 选择是否显示VNC画面
-    show_vnc = st.checkbox("显示实时画面")
+    # 添加批量大小和等待时间的设置
+    batch_size = st.slider("每批发送数量", min_value=1, max_value=20, value=5)
+    wait_time = st.slider("每批等待时间（秒）", min_value=30, max_value=300, value=60)
 
     if st.button("开始发送"):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        # 如果选择显示VNC画面，创建一个占位符
-        vnc_placeholder = st.empty()
-
-        total_messages = len(high_intent_customers)
-        sent_messages = 0
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
-            futures = []
-            for i, customer in enumerate(high_intent_customers):
-                user_id = customer['user_id']
-                futures.append(executor.submit(send_single_message, user_id, selected_message, account_id))
+        user_ids = [customer['user_id'] for customer in high_intent_customers]
+        
+        try:
+            results = []
+            if len(account_ids) == 1:
+                # 单个账号发送所有消息
+                account_id = account_ids[0]
+                account = next(acc for acc in accounts if acc['id'] == account_id)
+                worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
                 
-                if (i + 1) % concurrency == 0 or i == len(high_intent_customers) - 1:
-                    for future in concurrent.futures.as_completed(futures):
-                        result = future.result()
-                        sent_messages += 1
-                        if "error" in result:
-                            st.error(f"发送失败: {result['error']}")
-                        else:
-                            st.success(f"发送成功: {result['message']}")
+                response = requests.post(
+                    f"http://{worker_ip}:5000/send_promotion_messages",
+                    json={
+                        "user_ids": user_ids,
+                        "message": selected_message,
+                        "account_id": account_id,
+                        "keyword": selected_keyword,
+                        "batch_size": batch_size,
+                        "wait_time": wait_time
+                    }
+                )
+                
+                if response.status_code == 200:
+                    st.info(f"账号 {account['username']} 的消息发送任务已触发")
+                else:
+                    st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
+            else:
+                # 多个账号平均发送消息
+                users_per_account = math.ceil(len(user_ids) / len(account_ids))
+                for i, account_id in enumerate(account_ids):
+                    account = next(acc for acc in accounts if acc['id'] == account_id)
+                    worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
+                    start_index = i * users_per_account
+                    end_index = min((i + 1) * users_per_account, len(user_ids))
+                    account_user_ids = user_ids[start_index:end_index]
                     
-                    futures = []
-                    time.sleep(interval)
-                
-                progress = sent_messages / total_messages
-                progress_bar.progress(progress)
-                status_text.text(f"进度: {sent_messages}/{total_messages}")
-
-                # 如果选择显示VNC画面，更新VNC画面
-                if show_vnc:
-                    account = db.get_tiktok_account_by_id(account_id)
-                    if account and account['login_ips']:
-                        worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
-                        worker_info = db.get_worker_by_ip(worker_ip)
-                        if worker_info:
-                            novnc_password = worker_info['novnc_password']
-                            encoded_password = urllib.parse.quote(novnc_password)
-                            vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                            with vnc_placeholder.container():
-                                st.components.v1.iframe(vnc_url, width=800, height=600)
-
-        st.success(f"所有消息发送完成！共发送 {sent_messages} 条消息。")
-
-        # 如果显示了VNC画面，添加一个关闭按钮
-        if show_vnc:
-            if st.button("关闭VNC窗口"):
-                vnc_placeholder.empty()
+                    response = requests.post(
+                        f"http://{worker_ip}:5000/send_promotion_messages",
+                        json={
+                            "user_ids": account_user_ids,
+                            "message": selected_message,
+                            "account_id": account_id,
+                            "keyword": selected_keyword,
+                            "batch_size": batch_size,
+                            "wait_time": wait_time
+                        }
+                    )
+                    
+                    if response.status_code == 200:
+                        st.info(f"账号 {account['username']} 的消息发送任务已触发")
+                    else:
+                        st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
+            
+            # 等待一段时间后检查发送状态
+            st.info("等待消息发送完成...")
+            time.sleep(wait_time * (len(user_ids) // batch_size + 1))  # 估算发送完成时间
+            
+            # 从数据库中读取发送状态
+            sent_messages = db.get_tiktok_messages(selected_keyword, status='sent')
+            failed_messages = db.get_tiktok_messages(selected_keyword, status='failed')
+            
+            success_count = len(sent_messages)
+            fail_count = len(failed_messages)
+            
+            st.success(f"发送完成！成功发送 {success_count} 条消息，失败 {fail_count} 条。")
+            
+            # 显示详细结果
+            if sent_messages:
+                st.success("成功发送的消息:")
+                for msg in sent_messages:
+                    st.success(f"用户ID: {msg['user_id']}")
+            
+            if failed_messages:
+                st.error("发送失败的消息:")
+                for msg in failed_messages:
+                    st.error(f"用户ID: {msg['user_id']}")
+        
+        except Exception as e:
+            st.error(f"发送过程中发生错误: {str(e)}")

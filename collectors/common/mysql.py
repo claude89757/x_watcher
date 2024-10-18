@@ -935,7 +935,7 @@ class MySQLDatabase:
         return result[0]['count'] if result else 0
 
     def get_potential_customers(self, keyword, limit=1000):
-        """获取指定关键词���潜在客户评论数据"""
+        """获取指定关键词潜在客户评论数据"""
         query = """
         SELECT * FROM tiktok_analyzed_comments
         WHERE keyword = %s AND classification = '潜在客户'
@@ -1049,14 +1049,14 @@ class MySQLDatabase:
         """
         return self.execute_query(query, (keyword, status, limit))
 
-    def update_tiktok_message_status(self, message_id, status):
-        """更新TikTok私信状态"""
+    def update_tiktok_message_status(self, keyword, user_id, status):
+        """更新TikTok消息状态"""
         query = """
         UPDATE tiktok_messages
         SET status = %s
-        WHERE id = %s
+        WHERE keyword = %s AND user_id = %s
         """
-        return self.execute_update(query, (status, message_id))
+        return self.execute_update(query, (status, keyword, user_id))
 
 # 使用示例
 if __name__ == "__main__":

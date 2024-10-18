@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from common.mysql import MySQLDatabase
 import threading
-from tiktok_collect_by_uc import process_task, get_public_ip, check_account_status, send_promotion_message
+from tiktok_collect_by_uc import process_task, get_public_ip, check_account_status, send_promotion_messages
 import logging
 import os
 import socket
@@ -9,6 +9,7 @@ import psutil
 import signal
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
+import concurrent.futures
 
 app = Flask(__name__)
 
@@ -222,22 +223,37 @@ def check_and_execute_tasks():
     else:
         logger.info("当前有Chrome进程正在运行，跳过任务检查")
 
-@app.route('/send_promotion_message', methods=['POST'])
-def api_send_promotion_message():
+@app.route('/send_promotion_messages', methods=['POST'])
+def api_send_promotion_messages():
     data = request.json
-    user_id = data.get('user_id')
+    user_ids = data.get('user_ids')
     message = data.get('message')
     account_id = data.get('account_id')
+    keyword = data.get('keyword')
+    batch_size = data.get('batch_size', 5)
+    wait_time = data.get('wait_time', 60)
     
-    if not all([user_id, message, account_id]):
+    if not all([user_ids, message, account_id, keyword]):
         return jsonify({"error": "缺少必要参数"}), 400
     
+    db = MySQLDatabase()
+    db.connect()
+    
     try:
-        result = send_promotion_message(user_id, message, account_id)
-        return jsonify(result), 200
+        results = send_promotion_messages(user_ids, message, account_id, batch_size, wait_time)
+        
+        for result in results:
+            if result['success']:
+                db.update_tiktok_message_status(keyword, result['user_id'], 'sent')
+            else:
+                db.update_tiktok_message_status(keyword, result['user_id'], 'failed')
+        
+        return jsonify({"results": results}), 200
     except Exception as e:
-        logger.error(f"发送推广消息时发生错误: {str(e)}")
+        logger.error(f"批量发送推广消息时发生错误: {str(e)}")
         return jsonify({"error": "发送消息失败"}), 500
+    finally:
+        db.disconnect()
 
 if __name__ == '__main__':
     register_worker()
