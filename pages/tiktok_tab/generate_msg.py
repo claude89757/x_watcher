@@ -71,7 +71,7 @@ def generate_msg(db: MySQLDatabase):
     """
     生成推广信息给高意向客户
     """
-    st.info("AI生成推广文案, 自动批量关注、留言、发送推广信息给高意向客户")
+    st.info("AI生成推广文案")
     
     # 获取所有关键词
     keywords = db.get_all_tiktok_keywords()

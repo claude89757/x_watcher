@@ -5,6 +5,4 @@ from common.log_config import setup_logger
 logger = setup_logger(__name__)
 
 def send_msg(db):
-    st.header("触达客户")
-
-    # 添加其他功能，如消息模板、发送历史等
+    st.info("自动批量关注、留言、发送推广信息给高意向客户")
