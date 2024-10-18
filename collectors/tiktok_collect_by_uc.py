@@ -324,7 +324,7 @@ def login_by_local_cookies(driver):
         except Exception as e:
             logger.error(f"使用 {cookie_file} 登录时发生错误: {str(e)}")
 
-    # 如果所有cookies文件���尝试失败,抛出异常
+    # 如果所有cookies文件尝试失败,抛出异常
     error_message = "所有cookies文件都无法成功登录"
     logger.error(error_message)
     raise Exception(error_message)
@@ -729,7 +729,7 @@ def check_account_status(account_id, username, email):
             # 随机暂停，模拟人类思考
             time.sleep(random.uniform(0.5, 1.5))
 
-            logger.info(f"请在30分钟内手动完成验证码输入和密码重��操作，完成后请按回车键继续...")
+            logger.info(f"请在30分钟内手动完成验证码输入和密码重操作，完成后请按回车键继续...")
             
             # 等待用户按回车键
             input("验证完成后请按回车键继续...")
@@ -757,7 +757,7 @@ def check_account_status(account_id, username, email):
             driver.quit()
         db.disconnect()
 
-def send_promotion_messages(user_ids, messages, account_id, batch_size=5, wait_time=60):
+def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=60):
     db = MySQLDatabase()
     db.connect()
     driver = None
@@ -768,19 +768,18 @@ def send_promotion_messages(user_ids, messages, account_id, batch_size=5, wait_t
         # 获取账号信息
         account = db.get_tiktok_account_by_id(account_id)
         if not account:
-            return [{"success": False, "message": "账号不存在", "action": "none", "user_id": user_id} for user_id in user_ids]
+            return [{"success": False, "message": "账号不存在", "action": "none", "user_id": user_msg['user_id']} for user_msg in user_messages]
         
         # 使用账号登录
         login_success = login_by_local_cookies(driver)
         if not login_success:
-            return [{"success": False, "message": "登录失败", "action": "none", "user_id": user_id} for user_id in user_ids]
+            return [{"success": False, "message": "登录失败", "action": "none", "user_id": user_msg['user_id']} for user_msg in user_messages]
         
         # 分批处理用户
-        for i in range(0, len(user_ids), batch_size):
-            batch_users = user_ids[i:i+batch_size]
-            for j, user_id in enumerate(batch_users):
-                message = messages[j % len(messages)]  # 循环使用消息
-                result = send_single_promotion_message(driver, user_id, message)
+        for i in range(0, len(user_messages), batch_size):
+            batch_users = user_messages[i:i+batch_size]
+            for user_msg in batch_users:
+                result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'])
                 results.append(result)
             
             # 等待指定时间
@@ -790,7 +789,7 @@ def send_promotion_messages(user_ids, messages, account_id, batch_size=5, wait_t
         return results
     except Exception as e:
         logger.error(f"批量发送推广消息时发生错误: {str(e)}")
-        return results + [{"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_id} for user_id in user_ids[len(results):]]
+        return results + [{"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_msg['user_id']} for user_msg in user_messages[len(results):]]
     finally:
         if driver:
             driver.quit()

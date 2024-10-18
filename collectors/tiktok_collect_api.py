@@ -226,27 +226,25 @@ def check_and_execute_tasks():
 @app.route('/send_promotion_messages', methods=['POST'])
 def api_send_promotion_messages():
     data = request.json
-    user_ids = data.get('user_ids')
-    messages = data.get('messages')
+    user_messages = data.get('user_messages')
     account_id = data.get('account_id')
-    keyword = data.get('keyword')
     batch_size = data.get('batch_size', 5)
     wait_time = data.get('wait_time', 60)
     
-    if not all([user_ids, messages, account_id, keyword]):
+    if not all([user_messages, account_id]):
         return jsonify({"error": "缺少必要参数"}), 400
     
     db = MySQLDatabase()
     db.connect()
     
     try:
-        results = send_promotion_messages(user_ids, messages, account_id, batch_size, wait_time)
+        results = send_promotion_messages(user_messages, account_id, batch_size, wait_time)
         
         for result in results:
             if result['success']:
-                db.update_tiktok_message_status(keyword, result['user_id'], 'sent')
+                db.update_tiktok_message_status(result['user_id'], 'sent')
             else:
-                db.update_tiktok_message_status(keyword, result['user_id'], 'failed')
+                db.update_tiktok_message_status(result['user_id'], 'failed')
         
         return jsonify({"results": results}), 200
     except Exception as e:

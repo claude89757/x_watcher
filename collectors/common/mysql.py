@@ -1049,14 +1049,14 @@ class MySQLDatabase:
         """
         return self.execute_query(query, (keyword, status, limit))
 
-    def update_tiktok_message_status(self, keyword, user_id, status):
+    def update_tiktok_message_status(self, user_id, status):
         """更新TikTok消息状态"""
         query = """
         UPDATE tiktok_messages
         SET status = %s
-        WHERE keyword = %s AND user_id = %s
+        WHERE user_id = %s
         """
-        return self.execute_update(query, (status, keyword, user_id))
+        return self.execute_update(query, (status, user_id))
 
 # 使用示例
 if __name__ == "__main__":

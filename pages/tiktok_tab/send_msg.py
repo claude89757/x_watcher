@@ -17,10 +17,9 @@ def send_msg(db):
     selected_accounts = st.multiselect("选择发送账号", account_options)
     account_ids = [int(account.split("ID: ")[1].split(",")[0]) for account in selected_accounts]
 
-    # 获取高意向客户
+    # 获取关键词列表
     keywords = db.get_all_tiktok_keywords()
     selected_keyword = st.selectbox("选择关键词", keywords)
-    high_intent_customers = db.get_potential_customers(selected_keyword)
 
     # 从数据库获取推广消息
     messages = db.get_tiktok_messages(selected_keyword, status='pending')
@@ -30,7 +29,7 @@ def send_msg(db):
 
     # 使用DataFrame展示推广消息
     df = pd.DataFrame(messages)
-    st.dataframe(df[['id', 'message']])
+    st.dataframe(df[['id', 'user_id', 'message']])
 
     # 使用列布局来将设置放在一行
     col1, col2, col3 = st.columns(3)
@@ -45,7 +44,8 @@ def send_msg(db):
         wait_time = st.selectbox("每批等待时间（秒）", options=[30, 60, 120, 300], index=1)
 
     if st.button("开始发送"):
-        user_ids = [customer['user_id'] for customer in high_intent_customers][:total_messages]
+        # 限制发送消息数量
+        user_messages = df[['user_id', 'message']].to_dict('records')[:total_messages]
         
         if len(account_ids) == 1:
             # 单个账号发送所有消息
@@ -56,10 +56,8 @@ def send_msg(db):
             response = requests.post(
                 f"http://{worker_ip}:5000/send_promotion_messages",
                 json={
-                    "user_ids": user_ids,
-                    "messages": df['message'].tolist(),  # 发送所有消息
+                    "user_messages": user_messages,
                     "account_id": account_id,
-                    "keyword": selected_keyword,
                     "batch_size": batch_size,
                     "wait_time": wait_time
                 }
@@ -71,21 +69,19 @@ def send_msg(db):
                 st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
         else:
             # 多个账号平均发送消息
-            users_per_account = math.ceil(len(user_ids) / len(account_ids))
+            messages_per_account = math.ceil(len(user_messages) / len(account_ids))
             for i, account_id in enumerate(account_ids):
                 account = next(acc for acc in accounts if acc['id'] == account_id)
                 worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
-                start_index = i * users_per_account
-                end_index = min((i + 1) * users_per_account, len(user_ids))
-                account_user_ids = user_ids[start_index:end_index]
+                start_index = i * messages_per_account
+                end_index = min((i + 1) * messages_per_account, len(user_messages))
+                account_user_messages = user_messages[start_index:end_index]
                 
                 response = requests.post(
                     f"http://{worker_ip}:5000/send_promotion_messages",
                     json={
-                        "user_ids": account_user_ids,
-                        "messages": df['message'].tolist(),  # 发送所有消息
+                        "user_messages": account_user_messages,
                         "account_id": account_id,
-                        "keyword": selected_keyword,
                         "batch_size": batch_size,
                         "wait_time": wait_time
                     }
@@ -98,7 +94,7 @@ def send_msg(db):
         
         # 等待一段时间后检查发送状态
         st.info("等待消息发送完成...")
-        time.sleep(wait_time * (len(user_ids) // batch_size + 1))  # 估算发送完成时间
+        time.sleep(wait_time * (len(user_messages) // batch_size + 1))  # 估算发送完成时间
         
         # 从数据库中读取发送状态
         sent_messages = db.get_tiktok_messages(selected_keyword, status='sent')
@@ -119,5 +115,3 @@ def send_msg(db):
             st.error("发送失败的消息:")
             for msg in failed_messages:
                 st.error(f"用户ID: {msg['user_id']}")
-        
-      
