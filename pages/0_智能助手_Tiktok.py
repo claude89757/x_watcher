@@ -169,9 +169,15 @@ try:
                 st.session_state.current_tab = tab_names[i]
 
     # 在每个标签页中添加一个隐藏的选择框来触发回调
-    for tab in [tab1, tab2, tab3, tab4, tab5, tab6, tab7]:
+    for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
         with tab:
-            st.selectbox("", [""], key=f"tab_{tab}", on_change=on_tab_change, label_visibility="hidden")
+            st.selectbox(
+                f"Tab {i+1} Selector",  # 提供一个非空标签
+                [""],
+                key=f"tab_{tab}",
+                on_change=on_tab_change,
+                label_visibility="collapsed"  # 使用 "collapsed" 而不是 "hidden"
+            )
 
 finally:
     # 脚本结束时关闭数据库连接
