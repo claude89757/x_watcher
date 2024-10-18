@@ -118,8 +118,8 @@ def send_msg(db: MySQLDatabase):
     if 'send_button_clicked' not in st.session_state:
         st.session_state.send_button_clicked = False
 
-    # 只有当按钮未被点击过时才显示
-    if not st.session_state.send_button_clicked:
+    # 只有当选择了账号且按钮未被点击过时才显示
+    if selected_accounts and not st.session_state.send_button_clicked:
         if st.button("开始发送", key="send_msg_button", type="primary"):
             st.session_state.send_button_clicked = True
             
@@ -218,5 +218,7 @@ def send_msg(db: MySQLDatabase):
             
             time.sleep(20)
             st.rerun()  # 重新运行页面以刷新数据
-    else:
-        st.warning("消息发送任务已启动，请关注worker的VNC画面，检查发送状态。")
+    elif not selected_accounts:
+        st.warning("请选择至少一个发送账号")
+    elif st.session_state.send_button_clicked:
+        pass
