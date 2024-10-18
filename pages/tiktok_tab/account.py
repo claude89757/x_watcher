@@ -55,60 +55,61 @@ def account_management(db: MySQLDatabase):
         for account in accounts:
             status_emoji = get_status_emoji(account['status'])
             with st.expander(f"{status_emoji} 账号: {account['username']} (ID: {account['id']}) - 状态: {account['status']}"):
-                col1, col2, col3 = st.columns([2, 1, 1])
-                with col1:
-                    st.write(f"邮箱: {account['email']}")
-                    st.write(f"当前登录主机IP: {account['login_ips']}")
-                with col2:
-                    if st.button("刷新状态", key=f"refresh_{account['id']}"):
-                        login_ips = account['login_ips'].split(',') if account['login_ips'] else []
-                        if not login_ips:
-                            st.error("该账号没有设置登录主机IP")
-                        else:
-                            triggered_workers = []
-                            for ip in login_ips:
-                                try:
-                                    response = requests.post(
-                                        f"http://{ip}:5000/check_tiktok_account",
-                                        json={"account_id": account['id']},
-                                        timeout=5  # 设置5秒超时
-                                    )
-                                    if response.status_code == 200:
-                                        triggered_workers.append(ip)
-                                    else:
-                                        st.warning(f"Worker {ip} 响应状态码 {response.status_code}")
-                                except requests.RequestException as e:
-                                    st.error(f"触发 worker {ip} 失败: {str(e)}")
+                st.write(f"邮箱: {account['email']}")
+                st.write(f"当前登录主机IP: {account['login_ips']}")
+
+                if st.button("删除账号", key=f"delete_{account['id']}", type="primary"):
+                    if db.delete_tiktok_account(account['id']):
+                        st.success("账号删除成功")
+                    else:
+                        st.error("账号删除失败")
+                
+                if st.button("刷新状态", key=f"refresh_{account['id']}"):
+                    login_ips = account['login_ips'].split(',') if account['login_ips'] else []
+                    if not login_ips:
+                        st.error("该账号没有设置登录主机IP")
+                    else:
+                        triggered_workers = []
+                        for ip in login_ips:
+                            try:
+                                response = requests.post(
+                                    f"http://{ip}:5000/check_tiktok_account",
+                                    json={"account_id": account['id']},
+                                    timeout=5  # 设置5秒超时
+                                )
+                                if response.status_code == 200:
+                                    triggered_workers.append(ip)
+                                else:
+                                    st.warning(f"Worker {ip} 响应状态码 {response.status_code}")
+                            except requests.RequestException as e:
+                                st.error(f"触发 worker {ip} 失败: {str(e)}")
+                        
+                        if triggered_workers:
+                            st.success(f"账号状态刷新任务已触发。已触发的workers: {', '.join(triggered_workers)}")
+                            st.warning("请在VNC窗口中通过邮箱登录（通过忘记密码的方式登录），以验证账号状态！！！")
                             
-                            if triggered_workers:
-                                st.success(f"账号状态刷新任务已触发。已触发的workers: {', '.join(triggered_workers)}")
-                                
-                                # 显示VNC窗口
-                                for worker_ip in triggered_workers:
-                                    worker_info = db.get_worker_by_ip(worker_ip)
-                                    if worker_info:
-                                        st.subheader(f"Worker {worker_ip} VNC窗口")
-                                        novnc_password = worker_info['novnc_password']
-                                        encoded_password = urllib.parse.quote(novnc_password)
-                                        vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                                        
-                                        # 直接使用st.components.v1.iframe显示VNC窗口
-                                        st.components.v1.iframe(vnc_url, width=800, height=600)
-                                        
-                                        # 添加一个按钮来手动关闭VNC窗口
-                                        if st.button(f"关闭 Worker {worker_ip} 的VNC窗口"):
-                                            st.info(f"Worker {worker_ip} 的VNC窗口已关闭。")
-                                            st.rerun()
-                                        
-                                        # 添加一个提示，告诉用户如何关闭VNC窗口
-                                        st.info("VNC窗口将保持打开状态。如果您想关闭它，请点击上方的'关闭VNC窗口'按钮。")
-                            else:
-                                st.error("未能触发任何worker")
-                with col3:
-                    if st.button("删除", key=f"delete_{account['id']}", type="primary"):
-                        if db.delete_tiktok_account(account['id']):
-                            st.success("账号删除成功")
+                            # 显示VNC窗口
+                            for worker_ip in triggered_workers:
+                                worker_info = db.get_worker_by_ip(worker_ip)
+                                if worker_info:
+                                    st.subheader(f"Worker {worker_ip} VNC窗口")
+                                    novnc_password = worker_info['novnc_password']
+                                    encoded_password = urllib.parse.quote(novnc_password)
+                                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                                    
+                                    # 使用st.components.v1.iframe显示VNC窗口，增大尺寸
+                                    st.components.v1.iframe(vnc_url, width=1000, height=800)
+                                    
+                                    # 添加一个按钮来手动关闭VNC窗口
+                                    if st.button(f"关闭 Worker {worker_ip} 的VNC窗口", key=f"close_vnc_{worker_ip}"):
+                                        st.info(f"Worker {worker_ip} 的VNC窗口已关闭。")
+                                        st.rerun()
+                                    
+                                    # 添加一个提示，告诉用户如何关闭VNC窗口
+                                    st.info("VNC窗口将保持打开状态。如果您想关闭它，请点击上方的'关闭VNC窗口'按钮。")
                         else:
-                            st.error("账号删除失败")
+                            st.error("未能触发任何worker")
+                
+
     else:
         st.write("暂无账号")
