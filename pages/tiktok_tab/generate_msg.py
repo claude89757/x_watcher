@@ -5,6 +5,7 @@ from collectors.common.mysql import MySQLDatabase
 import time
 import json
 import os
+import re
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
@@ -46,11 +47,32 @@ def generate_messages(model, prompt, product_info, user_comments, additional_pro
     
     response = process_with_gpt(model, formatted_prompt, max_tokens=5000)
     try:
+        # 尝试直接解析 JSON
         messages = json.loads(response.strip())
-        return messages
     except json.JSONDecodeError:
-        st.error("GPT 生成的响应不是有效的 JSON 格式。请重试或调整提示。")
-        return {}
+        # 如果直接解析失败，尝试提取 JSON 部分
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            try:
+                messages = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                st.error("无法从 GPT 响应中提取有效的 JSON。请检查 prompt 或重试。")
+                return {}
+        else:
+            # 如果无法提取 JSON，尝试手动解析响应
+            messages = {}
+            lines = response.strip().split('\n')
+            for line in lines:
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    user_id = parts[0].strip().strip('"')
+                    message = parts[1].strip().strip('"')
+                    messages[user_id] = message
+    
+    if not messages:
+        st.error("GPT 生成的响应不包含有效的消息。请重试或调整提示。")
+    
+    return messages
 
 def generate_msg(db: MySQLDatabase):
     """
