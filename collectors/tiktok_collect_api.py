@@ -232,7 +232,7 @@ def api_send_promotion_messages():
     wait_time = data.get('wait_time', 60)
     
     if not all([user_messages, account_id]):
-        return jsonify({"error": "缺少必要参数"}), 400
+        return jsonify({"error": "缺少必要参数，当前输入data：" + str(data)}), 400
     
     db = MySQLDatabase()
     db.connect()
