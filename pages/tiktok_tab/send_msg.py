@@ -33,7 +33,7 @@ def send_msg(db: MySQLDatabase):
     st.dataframe(df[['id', 'user_id', 'message', 'status', 'created_at', 'updated_at']])
 
     # 获取未成功发送的消息
-    pending_messages = [msg for msg in all_messages if msg['status'] == 'pending']
+    pending_messages = [msg for msg in all_messages if msg['status'] in ['pending', 'failed']]
     if not pending_messages:
         st.warning("没有待发送的推广消息")
         return
