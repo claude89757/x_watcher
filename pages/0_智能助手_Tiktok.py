@@ -127,55 +127,30 @@ try:
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"])
 
-    # 定义一个函数来检查标签页是否发生变化
-    def check_tab_change(tab_name):
-        if st.session_state.current_tab != tab_name:
-            st.session_state.current_tab = tab_name
-            st.session_state.tab_changed = True
-        else:
-            st.session_state.tab_changed = False
+    # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
+    if 'cached_keyword' not in st.session_state:
+        st.session_state.cached_keyword = load_keyword_from_cache()
 
     with tab1:
-        check_tab_change("评论收集")
-        if st.session_state.tab_changed and st.session_state.current_tab == "评论收集":
-            logger.info(f"评论收集================================================")
-            data_collect(db)
+        data_collect(db)
 
     with tab2:
-        check_tab_change("评论过滤")
-        if st.session_state.tab_changed and st.session_state.current_tab == "评论过滤":
-            logger.info(f"评论过滤================================================")
-            data_filter(db)
+        data_filter(db)
 
     with tab3:
-        check_tab_change("评论分析_AI")
-        if st.session_state.tab_changed and st.session_state.current_tab == "评论分析_AI":
-            logger.info(f"评论分析_AI================================================")
-            data_analyze(db)
+        data_analyze(db)
 
     with tab4:
-        check_tab_change("生成文案_AI")
-        if st.session_state.tab_changed and st.session_state.current_tab == "生成文案_AI":
-            logger.info(f"生成文案_AI================================================")
-            generate_msg(db)
+        generate_msg(db)
 
     with tab5:
-        check_tab_change("触达客户")
-        if st.session_state.tab_changed and st.session_state.current_tab == "触达客户":
-            logger.info(f"触达客户================================================")
-            send_msg(db)
+        send_msg(db)
 
     with tab6:
-        check_tab_change("(后台监控)")
-        if st.session_state.tab_changed and st.session_state.current_tab == "(后台监控)":
-            logger.info(f"(后台监控)================================================")
-            worker_vnc(db)
+        worker_vnc(db)
 
     with tab7:
-        check_tab_change("(账号管理)")
-        if st.session_state.tab_changed and st.session_state.current_tab == "(账号管理)":
-            logger.info(f"(账号管理)================================================")
-            account_management(db)
+        account_management(db)
 
 finally:
     # 脚本结束时关闭数据库连接
