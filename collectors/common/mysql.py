@@ -1058,6 +1058,16 @@ class MySQLDatabase:
         """
         return self.execute_update(query, (status, user_id))
 
+    def get_tiktok_messages_status(self, user_ids):
+        query = """
+        SELECT status FROM tiktok_messages
+        WHERE user_id IN (%s)
+        """
+        placeholders = ', '.join(['%s'] * len(user_ids))
+        query = query % placeholders
+        results = self.execute_query(query, tuple(user_ids))
+        return [result['status'] for result in results]
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")

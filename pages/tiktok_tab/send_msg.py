@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import math
 import time
+import urllib.parse
 
 # 配置日志
 logger = setup_logger(__name__)
@@ -58,6 +59,8 @@ def send_msg(db):
         # 限制发送消息数量，只选择未成功发送的消息
         user_messages = pending_df[['user_id', 'message']].to_dict('records')[:total_messages]
         
+        active_workers = []
+        
         if len(account_ids) == 1:
             # 单个账号发送所有消息
             account_id = account_ids[0]
@@ -77,6 +80,7 @@ def send_msg(db):
             if response.status_code == 200:
                 response_data = response.json()
                 st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
+                active_workers.append(worker_ip)
             else:
                 st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
         else:
@@ -102,39 +106,48 @@ def send_msg(db):
                 if response.status_code == 200:
                     response_data = response.json()
                     st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
+                    active_workers.append(worker_ip)
                 else:
                     st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
         
         st.success("所有消息发送任务已启动，请稍后检查发送状态。")
 
-        # 等待一段时间后检查发送状态
-        st.info("等待消息发送完成...")
-        time.sleep(wait_time * (len(user_messages) // batch_size + 1))  # 估算发送完成时间
+        # 显示活跃worker的VNC画面
+        st.subheader("活跃Worker的VNC画面")
+        cols = st.columns(2)
+        for i, worker_ip in enumerate(active_workers):
+            with cols[i % 2]:
+                worker_info = db.get_worker_by_ip(worker_ip)
+                if worker_info:
+                    novnc_password = worker_info['novnc_password']
+                    encoded_password = urllib.parse.quote(novnc_password)
+                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                    st.components.v1.iframe(vnc_url, width=400, height=300)
+                    st.caption(f"Worker IP: {worker_ip}")
+
+        # 创建循环任务检查消息状态
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         
-        # 从数据库中读取发送状态
-        sent_messages = db.get_tiktok_messages(selected_keyword, status='sent')
-        failed_messages = db.get_tiktok_messages(selected_keyword, status='failed')
+        all_completed = False
+        start_time = time.time()
+        while not all_completed and time.time() - start_time < 600:  # 最多等待10分钟
+            time.sleep(20)  # 每20秒检查一次
+            
+            current_status = db.get_tiktok_messages_status([msg['user_id'] for msg in user_messages])
+            completed_count = sum(1 for status in current_status if status in ['sent', 'failed'])
+            progress = completed_count / len(user_messages)
+            
+            progress_bar.progress(progress)
+            status_text.text(f"已完成: {completed_count}/{len(user_messages)}")
+            
+            if completed_count == len(user_messages):
+                all_completed = True
         
-        success_count = len(sent_messages)
-        fail_count = len(failed_messages)
+        if all_completed:
+            st.success("所有消息已处理完成！")
+        else:
+            st.warning("部分消息可能仍在处理中。")
         
-        st.success(f"发送完成！成功发送 {success_count} 条消息，失败 {fail_count} 条。")
-        
-        # 使用DataFrame展示成功和失败的消息
-        if sent_messages:
-            st.subheader("成功发送的消息")
-            sent_df = pd.DataFrame(sent_messages)
-            st.dataframe(sent_df[['user_id', 'message']])
-        
-        if failed_messages:
-            st.subheader("发送失败的消息")
-            failed_df = pd.DataFrame(failed_messages)
-            st.dataframe(failed_df[['user_id', 'message']])
-        
-        # 显示仍然处于pending状态的消息
-        pending_messages = db.get_tiktok_messages(selected_keyword, status='pending')
-        if pending_messages:
-            st.subheader("待处理的消息")
-            pending_df = pd.DataFrame(pending_messages)
-            st.dataframe(pending_df[['user_id', 'message']])
-            st.warning(f"还有 {len(pending_messages)} 条消息未处理，可能需要稍后再次检查。")
+        st.rerun()  # 重新运行页面以刷新数据
+
