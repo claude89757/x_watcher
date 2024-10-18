@@ -217,7 +217,7 @@ def load_cookies(driver, username):
 def is_captcha_present(driver):
     """检查面上是否存在验证码元素。"""
     try:
-        # 这里假设验证码元素有一的CSS选择器
+        # 这里假设验证码元素有一���CSS选择器
         captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
         logger.info("检测到证码")
         return True
@@ -322,7 +322,7 @@ def login_by_local_cookies(driver):
                 logger.info(f"{cookie_file} 登录失败")
         
         except Exception as e:
-            logger.error(f"使用 {cookie_file} 登录时发生错误: {str(e)}")
+            logger.error(f"使用 {cookie_file} 登��时发生错误: {str(e)}")
 
     # 如果所有cookies文件尝试失败,抛出异常
     error_message = "所有cookies文件都无法成功登录"
@@ -808,7 +808,11 @@ def simulate_human_scroll(driver):
     
     # 向下滚动
     scroll_pause_time = random.uniform(0.5, 2)
-    scroll_to = random.randint(int(viewport_height * 1.5), total_height)
+    
+    # 确保滚动范围有效
+    max_scroll = max(total_height, int(viewport_height * 1.5))
+    scroll_to = random.randint(viewport_height, max_scroll)
+    
     driver.execute_script(f"window.scrollTo(0, {scroll_to});")
     logger.info(f"模拟人类向下滚动到 {scroll_to} 像素")
     time.sleep(scroll_pause_time)
@@ -817,13 +821,14 @@ def simulate_human_scroll(driver):
     time.sleep(random.uniform(1, 3))
     
     # 向上滚动回顶部
-    scroll_steps = random.randint(3, 6)
+    current_position = driver.execute_script("return window.pageYOffset;")
+    scroll_steps = min(random.randint(2, 4), max(1, current_position // (viewport_height // 2)))
+    
     for _ in range(scroll_steps):
-        scroll_up = random.randint(int(viewport_height * 0.3), int(viewport_height * 0.7))
-        current_position = driver.execute_script("return window.pageYOffset;")
-        scroll_to = max(0, current_position - scroll_up)
-        driver.execute_script(f"window.scrollTo(0, {scroll_to});")
-        logger.info(f"模拟人类向上滚动到 {scroll_to} 像素")
+        scroll_up = min(random.randint(int(viewport_height * 0.3), int(viewport_height * 0.7)), current_position)
+        current_position -= scroll_up
+        driver.execute_script(f"window.scrollTo(0, {current_position});")
+        logger.info(f"模拟人类向上滚动到 {current_position} 像素")
         time.sleep(random.uniform(0.3, 0.8))
     
     # 最后确保回到顶部
