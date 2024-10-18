@@ -123,42 +123,17 @@ def send_msg(db: MySQLDatabase):
             
             active_workers = []
             
-            if len(account_ids) == 1:
-                # 单个账号发送所有消息
-                account_id = account_ids[0]
-                account = next(acc for acc in accounts if acc['id'] == account_id)
-                worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
-                
-                response = requests.post(
-                    f"http://{worker_ip}:5000/send_promotion_messages",
-                    json={
-                        "user_messages": user_messages,
-                        "account_id": account_id,
-                        "batch_size": batch_size,
-                        "wait_time": wait_time
-                    }
-                )
-                
-                if response.status_code == 200:
-                    response_data = response.json()
-                    st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
-                    active_workers.append(worker_ip)
-                else:
-                    st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
-            else:
-                # 多个账号平均发送消息
-                messages_per_account = math.ceil(len(user_messages) / len(account_ids))
-                for i, account_id in enumerate(account_ids):
+            with st.spinner("正在启动消息发送任务..."):
+                if len(account_ids) == 1:
+                    # 单个账号发送所有消息
+                    account_id = account_ids[0]
                     account = next(acc for acc in accounts if acc['id'] == account_id)
                     worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
-                    start_index = i * messages_per_account
-                    end_index = min((i + 1) * messages_per_account, len(user_messages))
-                    account_user_messages = user_messages[start_index:end_index]
                     
                     response = requests.post(
                         f"http://{worker_ip}:5000/send_promotion_messages",
                         json={
-                            "user_messages": account_user_messages,
+                            "user_messages": user_messages,
                             "account_id": account_id,
                             "batch_size": batch_size,
                             "wait_time": wait_time
@@ -171,8 +146,34 @@ def send_msg(db: MySQLDatabase):
                         active_workers.append(worker_ip)
                     else:
                         st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
+                else:
+                    # 多个账号平均发送消息
+                    messages_per_account = math.ceil(len(user_messages) / len(account_ids))
+                    for i, account_id in enumerate(account_ids):
+                        account = next(acc for acc in accounts if acc['id'] == account_id)
+                        worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
+                        start_index = i * messages_per_account
+                        end_index = min((i + 1) * messages_per_account, len(user_messages))
+                        account_user_messages = user_messages[start_index:end_index]
+                        
+                        response = requests.post(
+                            f"http://{worker_ip}:5000/send_promotion_messages",
+                            json={
+                                "user_messages": account_user_messages,
+                                "account_id": account_id,
+                                "batch_size": batch_size,
+                                "wait_time": wait_time
+                            }
+                        )
+                        
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
+                            active_workers.append(worker_ip)
+                        else:
+                            st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
             
-            st.success("所有消息发送任务已启动，请稍后检查发送状态。")
+            st.success("所有消息发送任务已启动，请查看worker的VNC画面。")
 
             # 显示worker的VNC画面
             st.subheader("活跃Worker的VNC画面")
