@@ -155,13 +155,13 @@ try:
 
     # 使用 stx.tab_bar 创建标签页
     chosen_id = stx.tab_bar(data=[
-        stx.TabBarItemData(id="tab1", title="评论收集"),
-        stx.TabBarItemData(id="tab2", title="评论过滤"),
-        stx.TabBarItemData(id="tab3", title="评论分析_AI"),
-        stx.TabBarItemData(id="tab4", title="生成文案_AI"),
-        stx.TabBarItemData(id="tab5", title="触达客户"),
-        stx.TabBarItemData(id="tab6", title="后台监控"),
-        stx.TabBarItemData(id="tab7", title="账号管理")
+        stx.TabBarItemData(id="tab1", title="评论收集", description=""),
+        stx.TabBarItemData(id="tab2", title="评论过滤", description=""),
+        stx.TabBarItemData(id="tab3", title="评论分析_AI", description=""),
+        stx.TabBarItemData(id="tab4", title="生成文案_AI", description=""),
+        stx.TabBarItemData(id="tab5", title="触达客户", description=""),
+        stx.TabBarItemData(id="tab6", title="后台监控", description=""),
+        stx.TabBarItemData(id="tab7", title="账号管理", description=""),
     ])
 
     # 创建一个占位符来显示内容
