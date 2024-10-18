@@ -8,6 +8,7 @@ import os
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
+MESSAGES_CACHE_FILE = 'tiktok_messages_cache.json'
 
 def load_descriptions_from_cache(keyword):
     """从缓存文件加载描述"""
@@ -16,6 +17,24 @@ def load_descriptions_from_cache(keyword):
             cache = json.load(f)
             return cache.get(keyword, None)
     return None
+
+def load_messages_from_cache(keyword):
+    """从缓存文件加载消息"""
+    if os.path.exists(MESSAGES_CACHE_FILE):
+        with open(MESSAGES_CACHE_FILE, 'r') as f:
+            cache = json.load(f)
+            return cache.get(keyword, {})
+    return {}
+
+def save_messages_to_cache(keyword, messages):
+    """将消息保存到缓存文件"""
+    cache = {}
+    if os.path.exists(MESSAGES_CACHE_FILE):
+        with open(MESSAGES_CACHE_FILE, 'r') as f:
+            cache = json.load(f)
+    cache[keyword] = messages
+    with open(MESSAGES_CACHE_FILE, 'w') as f:
+        json.dump(cache, f)
 
 def generate_messages(model, prompt, product_info, user_comments, additional_prompt):
     """使用选定的GPT模型为多个用户生成个性化消息"""
@@ -118,7 +137,7 @@ def generate_msg(db: MySQLDatabase):
     batch_size = st.selectbox("每批处理的客户数量", [5, 10, 20, 50], index=1)
     
     if 'generated_messages' not in st.session_state:
-        st.session_state.generated_messages = {}
+        st.session_state.generated_messages = load_messages_from_cache(selected_keyword)
 
     if st.button("生成私信"):
         progress_bar = st.progress(0)
@@ -139,7 +158,74 @@ def generate_msg(db: MySQLDatabase):
             progress = min((i + batch_size) / total_customers, 1.0)
             progress_bar.progress(progress)
             status_text.text(f"已生成 {min(i+batch_size, total_customers)}/{total_customers} 条私信")
-            
+        
+        # 保存生成的消息到缓存文件
+        save_messages_to_cache(selected_keyword, st.session_state.generated_messages)
+        
         st.success(f"成功生成 {total_customers} 条私信!")
 
-    # 显示生成的私信并允许编辑和选择, 确认后存储入数据库
+    # 显示生成的私信并允许编辑和选择
+    if st.session_state.generated_messages:
+        st.subheader("生成的私信")
+        
+        # 添加全选按钮
+        select_all = st.checkbox("全选", key="select_all")
+        
+        selected_messages = {}
+        for user_id, message in st.session_state.generated_messages.items():
+            col1, col2, col3 = st.columns([0.5, 2.5, 1])
+            with col1:
+                # 如果全选被勾选，则自动勾选所有消息
+                selected = st.checkbox("", key=f"select_{user_id}", value=select_all)
+            with col2:
+                edited_message = st.text_area(f"用户 {user_id} 的私信", message, key=f"edit_{user_id}")
+            with col3:
+                st.text(f"字数: {len(edited_message)}")
+            
+            if selected:
+                selected_messages[user_id] = edited_message
+
+        # 批量操作界面
+        st.subheader("批量操作")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(f"保存选中的 {len(selected_messages)} 条私信"):
+                for user_id, message in selected_messages.items():
+                    db.save_tiktok_message(selected_keyword, user_id, message)
+                st.success(f"成功保存 {len(selected_messages)} 条私信到数据库!")
+                
+                # 更新缓存中的消息
+                for user_id, message in selected_messages.items():
+                    st.session_state.generated_messages[user_id] = message
+                save_messages_to_cache(selected_keyword, st.session_state.generated_messages)
+        
+        with col2:
+            if st.button("重新生成选中的私信"):
+                if selected_messages:
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    total_selected = len(selected_messages)
+                    user_comments = {user_id: high_intent_df[high_intent_df['user_id'] == user_id]['reply_content'].values[0] 
+                                     for user_id in selected_messages.keys()}
+                    
+                    new_messages = generate_messages(model, prompt, product_info, user_comments, additional_prompt)
+                    
+                    for i, (user_id, message) in enumerate(new_messages.items()):
+                        st.session_state.generated_messages[user_id] = message
+                        progress = (i + 1) / total_selected
+                        progress_bar.progress(progress)
+                        status_text.text(f"已重新生成 {i+1}/{total_selected} 条私信")
+                    
+                    save_messages_to_cache(selected_keyword, st.session_state.generated_messages)
+                    st.success(f"成功重新生成 {total_selected} 条私信!")
+                    st.experimental_rerun()
+                else:
+                    st.warning("请先选择要重新生成的私信。")
+
+    # 添加清除缓存的按钮
+    if st.button("清除所有生成的私信"):
+        st.session_state.generated_messages = {}
+        save_messages_to_cache(selected_keyword, {})
+        st.success("已清除所有生成的私信。")
+        st.experimental_rerun()

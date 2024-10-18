@@ -273,6 +273,20 @@ class MySQLDatabase:
         """
         self.execute_update(create_analysis_tasks_table)
 
+        create_tiktok_messages_table = """
+        CREATE TABLE IF NOT EXISTS tiktok_messages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            keyword VARCHAR(255) NOT NULL,
+            user_id VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_message (keyword, user_id)
+        )
+        """
+        self.execute_update(create_tiktok_messages_table)
+
     def create_tiktok_task(self, keyword):
         """创建TikTok任务,如果已存在相同关键字待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
@@ -921,7 +935,7 @@ class MySQLDatabase:
         return result[0]['count'] if result else 0
 
     def get_potential_customers(self, keyword, limit=1000):
-        """获取指定关键词的潜在客户评论数据"""
+        """获取指定关键词���潜在客户评论数据"""
         query = """
         SELECT * FROM tiktok_analyzed_comments
         WHERE keyword = %s AND classification = '潜在客户'
@@ -1012,6 +1026,37 @@ class MySQLDatabase:
         """
         update_values.append(task_id)
         return self.execute_update(query, tuple(update_values))
+
+    def save_tiktok_message(self, keyword, user_id, message):
+        """保存TikTok私信到数据库"""
+        query = """
+        INSERT INTO tiktok_messages (keyword, user_id, message)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        message = VALUES(message),
+        status = 'pending',
+        updated_at = CURRENT_TIMESTAMP
+        """
+        return self.execute_update(query, (keyword, user_id, message))
+
+    def get_tiktok_messages(self, keyword, status='pending', limit=100):
+        """获取指定关键词和状态的TikTok私信"""
+        query = """
+        SELECT * FROM tiktok_messages
+        WHERE keyword = %s AND status = %s
+        ORDER BY created_at ASC
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, status, limit))
+
+    def update_tiktok_message_status(self, message_id, status):
+        """更新TikTok私信状态"""
+        query = """
+        UPDATE tiktok_messages
+        SET status = %s
+        WHERE id = %s
+        """
+        return self.execute_update(query, (status, message_id))
 
 # 使用示例
 if __name__ == "__main__":
