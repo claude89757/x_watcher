@@ -8,15 +8,6 @@ import os
 
 # 定义缓存文件路径
 DESCRIPTION_CACHE_FILE = 'tiktok_description_cache.json'
-KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
-
-def load_keyword_from_cache():
-    """从缓存文件加载关键字"""
-    if os.path.exists(KEYWORD_CACHE_FILE):
-        with open(KEYWORD_CACHE_FILE, 'r') as f:
-            data = json.load(f)
-            return data.get('keyword', '')
-    return ''
 
 def load_descriptions_from_cache(keyword):
     """从缓存文件加载描述"""
@@ -51,12 +42,9 @@ def send_msg(db: MySQLDatabase):
     # 获取所有关键词
     keywords = db.get_all_tiktok_keywords()
     
-    # 从缓存加载默认关键字
-    default_keyword = load_keyword_from_cache()
-    
-    # 创建下拉框让用户选择关键字，使用缓存的默认值
+    # 创建下拉框让用户选择关键字，使用session_state中的cached_keyword作为默认值
     selected_keyword = st.selectbox("关键词", keywords, 
-                                    index=keywords.index(default_keyword) if default_keyword in keywords else 0)
+                                    index=keywords.index(st.session_state.cached_keyword) if st.session_state.cached_keyword in keywords else 0)
     
     # 获取高意向客户数据
     high_intent_customers = db.get_second_round_analyzed_comments(selected_keyword)

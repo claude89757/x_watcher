@@ -17,28 +17,13 @@ def data_filter(db: MySQLDatabase):
     # 全局面板
     st.info("本页面用于过滤和处理TikTok评论数据。")
 
-    # 定义缓存文件路径
-    KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
-
-    def load_keyword_from_cache():
-        """从缓存文件加载关键字"""
-        if os.path.exists(KEYWORD_CACHE_FILE):
-            with open(KEYWORD_CACHE_FILE, 'r') as f:
-                data = json.load(f)
-                return data.get('keyword', '')
-        return ''
-
-    # 从缓存加载默认关键字
-    default_keyword = load_keyword_from_cache()
-
     # 获取所有关键字
     keywords = db.get_all_tiktok_keywords()
 
-    # 创建下拉框让用户选择关键字，使用缓存的默认值
+    # 创建下拉框让用户选择关键字，使用session_state中的cached_keyword作为默认值
     selected_keyword = st.selectbox("选择关键字", keywords, 
-                                    index=keywords.index(default_keyword) if default_keyword in keywords else 0,
-                                    key="filter_keyword_select")  # 添加唯一的key
-
+                                    index=keywords.index(st.session_state.cached_keyword) if st.session_state.cached_keyword in keywords else 0,
+                                    key="filter_keyword_select")
 
     if selected_keyword:
         # 获取选定关键字的评论数据

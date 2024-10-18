@@ -27,23 +27,16 @@ def data_collect(db: MySQLDatabase):
         with open(KEYWORD_CACHE_FILE, 'w') as f:
             json.dump({'keyword': keyword}, f)
 
-    def load_keyword_from_cache():
-        """从缓存文件加载关键字"""
-        if os.path.exists(KEYWORD_CACHE_FILE):
-            with open(KEYWORD_CACHE_FILE, 'r') as f:
-                data = json.load(f)
-                return data.get('keyword', '')
-        return ''
-
-    # 从缓存加载默认关字
-    default_keyword = load_keyword_from_cache()
-
     # 创建任务表单
     with st.form("create_tiktok_task"):
-        search_keyword = st.text_input("搜索关键词", value=default_keyword)
+        if 'cached_keyword' not in st.session_state:
+            default_search_keyword = ""
+        else:
+            default_search_keyword = st.session_state.cached_keyword
+        search_keyword = st.text_input("搜索关键词", value=default_search_keyword, key="data_collect_keyword_input")
         submit_task = st.form_submit_button("🚀 创建任务")
 
-    if submit_task:
+    if submit_task and search_keyword:
         # 保存关键字到缓存
         save_keyword_to_cache(search_keyword)
         # 检查是否已存在相同关键字的运行中任务

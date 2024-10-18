@@ -90,6 +90,21 @@ if 'db' not in st.session_state:
 # 使用数据库连接
 db = st.session_state.db
 
+# 定义缓存文件路径
+KEYWORD_CACHE_FILE = 'tiktok_keyword_cache.json'
+
+def load_keyword_from_cache():
+    """从缓存文件加载关键字"""
+    if os.path.exists(KEYWORD_CACHE_FILE):
+        with open(KEYWORD_CACHE_FILE, 'r') as f:
+            data = json.load(f)
+            return data.get('keyword', '')
+    return ''
+
+# 在主函数的开始处添加以下代码
+if 'cached_keyword' not in st.session_state:
+    st.session_state.cached_keyword = load_keyword_from_cache()
+
 try:
     # 获取全局统计数据
     global_stats = db.get_global_stats()
@@ -106,6 +121,10 @@ try:
 
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "批量私信_AI", "后台监控", "账号管理"])
+
+    # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
+    if 'cached_keyword' not in st.session_state:
+        st.session_state.cached_keyword = load_keyword_from_cache()
 
     with tab1:
         data_collect(db)
