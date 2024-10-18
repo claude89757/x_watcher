@@ -4,6 +4,7 @@ import requests
 import time
 import concurrent.futures
 import urllib.parse
+import pandas as pd
 
 # 配置日志
 logger = setup_logger(__name__)
@@ -34,11 +35,22 @@ def send_msg(db):
     high_intent_customers = db.get_potential_customers(selected_keyword)
 
     # 设置并发数和间隔时间
-    concurrency = st.slider("并发数量", min_value=1, max_value=10, value=3)
-    interval = st.slider("发送间隔(秒)", min_value=1, max_value=60, value=5)
+    concurrency = st.selectbox("并发数量", options=range(1, 11), index=2)
+    interval = st.selectbox("发送间隔(秒)", options=range(1, 61), index=4)
 
-    # 输入推广消息
-    promotion_message = st.text_area("输入推广消息", "")
+    # 从数据库获取推广消息
+    messages = db.get_tiktok_messages(selected_keyword, status='pending')
+    if not messages:
+        st.warning("没有找到待发送的推广消息")
+        return
+
+    # 使用DataFrame展示推广消息
+    df = pd.DataFrame(messages)
+    st.dataframe(df[['id', 'message']])
+
+    # 选择要发送的消息
+    selected_message_id = st.selectbox("选择要发送的消息", options=df['id'].tolist())
+    selected_message = df[df['id'] == selected_message_id]['message'].values[0]
 
     # 选择是否显示VNC画面
     show_vnc = st.checkbox("显示实时画面")
@@ -54,7 +66,7 @@ def send_msg(db):
             futures = []
             for i, customer in enumerate(high_intent_customers):
                 user_id = customer['user_id']
-                futures.append(executor.submit(send_single_message, user_id, promotion_message, account_id))
+                futures.append(executor.submit(send_single_message, user_id, selected_message, account_id))
                 
                 if (i + 1) % concurrency == 0 or i == len(high_intent_customers) - 1:
                     for future in concurrent.futures.as_completed(futures):
