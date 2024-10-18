@@ -120,7 +120,6 @@ else:
             st.success(access_granted_message)
             logger.info(f"{code} login successfully.")
             st.balloons()
-            time.sleep(3)
             # 刷新页面
             st.rerun()
         else:
