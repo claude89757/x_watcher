@@ -795,6 +795,20 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
             driver.quit()
         db.disconnect()
 
+def random_wait(min_time=1, max_time=5):
+    """随机等待一段时间"""
+    wait_time = random.uniform(min_time, max_time)
+    logger.info(f"随机等待 {wait_time:.2f} 秒")
+    time.sleep(wait_time)
+
+def simulate_human_scroll(driver):
+    """模拟人类滚动页面"""
+    scroll_pause_time = random.uniform(0.5, 2)
+    scroll_length = random.randint(300, 700)
+    driver.execute_script(f"window.scrollBy(0, {scroll_length});")
+    logger.info(f"模拟人类滚动 {scroll_length} 像素")
+    time.sleep(scroll_pause_time)
+
 def send_single_promotion_message(driver, user_id, message):
     try:
         # 访问用户主页
@@ -803,6 +817,11 @@ def send_single_promotion_message(driver, user_id, message):
         logger.info(f"正在访问用户 {user_id} 的主页: {user_profile_url}")
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
         logger.info("页面加载完成")
+        
+        random_wait(2, 5)  # 随机等待2-5秒
+        
+        # 模拟人类滚动
+        simulate_human_scroll(driver)
         
         # 尝试关注用户
         try:
@@ -814,34 +833,60 @@ def send_single_promotion_message(driver, user_id, message):
             follow_button.click()
             logger.info(f"成功关注用户 {user_id}")
             
+            random_wait(1, 3)  # 随机等待1-3秒
+            
             # 尝试在用户最新视频下留言
             try:
                 logger.info("正在尝试找到最新视频")
-                latest_video = WebDriverWait(driver, 5).until(
+                latest_video = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.TAG_NAME, 'video'))
                 )
                 logger.info("找到最新视频,正在点击")
                 latest_video.click()
                 
+                random_wait(2, 4)  # 随机等待2-4秒
+                
+                # 等待页面加载完成
+                WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+                
+                # 模拟人类滚动到评论区
+                for _ in range(random.randint(2, 4)):
+                    simulate_human_scroll(driver)
+                
                 logger.info("正在等待评论输入框出现")
-                comment_input = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.XPATH, "//div[@data-e2e='comment-input']//div[@class='public-DraftEditor-content']"))
+                comment_input = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-input'] div.public-DraftEditor-content"))
                 )
                 logger.info("找到评论输入框,正在输入评论")
-                simulate_human_input(driver, comment_input, message)
+                
+                # 模拟人类输入
+                for char in message:
+                    comment_input.send_keys(char)
+                    time.sleep(random.uniform(0.1, 0.3))
+                
+                random_wait(1, 2)  # 随机等待1-2秒
                 
                 logger.info("正在寻找发送评论按钮")
                 post_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//div[@data-e2e='comment-post']"))
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div[data-e2e='comment-post']"))
                 )
                 logger.info("找到发送评论按钮,正在点击")
                 post_button.click()
+                
+                # 等待评论发送成功
+                random_wait(2, 4)
                 
                 logger.info(f"成功在用户 {user_id} 的视频下留言")
                 return {"success": True, "message": "成功关注并留言", "action": "follow_and_comment", "user_id": user_id}
             except Exception as e:
                 logger.error(f"留言失败: {str(e)}")
                 logger.error(f"留言失败的详细错误: {traceback.format_exc()}")
+                
+                # 添加页面源代码日志
+                logger.info(f"当前页面URL: {driver.current_url}")
+                logger.info(f"页面标题: {driver.title}")
+                logger.info(f"页面源代码: {driver.page_source[:1000]}...")  # 记录前1000个字符
+        
         except Exception as e:
             logger.error(f"关注用户失败: {str(e)}")
             logger.error(f"关注用户失败的详细错误: {traceback.format_exc()}")
@@ -855,12 +900,20 @@ def send_single_promotion_message(driver, user_id, message):
             logger.info("找到发送私信按钮,正在点击")
             message_button.click()
             
+            random_wait(2, 4)  # 随机等待2-4秒
+            
             logger.info("正在等待私信输入框出现")
             message_input = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, "//div[@data-e2e='message-input-area']//div[@class='public-DraftEditor-content']"))
             )
             logger.info("找到私信输入框,正在输入私信")
-            simulate_human_input(driver, message_input, message)
+            
+            # 模拟人类输入
+            for char in message:
+                message_input.send_keys(char)
+                time.sleep(random.uniform(0.1, 0.3))
+            
+            random_wait(1, 2)  # 随机等待1-2秒
             
             logger.info("正在寻找发送私信按钮")
             send_button = WebDriverWait(driver, 5).until(
@@ -868,6 +921,8 @@ def send_single_promotion_message(driver, user_id, message):
             )
             logger.info("找到发送私信按钮,正在点击")
             send_button.click()
+            
+            random_wait(2, 4)  # 随机等待2-4秒
             
             logger.info(f"成功发送私信给用户 {user_id}")
             return {"success": True, "message": "成功发送私信", "action": "direct_message", "user_id": user_id}
