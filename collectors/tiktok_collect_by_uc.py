@@ -217,7 +217,7 @@ def load_cookies(driver, username):
 def is_captcha_present(driver):
     """检查面上是否存在验证码元素。"""
     try:
-        # 这里假设验证码元素有一定的CSS选择器
+        # 这里假设验证码元素有一的CSS选择器
         captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
         logger.info("检测到证码")
         return True
@@ -243,7 +243,7 @@ def check_login_status(driver):
         )
         logger.info("检测到用户头像，登录状态有效")
         
-        # 检查并提取用户ID
+        # 检查并提取户ID
         profile_link = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'a[data-e2e="nav-profile"]'))
         )
@@ -622,7 +622,7 @@ def process_task(task_id, keyword, server_ip):
             # 任务状态running，更新为completed
             db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
         elif task_status == 'paused':
-            # 任务���态为paused，更新为paused
+            # 任务态为paused，更新为paused
             db.update_tiktok_task_details(task_id, status='paused', end_time=datetime.now())
         elif task_status == 'failed':
             # 任务状态为failed，更新为failed
@@ -871,14 +871,10 @@ def send_single_promotion_message(driver, user_id, message):
             logger.info("找到最新视频,正在点击")
             latest_video.click()
             
-            random_wait(2, 4)  # 随机等待2-4秒
+            random_wait(1, 3)  # 随机等待2-4秒
             
             # 等待页面加载完成
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-            
-            # 模拟人类滚动到评论区
-            for _ in range(random.randint(2, 4)):
-                simulate_human_scroll(driver)
             
             logger.info("正在等待评论输入框出现")
             comment_input = WebDriverWait(driver, 10).until(
@@ -893,12 +889,8 @@ def send_single_promotion_message(driver, user_id, message):
             
             random_wait(1, 2)  # 随机等待1-2秒
             
-            logger.info("正在寻找发送评论按钮")
-            post_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "div[data-e2e='comment-post']"))
-            )
-            logger.info("找到发送评论按钮,正在点击")
-            post_button.click()
+            logger.info("正在尝试使用回车键发送评论")
+            comment_input.send_keys(Keys.RETURN)
             
             # 等待评论发送成功
             random_wait(2, 4)
@@ -917,6 +909,14 @@ def send_single_promotion_message(driver, user_id, message):
         
         # 如果关注或留言失败，尝试发送私信
         try:
+            # 重新回到用户的首页
+            logger.info(f"重新访问用户 {user_id} 的主页")
+            driver.get(user_profile_url)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+            logger.info("用户主页重新加载完成")
+            
+            random_wait(2, 4)  # 随机等待2-4秒
+            
             logger.info("正在尝试找到发送私信按钮")
             message_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='message-button']"))
