@@ -39,7 +39,10 @@ def save_messages_to_cache(keyword, messages):
 
 def generate_messages(model, prompt, product_info, user_comments_str, additional_prompt):
     """使用选定的GPT模型为多个用户生成个性化消息"""
-    st.write("生成消息的输入:", product_info, user_comments_str, additional_prompt)  # 用于调试
+    st.write(prompt)
+    st.write(product_info)
+    st.write(user_comments_str)
+    st.write(additional_prompt)
     try:
         formatted_prompt = prompt.format(
             product_info=product_info,
