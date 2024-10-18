@@ -1049,11 +1049,11 @@ class MySQLDatabase:
         """
         return self.execute_update(query, (keyword, user_id, message))
 
-    def get_tiktok_messages(self, keyword, status='pending', limit=100):
-        """获取指定关键词和状态的TikTok私信"""
+    def get_tiktok_messages(self, keyword, limit=1000):
+        """获取指定关键词的TikTok私信"""
         query = """
         SELECT * FROM tiktok_messages
-        WHERE keyword = %s AND status = %s
+        WHERE keyword = %s
         ORDER BY created_at ASC
         LIMIT %s
         """
