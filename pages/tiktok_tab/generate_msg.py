@@ -39,6 +39,7 @@ def save_messages_to_cache(keyword, messages):
 
 def generate_messages(model, prompt, product_info, user_comments, additional_prompt):
     """使用选定的GPT模型为多个用户生成个性化消息"""
+    st.write("生成消息的输入:", product_info, user_comments, additional_prompt)  # 用于调试
     try:
         formatted_prompt = prompt.format(
             product_info=product_info,
@@ -183,8 +184,11 @@ def generate_msg(db: MySQLDatabase):
         
         # 保存生成的消息到缓存文件
         save_messages_to_cache(selected_keyword, st.session_state.generated_messages)
-        
-        st.success(f"成功生成 {total_customers} 条私信!")
+
+        if st.session_state.generated_messages:
+            st.success(f"成功生成 {len(st.session_state.generated_messages)} 条私信!")
+        else:
+            st.error("没有生成任何私信。请检查输入信息和提示。")
 
     # 显示生成的私信并允许编辑和选择
     if st.session_state.generated_messages:
