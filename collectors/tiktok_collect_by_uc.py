@@ -217,7 +217,7 @@ def load_cookies(driver, username):
 def is_captcha_present(driver):
     """检查面上是否存在验证码元素。"""
     try:
-        # 这里假设验证码元素有一个特定的CSS选择器
+        # 这里假设验证码元素有一特定的CSS选择器
         captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
         logger.info("检测到证码")
         return True
@@ -619,7 +619,7 @@ def process_task(task_id, keyword, server_ip):
 
         logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
         if task_status == 'running':
-            # 任务状态为running，更新为completed
+            # 任务状态��running，更新为completed
             db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
         elif task_status == 'paused':
             # 任务状态为paused，更新为paused
@@ -805,7 +805,7 @@ def send_single_promotion_message(driver, user_id, message):
         # 尝试关注用户
         try:
             follow_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'follow-button')]"))
+                EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='follow-button']"))
             )
             follow_button.click()
             logger.info(f"成功关注用户 {user_id}")
@@ -813,17 +813,19 @@ def send_single_promotion_message(driver, user_id, message):
             # 尝试在用户最新视频下留言
             try:
                 latest_video = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'video-feed-item')]"))
+                    EC.presence_of_element_located((By.TAG_NAME, 'video'))
                 )
                 latest_video.click()
                 
+                # 等待评论输入框出现
                 comment_input = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.XPATH, "//div[@class='public-DraftEditor-content']"))
+                    EC.presence_of_element_located((By.XPATH, "//div[@data-e2e='comment-input']//div[@class='public-DraftEditor-content']"))
                 )
                 simulate_human_input(driver, comment_input, message)
                 
+                # 点击发送评论按钮
                 post_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'post-comment-button')]"))
+                    EC.element_to_be_clickable((By.XPATH, "//div[@data-e2e='comment-post']"))
                 )
                 post_button.click()
                 
@@ -837,17 +839,19 @@ def send_single_promotion_message(driver, user_id, message):
         # 如果关注或留言失败，尝试发送私信
         try:
             message_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'message-button')]"))
+                EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='message-button']"))
             )
             message_button.click()
             
+            # 等待私信输入框出现
             message_input = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.XPATH, "//div[@class='public-DraftEditor-content']"))
+                EC.presence_of_element_located((By.XPATH, "//div[@data-e2e='message-input-area']//div[@class='public-DraftEditor-content']"))
             )
             simulate_human_input(driver, message_input, message)
             
+            # 点击发送私信按钮
             send_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'send-message-button')]"))
+                EC.element_to_be_clickable((By.XPATH, "//svg[@data-e2e='message-send']"))
             )
             send_button.click()
             
