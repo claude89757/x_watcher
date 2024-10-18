@@ -18,6 +18,7 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 import requests
+import extra_streamlit_components as stx
 
 from common.config import CONFIG
 from common.cos import list_latest_files
@@ -124,33 +125,51 @@ try:
         st.metric("评论总数", global_stats['comment_count'])
         st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
-    # 创建标签页
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"])
+    # 使用 stx.tab_bar 创建标签页
+    chosen_id = stx.tab_bar(data=[
+        stx.TabBarItemData(id="tab1", title="评论收集", description="收集TikTok评论"),
+        stx.TabBarItemData(id="tab2", title="评论过滤", description="过滤收集的评论"),
+        stx.TabBarItemData(id="tab3", title="评论分析_AI", description="使用AI分析评论"),
+        stx.TabBarItemData(id="tab4", title="生成文案_AI", description="使用AI生成文案"),
+        stx.TabBarItemData(id="tab5", title="触达客户", description="联系潜在客户"),
+        stx.TabBarItemData(id="tab6", title="后台监控", description="监控后台数据"),
+        stx.TabBarItemData(id="tab7", title="账号管理", description="管理TikTok账号")
+    ])
 
-    # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
-    if 'cached_keyword' not in st.session_state:
-        st.session_state.cached_keyword = load_keyword_from_cache()
+    # 创建一个占位符来显示内容
+    content_placeholder = st.empty()
 
-    with tab1:
-        data_collect(db)
-
-    with tab2:
-        data_filter(db)
-
-    with tab3:
-        data_analyze(db)
-
-    with tab4:
-        generate_msg(db)
-
-    with tab5:
-        send_msg(db)
-
-    with tab6:
-        worker_vnc(db)
-
-    with tab7:
-        account_management(db)
+    # 根据选择的标签页加载内容
+    if chosen_id == "tab1":
+        with content_placeholder.container():
+            logger.info(f"评论收集================================================")
+            data_collect(db)
+    elif chosen_id == "tab2":
+        with content_placeholder.container():
+            logger.info(f"评论过滤================================================")
+            data_filter(db)
+    elif chosen_id == "tab3":
+        with content_placeholder.container():
+            logger.info(f"评论分析_AI================================================")
+            data_analyze(db)
+    elif chosen_id == "tab4":
+        with content_placeholder.container():
+            logger.info(f"生成文案_AI================================================")
+            generate_msg(db)
+    elif chosen_id == "tab5":
+        with content_placeholder.container():
+            logger.info(f"触达客户================================================")
+            send_msg(db)
+    elif chosen_id == "tab6":
+        with content_placeholder.container():
+            logger.info(f"后台监控================================================")
+            worker_vnc(db)
+    elif chosen_id == "tab7":
+        with content_placeholder.container():
+            logger.info(f"账号管理================================================")
+            account_management(db)
+    else:
+        content_placeholder.warning("请选择一个功能标签页")
 
 finally:
     # 脚本结束时关闭数据库连接
