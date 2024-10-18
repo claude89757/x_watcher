@@ -831,10 +831,7 @@ class MySQLDatabase:
     def get_all_tiktok_message_keywords(self):
         """获取在tiktok_messages表中存在的所有TikTok关键字"""
         query = """
-        SELECT DISTINCT keyword 
-        FROM tiktok_messages 
-        WHERE keyword IS NOT NULL AND keyword != ''
-        ORDER BY created_at
+        SELECT DISTINCT keyword FROM tiktok_messages
         """
         results = self.execute_query(query)
         if not results:

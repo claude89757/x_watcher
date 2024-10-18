@@ -16,7 +16,7 @@ def send_msg(db: MySQLDatabase):
     # 获取关键词列表
     keywords = db.get_all_tiktok_message_keywords()
     if not keywords:
-        st.warning("没有找到待发送的推广消息")
+        st.warning("关键词未保存推广信息")
         return
 
     selected_keyword = st.selectbox("选择关键词", keywords)
