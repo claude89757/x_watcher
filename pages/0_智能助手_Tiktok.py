@@ -137,37 +137,44 @@ try:
 
     with tab1:
         check_tab_change("评论收集")
-        if st.session_state.tab_changed or st.session_state.current_tab == "评论收集":
+        if st.session_state.tab_changed and st.session_state.current_tab == "评论收集":
+            logger.info(f"评论收集================================================")
             data_collect(db)
 
     with tab2:
         check_tab_change("评论过滤")
-        if st.session_state.tab_changed or st.session_state.current_tab == "评论过滤":
+        if st.session_state.tab_changed and st.session_state.current_tab == "评论过滤":
+            logger.info(f"评论过滤================================================")
             data_filter(db)
 
     with tab3:
         check_tab_change("评论分析_AI")
-        if st.session_state.tab_changed or st.session_state.current_tab == "评论分析_AI":
+        if st.session_state.tab_changed and st.session_state.current_tab == "评论分析_AI":
+            logger.info(f"评论分析_AI================================================")
             data_analyze(db)
 
     with tab4:
         check_tab_change("生成文案_AI")
-        if st.session_state.tab_changed or st.session_state.current_tab == "生成文案_AI":
+        if st.session_state.tab_changed and st.session_state.current_tab == "生成文案_AI":
+            logger.info(f"生成文案_AI================================================")
             generate_msg(db)
 
     with tab5:
         check_tab_change("触达客户")
-        if st.session_state.tab_changed or st.session_state.current_tab == "触达客户":
+        if st.session_state.tab_changed and st.session_state.current_tab == "触达客户":
+            logger.info(f"触达客户================================================")
             send_msg(db)
 
     with tab6:
         check_tab_change("(后台监控)")
-        if st.session_state.tab_changed or st.session_state.current_tab == "(后台监控)":
+        if st.session_state.tab_changed and st.session_state.current_tab == "(后台监控)":
+            logger.info(f"(后台监控)================================================")
             worker_vnc(db)
 
     with tab7:
         check_tab_change("(账号管理)")
-        if st.session_state.tab_changed or st.session_state.current_tab == "(账号管理)":
+        if st.session_state.tab_changed and st.session_state.current_tab == "(账号管理)":
+            logger.info(f"(账号管理)================================================")
             account_management(db)
 
 finally:
