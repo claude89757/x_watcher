@@ -46,11 +46,7 @@ def generate_messages(model, prompt, product_info, user_comments_str, additional
         st.error(f"格式化 prompt 时出错: {e}。请检查 prompt 模板中的占位符是否正确。")
         return {}
     
-    st.write("格式化后的 prompt:", formatted_prompt)  # 用于调试
-    
     response = process_with_gpt(model, formatted_prompt, max_tokens=5000)
-    st.write("GPT 响应:", response)  # 用于调试
-    
     try:
         # 尝试直接解析 JSON
         messages = json.loads(response.strip())
