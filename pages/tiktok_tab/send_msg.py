@@ -34,6 +34,63 @@ def send_msg(db: MySQLDatabase):
 
     # 获取未成功发送的消息
     pending_messages = [msg for msg in all_messages if msg['status'] in ['pending', 'failed']]
+    processing_messages = [msg for msg in all_messages if msg['status'] == 'processing']
+
+    if processing_messages:
+        st.warning("有正在处理中的消息，请等待处理完成后再开始新的发送任务。")
+        
+        # 获取正在处理消息的worker IP
+        worker_ips = set(db.get_worker_ip_for_processing_messages(selected_keyword))
+        
+        if not worker_ips:
+            st.info("当前没有worker正在处理消息，可能是处理已经完成或尚未开始。")
+        else:
+            # 显示正在处理的worker的VNC画面
+            st.subheader("正在处理消息的Worker VNC画面")
+            
+            col1, col2 = st.columns(2)
+            
+            for i, worker_ip in enumerate(worker_ips):
+                worker_info = db.get_worker_by_ip(worker_ip)
+                if worker_info:
+                    novnc_password = worker_info['novnc_password']
+                    encoded_password = urllib.parse.quote(novnc_password)
+                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                    
+                    with col1 if i % 2 == 0 else col2:
+                        st.write(f"Worker IP: {worker_ip}")
+                        st.components.v1.iframe(vnc_url, width=700, height=525)
+        
+        # 显示处理进度
+        st.subheader("处理进度")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        all_completed = False
+        start_time = time.time()
+        while not all_completed and time.time() - start_time < 600:  # 最多等待10分钟
+            time.sleep(20)  # 每20秒检查一次
+            
+            current_status = db.get_tiktok_messages_status([msg['user_id'] for msg in processing_messages])
+            completed_count = sum(1 for status in current_status if status in ['sent', 'failed'])
+            progress = completed_count / len(processing_messages)
+            
+            progress_bar.progress(progress)
+            status_text.text(f"已完成: {completed_count}/{len(processing_messages)}")
+            
+            if completed_count == len(processing_messages):
+                all_completed = True
+        
+        if all_completed:
+            st.success("所有消息已处理完成！")
+        else:
+            st.warning("部分消息可能仍在处理中。")
+        
+        time.sleep(20)
+        st.rerun()
+        
+        return
+
     if not pending_messages:
         st.warning("没有待发送的推广消息")
         return
@@ -172,6 +229,7 @@ def send_msg(db: MySQLDatabase):
             else:
                 st.warning("部分消息可能仍在处理中。")
             
+            time.sleep(20)
             st.rerun()  # 重新运行页面以刷新数据
     else:
         st.warning("消息发送任务已启动，请关注worker的VNC画面，检查发送状态。")

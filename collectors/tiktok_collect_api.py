@@ -253,6 +253,10 @@ def process_messages_async(user_messages, account_id, batch_size, wait_time):
     db = MySQLDatabase()
     db.connect()
     try:
+        # 更新消息状态为 processing
+        for message in user_messages:
+            db.update_tiktok_message_status(message['user_id'], 'processing')
+        
         results = send_promotion_messages(user_messages, account_id, batch_size, wait_time)
         
         for result in results:
@@ -262,6 +266,9 @@ def process_messages_async(user_messages, account_id, batch_size, wait_time):
                 db.update_tiktok_message_status(result['user_id'], 'failed')
     except Exception as e:
         logger.error(f"批量发送推广消息时发生错误: {str(e)}")
+        # 如果发生错误，将所有消息状态更新为 failed
+        for message in user_messages:
+            db.update_tiktok_message_status(message['user_id'], 'failed')
     finally:
         db.disconnect()
 

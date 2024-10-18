@@ -279,7 +279,8 @@ class MySQLDatabase:
             keyword VARCHAR(255) NOT NULL,
             user_id VARCHAR(255) NOT NULL,
             message TEXT NOT NULL,
-            status ENUM('pending', 'sent', 'failed') DEFAULT 'pending',
+            status ENUM('pending', 'sent', 'processing', 'failed') DEFAULT 'pending',
+            worker_ip VARCHAR(45),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_message (keyword, user_id)
@@ -1077,6 +1078,16 @@ class MySQLDatabase:
         query = query % placeholders
         results = self.execute_query(query, tuple(user_ids))
         return [result['status'] for result in results]
+
+    def get_worker_ip_for_processing_messages(self, keyword):
+        """获取正在处理指定关键词消息的worker IP"""
+        query = """
+        SELECT DISTINCT worker_ip
+        FROM tiktok_messages
+        WHERE keyword = %s AND status = 'processing' AND worker_ip IS NOT NULL
+        """
+        results = self.execute_query(query, (keyword,))
+        return [result['worker_ip'] for result in results if result.get('worker_ip')]
 
 # 使用示例
 if __name__ == "__main__":
