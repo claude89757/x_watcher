@@ -31,7 +31,7 @@ def send_msg(db):
     df = pd.DataFrame(messages)
     st.dataframe(df[['id', 'user_id', 'message']])
 
-    # 使用列布局来将设置放在一行
+    # 使列布局来将设置放在一行
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -43,7 +43,7 @@ def send_msg(db):
     with col3:
         wait_time = st.selectbox("每批等待时间（秒）", options=[30, 60, 120, 300], index=1)
 
-    if st.button("开始发送"):
+    if st.button("开始发送", key="send_msg_button", type="primary"):
         # 限制发送消息数量
         user_messages = df[['user_id', 'message']].to_dict('records')[:total_messages]
         
@@ -63,8 +63,8 @@ def send_msg(db):
                 }
             )
             
-            if response.status_code == 200:
-                st.info(f"账号 {account['username']} 的消息发送任务已触发")
+            if response.status_code == 202:
+                st.info(f"账号 {account['username']} 的消息发送任务已启动")
             else:
                 st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
         else:
@@ -87,11 +87,13 @@ def send_msg(db):
                     }
                 )
                 
-                if response.status_code == 200:
-                    st.info(f"账号 {account['username']} 的消息发送任务已触发")
+                if response.status_code == 202:
+                    st.info(f"账号 {account['username']} 的消息发送任务已启动")
                 else:
                     st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
         
+        st.success("所有消息发送任务已启动，请稍后检查发送状态。")
+
         # 等待一段时间后检查发送状态
         st.info("等待消息发送完成...")
         time.sleep(wait_time * (len(user_messages) // batch_size + 1))  # 估算发送完成时间
@@ -105,13 +107,21 @@ def send_msg(db):
         
         st.success(f"发送完成！成功发送 {success_count} 条消息，失败 {fail_count} 条。")
         
-        # 显示详细结果
+        # 使用DataFrame展示成功和失败的消息
         if sent_messages:
-            st.success("成功发送的消息:")
-            for msg in sent_messages:
-                st.success(f"用户ID: {msg['user_id']}")
+            st.subheader("成功发送的消息")
+            sent_df = pd.DataFrame(sent_messages)
+            st.dataframe(sent_df[['user_id', 'message']])
         
         if failed_messages:
-            st.error("发送失败的消息:")
-            for msg in failed_messages:
-                st.error(f"用户ID: {msg['user_id']}")
+            st.subheader("发送失败的消息")
+            failed_df = pd.DataFrame(failed_messages)
+            st.dataframe(failed_df[['user_id', 'message']])
+        
+        # 显示仍然处于pending状态的消息
+        pending_messages = db.get_tiktok_messages(selected_keyword, status='pending')
+        if pending_messages:
+            st.subheader("待处理的消息")
+            pending_df = pd.DataFrame(pending_messages)
+            st.dataframe(pending_df[['user_id', 'message']])
+            st.warning(f"还有 {len(pending_messages)} 条消息未处理，可能需要稍后再次检查。")

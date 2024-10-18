@@ -10,6 +10,7 @@ import signal
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
 import concurrent.futures
+import uuid
 
 app = Flask(__name__)
 
@@ -221,7 +222,7 @@ def check_and_execute_tasks():
         finally:
             db.disconnect()
     else:
-        logger.info("当前有Chrome进程正在运行，跳过任务检查")
+        logger.info("当前有Chrome进程正在运行，跳过任务检")
 
 @app.route('/send_promotion_messages', methods=['POST'])
 def api_send_promotion_messages():
@@ -232,11 +233,17 @@ def api_send_promotion_messages():
     wait_time = data.get('wait_time', 60)
     
     if not all([user_messages, account_id]):
-        return jsonify({"error": "缺少必要参数，当前输入data：" + str(data)}), 400
+        return jsonify({"error": "缺少必要参数"}), 400
     
+    # 启动后台线程处理消息发送
+    thread = threading.Thread(target=process_messages_async, args=(user_messages, account_id, batch_size, wait_time))
+    thread.start()
+    
+    return jsonify({"message": "消息发送任务已启动"}), 202
+
+def process_messages_async(user_messages, account_id, batch_size, wait_time):
     db = MySQLDatabase()
     db.connect()
-    
     try:
         results = send_promotion_messages(user_messages, account_id, batch_size, wait_time)
         
@@ -245,11 +252,8 @@ def api_send_promotion_messages():
                 db.update_tiktok_message_status(result['user_id'], 'sent')
             else:
                 db.update_tiktok_message_status(result['user_id'], 'failed')
-        
-        return jsonify({"results": results}), 200
     except Exception as e:
         logger.error(f"批量发送推广消息时发生错误: {str(e)}")
-        return jsonify({"error": "发送消息失败"}), 500
     finally:
         db.disconnect()
 
