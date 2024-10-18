@@ -126,18 +126,25 @@ try:
     # 定义一个函数来加载标签页内容
     def load_tab_content(tab_name):
         if tab_name == "评论收集":
+            logger.info("加载评论收集")
             data_collect(db)
         elif tab_name == "评论过滤":
+            logger.info("加载评论过滤")
             data_filter(db)
         elif tab_name == "评论分析_AI":
+            logger.info("加载评论分析_AI")
             data_analyze(db)
         elif tab_name == "生成文案_AI":
+            logger.info("加载生成文案_AI")
             generate_msg(db)
         elif tab_name == "触达客户":
+            logger.info("加载触达客户")
             send_msg(db)
         elif tab_name == "(后台监控)":
+            logger.info("加载后台监控")
             worker_vnc(db)
         elif tab_name == "(账号管理)":
+            logger.info("加载账号管理")
             account_management(db)
 
     # 使用 st.session_state 来跟踪当前选中的标签页
