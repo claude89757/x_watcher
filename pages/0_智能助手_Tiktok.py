@@ -123,34 +123,30 @@ try:
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"])
 
-    # 定义标签页名称列表
-    tab_names = ["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"]
+    # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
+    if 'cached_keyword' not in st.session_state:
+        st.session_state.cached_keyword = load_keyword_from_cache()
 
-    # 使用 radio 按钮来选择当前标签页
-    current_tab = st.sidebar.radio("选择功能", tab_names)
+    with tab1:
+        data_collect(db)
 
-    # 根据选择的标签页加载内容
-    if current_tab == "评论收集":
-        with tab1:
-            data_collect(db)
-    elif current_tab == "评论过滤":
-        with tab2:
-            data_filter(db)
-    elif current_tab == "评论分析_AI":
-        with tab3:
-            data_analyze(db)
-    elif current_tab == "生成文案_AI":
-        with tab4:
-            generate_msg(db)
-    elif current_tab == "触达客户":
-        with tab5:
-            send_msg(db)
-    elif current_tab == "(后台监控)":
-        with tab6:
-            worker_vnc(db)
-    elif current_tab == "(账号管理)":
-        with tab7:
-            account_management(db)
+    with tab2:
+        data_filter(db)
+
+    with tab3:
+        data_analyze(db)
+
+    with tab4:
+        generate_msg(db)
+
+    with tab5:
+        send_msg(db)
+
+    with tab6:
+        worker_vnc(db)
+
+    with tab7:
+        account_management(db)
 
 finally:
     # 脚本结束时关闭数据库连接
