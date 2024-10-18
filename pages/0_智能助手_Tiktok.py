@@ -151,33 +151,28 @@ try:
     if 'current_tab' not in st.session_state:
         st.session_state.current_tab = "评论收集"
 
-    # 为每个标签页创建一个容器
-    tab_containers = [tab1.container(), tab2.container(), tab3.container(), tab4.container(), tab5.container(), tab6.container(), tab7.container()]
-
     # 定义标签页名称列表
     tab_names = ["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"]
 
-    # 加载所有标签页的内容
-    for i, container in enumerate(tab_containers):
-        with container:
-            load_tab_content(tab_names[i])
-
-    # 添加一个回调函数来更新当前选中的标签页
-    def on_tab_change():
-        for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
-            if tab.selectbox_selected:
-                st.session_state.current_tab = tab_names[i]
-
-    # 在每个标签页中添加一个隐藏的选择框来触发回调
+    # 只加载当前选中的标签页内容
     for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
         with tab:
+            if tab_names[i] == st.session_state.current_tab:
+                load_tab_content(tab_names[i])
+            
+            # 添加一个隐藏的选择框来触发回调
             st.selectbox(
-                f"Tab {i+1} Selector",  # 提供一个非空标签
+                f"Tab {i+1} Selector",
                 [""],
                 key=f"tab_{tab}",
-                on_change=on_tab_change,
-                label_visibility="collapsed"  # 使用 "collapsed" 而不是 "hidden"
+                on_change=lambda: setattr(st.session_state, 'current_tab', tab_names[i]),
+                label_visibility="collapsed"
             )
+
+    # 如果检测到标签页切换，重新加载页面
+    if st.session_state.get('reload_trigger', False):
+        st.session_state.reload_trigger = False
+        st.rerun()
 
 finally:
     # 脚本结束时关闭数据库连接
