@@ -48,18 +48,15 @@ def send_msg(db: MySQLDatabase):
             # 显示正在处理的worker的VNC画面
             st.subheader("正在处理消息的Worker VNC画面")
             
-            col1, col2 = st.columns(2)
-            
-            for i, worker_ip in enumerate(worker_ips):
+            for worker_ip in worker_ips:
                 worker_info = db.get_worker_by_ip(worker_ip)
                 if worker_info:
                     novnc_password = worker_info['novnc_password']
                     encoded_password = urllib.parse.quote(novnc_password)
                     vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
                     
-                    with col1 if i % 2 == 0 else col2:
-                        st.write(f"Worker IP: {worker_ip}")
-                        st.components.v1.iframe(vnc_url, width=700, height=525)
+                    st.write(f"Worker IP: {worker_ip}")
+                    st.components.v1.iframe(vnc_url, width=1000, height=750)
         
         # 显示处理进度
         st.subheader("处理进度")
@@ -185,25 +182,15 @@ def send_msg(db: MySQLDatabase):
             # 显示worker的VNC画面
             st.subheader("活跃Worker的VNC画面")
             
-            # 创建两列布局
-            col1, col2 = st.columns(2)
-            
-            for i, worker_ip in enumerate(active_workers):
+            for worker_ip in active_workers:
                 worker_info = db.get_worker_by_ip(worker_ip)
                 if worker_info:
                     novnc_password = worker_info['novnc_password']
                     encoded_password = urllib.parse.quote(novnc_password)
                     vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
                     
-                    # 根据索引决定将iframe放在哪一列
-                    if i % 2 == 0:
-                        with col1:
-                            st.write(f"Worker IP: {worker_ip}")
-                            st.components.v1.iframe(vnc_url, width=700, height=525)
-                    else:
-                        with col2:
-                            st.write(f"Worker IP: {worker_ip}")
-                            st.components.v1.iframe(vnc_url, width=700, height=525)
+                    st.write(f"Worker IP: {worker_ip}")
+                    st.components.v1.iframe(vnc_url, width=1000, height=750)
 
             # 创建循环任务检查消息状态
             progress_bar = st.progress(0)
