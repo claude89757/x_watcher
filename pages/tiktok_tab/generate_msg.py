@@ -39,13 +39,21 @@ def save_messages_to_cache(keyword, messages):
 
 def generate_messages(model, prompt, product_info, user_comments, additional_prompt):
     """使用选定的GPT模型为多个用户生成个性化消息"""
-    formatted_prompt = prompt.format(
-        product_info=product_info,
-        user_comments=json.dumps(user_comments, ensure_ascii=False),
-        additional_prompt=additional_prompt
-    )
+    try:
+        formatted_prompt = prompt.format(
+            product_info=product_info,
+            user_comments=json.dumps(user_comments, ensure_ascii=False),
+            additional_prompt=additional_prompt
+        )
+    except KeyError as e:
+        st.error(f"格式化 prompt 时出错: {e}。请检查 prompt 模板中的占位符是否正确。")
+        return {}
+    
+    st.write("格式化后的 prompt:", formatted_prompt)  # 用于调试
     
     response = process_with_gpt(model, formatted_prompt, max_tokens=5000)
+    st.write("GPT 响应:", response)  # 用于调试
+    
     try:
         # 尝试直接解析 JSON
         messages = json.loads(response.strip())
@@ -92,7 +100,7 @@ def generate_msg(db: MySQLDatabase):
     high_intent_df = pd.DataFrame(high_intent_customers)
     
     if high_intent_df.empty:
-        st.warning(f"未找到关键词 '{selected_keyword}' 的高意向客户。请先进行评论分析或选择其他关键词。")
+        st.warning(f"未找到关键词 '{selected_keyword}' 的高意���客户。请先进行评论分析或选择其他关键词。")
         return  # 提前结束函数
     
     # 根据可用的列筛选高意向客户
@@ -170,7 +178,18 @@ def generate_msg(db: MySQLDatabase):
         for i in range(0, total_customers, batch_size):
             batch = high_intent_df.iloc[i:min(i+batch_size, total_customers)]
             
-            user_comments = {row['user_id']: row['reply_content'] for _, row in batch.iterrows()}
+            user_comments = {}
+            for _, row in batch.iterrows():
+                user_id = row['user_id']
+                reply_content = row['reply_content']
+                if user_id and reply_content:
+                    user_comments[user_id] = reply_content
+            
+            st.write("用户评论:", user_comments)  # 用于调试
+            
+            if not user_comments:
+                st.warning("没有有效的用户评论数据。请检查数据源。")
+                break
             
             # 生成消息
             messages = generate_messages(model, prompt, product_info, user_comments, additional_prompt)
