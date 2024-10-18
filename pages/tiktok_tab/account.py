@@ -86,7 +86,7 @@ def account_management(db: MySQLDatabase):
                         
                         if triggered_workers:
                             st.success(f"账号状态刷新任务已触发。已触发的workers: {', '.join(triggered_workers)}")
-                            st.warning("请在VNC窗口中通过邮箱登录（通过忘记密码的方式登录），以验证账号状态！！！")
+                            st.warning("请【人工操作】VNC窗口，通过邮箱登录（通过忘记密码的方式登录），以验证账号状态！！！")
                             
                             # 显示VNC窗口
                             for worker_ip in triggered_workers:
