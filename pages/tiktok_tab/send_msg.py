@@ -32,10 +32,6 @@ def send_msg(db):
     df = pd.DataFrame(messages)
     st.dataframe(df[['id', 'message']])
 
-    # 选择要发送的消息
-    selected_message_id = st.selectbox("选择要发送的消息", options=df['id'].tolist())
-    selected_message = df[df['id'] == selected_message_id]['message'].values[0]
-
     # 使用列布局来将设置放在一行
     col1, col2, col3 = st.columns(3)
     
@@ -61,7 +57,7 @@ def send_msg(db):
                 f"http://{worker_ip}:5000/send_promotion_messages",
                 json={
                     "user_ids": user_ids,
-                    "message": selected_message,
+                    "messages": df['message'].tolist(),  # 发送所有消息
                     "account_id": account_id,
                     "keyword": selected_keyword,
                     "batch_size": batch_size,
@@ -87,7 +83,7 @@ def send_msg(db):
                     f"http://{worker_ip}:5000/send_promotion_messages",
                     json={
                         "user_ids": account_user_ids,
-                        "message": selected_message,
+                        "messages": df['message'].tolist(),  # 发送所有消息
                         "account_id": account_id,
                         "keyword": selected_keyword,
                         "batch_size": batch_size,

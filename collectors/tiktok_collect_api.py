@@ -227,20 +227,20 @@ def check_and_execute_tasks():
 def api_send_promotion_messages():
     data = request.json
     user_ids = data.get('user_ids')
-    message = data.get('message')
+    messages = data.get('messages')
     account_id = data.get('account_id')
     keyword = data.get('keyword')
     batch_size = data.get('batch_size', 5)
     wait_time = data.get('wait_time', 60)
     
-    if not all([user_ids, message, account_id, keyword]):
+    if not all([user_ids, messages, account_id, keyword]):
         return jsonify({"error": "缺少必要参数"}), 400
     
     db = MySQLDatabase()
     db.connect()
     
     try:
-        results = send_promotion_messages(user_ids, message, account_id, batch_size, wait_time)
+        results = send_promotion_messages(user_ids, messages, account_id, batch_size, wait_time)
         
         for result in results:
             if result['success']:

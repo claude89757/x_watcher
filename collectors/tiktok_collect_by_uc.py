@@ -324,7 +324,7 @@ def login_by_local_cookies(driver):
         except Exception as e:
             logger.error(f"使用 {cookie_file} 登录时发生错误: {str(e)}")
 
-    # 如果所有cookies文件都尝试失败,抛出异常
+    # 如果所有cookies文件���尝试失败,抛出异常
     error_message = "所有cookies文件都无法成功登录"
     logger.error(error_message)
     raise Exception(error_message)
@@ -729,7 +729,7 @@ def check_account_status(account_id, username, email):
             # 随机暂停，模拟人类思考
             time.sleep(random.uniform(0.5, 1.5))
 
-            logger.info(f"请在30分钟内手动完成验证码输入和密码重置操作，完成后请按回车键继续...")
+            logger.info(f"请在30分钟内手动完成验证码输入和密码重��操作，完成后请按回车键继续...")
             
             # 等待用户按回车键
             input("验证完成后请按回车键继续...")
@@ -757,7 +757,7 @@ def check_account_status(account_id, username, email):
             driver.quit()
         db.disconnect()
 
-def send_promotion_messages(user_ids, message, account_id, batch_size=5, wait_time=60):
+def send_promotion_messages(user_ids, messages, account_id, batch_size=5, wait_time=60):
     db = MySQLDatabase()
     db.connect()
     driver = None
@@ -777,8 +777,9 @@ def send_promotion_messages(user_ids, message, account_id, batch_size=5, wait_ti
         
         # 分批处理用户
         for i in range(0, len(user_ids), batch_size):
-            batch = user_ids[i:i+batch_size]
-            for user_id in batch:
+            batch_users = user_ids[i:i+batch_size]
+            for j, user_id in enumerate(batch_users):
+                message = messages[j % len(messages)]  # 循环使用消息
                 result = send_single_promotion_message(driver, user_id, message)
                 results.append(result)
             
