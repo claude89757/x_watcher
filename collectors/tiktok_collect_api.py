@@ -235,11 +235,19 @@ def api_send_promotion_messages():
     if not all([user_messages, account_id]):
         return jsonify({"error": "缺少必要参数"}), 400
     
+    # 检查当前运行的Chrome进程数
+    chrome_count = get_chrome_process_count()
+    if chrome_count >= MAX_CONCURRENT_CHROME:
+        return jsonify({"error": f"当前主机已达到最大并发Chrome进程数 ({MAX_CONCURRENT_CHROME})"}), 429
+    
     # 启动后台线程处理消息发送
     thread = threading.Thread(target=process_messages_async, args=(user_messages, account_id, batch_size, wait_time))
     thread.start()
     
-    return jsonify({"message": "消息发送任务已启动"}), 202
+    return jsonify({
+        "message": "消息发送任务已启动",
+        "worker_ip": worker_ip  # 返回当前worker的IP
+    }), 200
 
 def process_messages_async(user_messages, account_id, batch_size, wait_time):
     db = MySQLDatabase()

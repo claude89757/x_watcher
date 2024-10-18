@@ -63,8 +63,9 @@ def send_msg(db):
                 }
             )
             
-            if response.status_code == 202:
-                st.info(f"账号 {account['username']} 的消息发送任务已启动")
+            if response.status_code == 200:
+                response_data = response.json()
+                st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
             else:
                 st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
         else:
@@ -87,8 +88,9 @@ def send_msg(db):
                     }
                 )
                 
-                if response.status_code == 202:
-                    st.info(f"账号 {account['username']} 的消息发送任务已启动")
+                if response.status_code == 200:
+                    response_data = response.json()
+                    st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
                 else:
                     st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
         
