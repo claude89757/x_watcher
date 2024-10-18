@@ -37,13 +37,13 @@ def save_messages_to_cache(keyword, messages):
     with open(MESSAGES_CACHE_FILE, 'w') as f:
         json.dump(cache, f)
 
-def generate_messages(model, prompt, product_info, user_comments, additional_prompt):
+def generate_messages(model, prompt, product_info, user_comments_str, additional_prompt):
     """使用选定的GPT模型为多个用户生成个性化消息"""
-    st.write("生成消息的输入:", product_info, user_comments, additional_prompt)  # 用于调试
+    st.write("生成消息的输入:", product_info, user_comments_str, additional_prompt)  # 用于调试
     try:
         formatted_prompt = prompt.format(
             product_info=product_info,
-            user_comments=json.dumps(user_comments, ensure_ascii=False),
+            user_comments=user_comments_str,
             additional_prompt=additional_prompt
         )
     except KeyError as e:
@@ -56,12 +56,23 @@ def generate_messages(model, prompt, product_info, user_comments, additional_pro
     st.write("GPT 响应:", response)  # 用于调试
     
     try:
+        # 尝试直接解析 JSON
         messages = json.loads(response.strip())
         if not isinstance(messages, dict):
             raise ValueError("GPT 响应不是有效的 JSON 对象")
         return messages
     except (json.JSONDecodeError, ValueError) as e:
         st.error(f"解析 GPT 响应时出错: {e}")
+        # 尝试提取 JSON 部分
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            try:
+                messages = json.loads(json_match.group())
+                if isinstance(messages, dict):
+                    return messages
+            except json.JSONDecodeError:
+                pass
+        st.error("无法从 GPT 响应中提取有效的 JSON。请检查 prompt 或重试。")
         return {}
 
 def generate_msg(db: MySQLDatabase):
@@ -129,11 +140,9 @@ def generate_msg(db: MySQLDatabase):
 5. 包含一个简单的号召性用语
 
 请以JSON格式返回结果，格式如下:
-{{
-    "用户ID1": "为用户1生成的消息",
-    "用户ID2": "为用户2生成的消息",
-    ...
-}}
+{{"用户ID1": "为用户1生成的消息", "用户ID2": "为用户2生成的消息", ...}}
+
+注意：请确保返回的是有效的JSON格式，不要添加额外的换行或缩进。
 """
     
     # 实时渲染product_info和additional_prompt到default_prompt
@@ -174,7 +183,8 @@ def generate_msg(db: MySQLDatabase):
                 break
             
             # 生成消息
-            messages = generate_messages(model, prompt, product_info, user_comments, additional_prompt)
+            user_comments_str = json.dumps(user_comments, ensure_ascii=False)
+            messages = generate_messages(model, prompt, product_info, user_comments_str, additional_prompt)
             st.session_state.generated_messages.update(messages)
             
             # 更新进度
