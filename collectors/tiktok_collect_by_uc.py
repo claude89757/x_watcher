@@ -217,7 +217,7 @@ def load_cookies(driver, username):
 def is_captcha_present(driver):
     """检查面上是否存在验证码元素。"""
     try:
-        # 这里假设验证码元素有一特定的CSS选择器
+        # 这里假设验证码元素有一定的CSS选择器
         captcha_element = driver.find_element(By.CSS_SELECTOR, 'div.cap-flex')  # 替换为实际的验证码元素选择器
         logger.info("检测到证码")
         return True
@@ -619,7 +619,7 @@ def process_task(task_id, keyword, server_ip):
 
         logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
         if task_status == 'running':
-            # 任务状态��running，更新为completed
+            # 任务状态running，更新为completed
             db.update_tiktok_task_details(task_id, status='completed', end_time=datetime.now())
         elif task_status == 'paused':
             # 任务状态为paused，更新为paused
@@ -800,69 +800,86 @@ def send_single_promotion_message(driver, user_id, message):
         # 访问用户主页
         user_profile_url = f"https://www.tiktok.com/@{user_id}"
         driver.get(user_profile_url)
+        logger.info(f"正在访问用户 {user_id} 的主页: {user_profile_url}")
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+        logger.info("页面加载完成")
         
         # 尝试关注用户
         try:
+            logger.info("正在尝试找到关注按钮")
             follow_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='follow-button']"))
             )
+            logger.info("找到关注按钮,正在点击")
             follow_button.click()
             logger.info(f"成功关注用户 {user_id}")
             
             # 尝试在用户最新视频下留言
             try:
+                logger.info("正在尝试找到最新视频")
                 latest_video = WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.TAG_NAME, 'video'))
                 )
+                logger.info("找到最新视频,正在点击")
                 latest_video.click()
                 
-                # 等待评论输入框出现
+                logger.info("正在等待评论输入框出现")
                 comment_input = WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, "//div[@data-e2e='comment-input']//div[@class='public-DraftEditor-content']"))
                 )
+                logger.info("找到评论输入框,正在输入评论")
                 simulate_human_input(driver, comment_input, message)
                 
-                # 点击发送评论按钮
+                logger.info("正在寻找发送评论按钮")
                 post_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//div[@data-e2e='comment-post']"))
                 )
+                logger.info("找到发送评论按钮,正在点击")
                 post_button.click()
                 
                 logger.info(f"成功在用户 {user_id} 的视频下留言")
                 return {"success": True, "message": "成功关注并留言", "action": "follow_and_comment", "user_id": user_id}
             except Exception as e:
                 logger.error(f"留言失败: {str(e)}")
+                logger.error(f"留言失败的详细错误: {traceback.format_exc()}")
         except Exception as e:
             logger.error(f"关注用户失败: {str(e)}")
+            logger.error(f"关注用户失败的详细错误: {traceback.format_exc()}")
         
         # 如果关注或留言失败，尝试发送私信
         try:
+            logger.info("正在尝试找到发送私信按钮")
             message_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='message-button']"))
             )
+            logger.info("找到发送私信按钮,正在点击")
             message_button.click()
             
-            # 等待私信输入框出现
+            logger.info("正在等待私信输入框出现")
             message_input = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.XPATH, "//div[@data-e2e='message-input-area']//div[@class='public-DraftEditor-content']"))
             )
+            logger.info("找到私信输入框,正在输入私信")
             simulate_human_input(driver, message_input, message)
             
-            # 点击发送私信按钮
+            logger.info("正在寻找发送私信按钮")
             send_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//svg[@data-e2e='message-send']"))
             )
+            logger.info("找到发送私信按钮,正在点击")
             send_button.click()
             
             logger.info(f"成功发送私信给用户 {user_id}")
             return {"success": True, "message": "成功发送私信", "action": "direct_message", "user_id": user_id}
         except Exception as e:
             logger.error(f"发送私信失败: {str(e)}")
+            logger.error(f"发送私信失败的详细错误: {traceback.format_exc()}")
         
+        logger.warning(f"对用户 {user_id} 的所有操作都失败")
         return {"success": False, "message": "关注、留言和私信都失败", "action": "none", "user_id": user_id}
     except Exception as e:
         logger.error(f"发送推广消息给用户 {user_id} 时发生错误: {str(e)}")
+        logger.error(f"发送推广消息失败的详细错误: {traceback.format_exc()}")
         return {"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_id}
 
 # for local test
