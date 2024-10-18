@@ -123,48 +123,34 @@ try:
     # 创建标签页
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"])
 
-    # 定义一个函数来加载标签页内容
-    def load_tab_content(tab_name):
-        if tab_name == "评论收集":
-            logger.info("加载评论收集")
-            data_collect(db)
-        elif tab_name == "评论过滤":
-            logger.info("加载评论过滤")
-            data_filter(db)
-        elif tab_name == "评论分析_AI":
-            logger.info("加载评论分析_AI")
-            data_analyze(db)
-        elif tab_name == "生成文案_AI":
-            logger.info("加载生成文案_AI")
-            generate_msg(db)
-        elif tab_name == "触达客户":
-            logger.info("加载触达客户")
-            send_msg(db)
-        elif tab_name == "(后台监控)":
-            logger.info("加载后台监控")
-            worker_vnc(db)
-        elif tab_name == "(账号管理)":
-            logger.info("加载账号管理")
-            account_management(db)
-
-    # 使用 st.session_state 来跟踪当前选中的标签页
-    if 'current_tab' not in st.session_state:
-        st.session_state.current_tab = "评论收集"
-
     # 定义标签页名称列表
     tab_names = ["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"]
 
-    # 检查是否有标签页被点击
-    for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
-        if tab.selectbox(f"Tab {i+1} Selector", [""], key=f"tab_{i}", label_visibility="collapsed") != "":
-            st.session_state.current_tab = tab_names[i]
-            st.rerun()
+    # 使用 radio 按钮来选择当前标签页
+    current_tab = st.sidebar.radio("选择功能", tab_names)
 
-    # 只加载当前选中的标签页内容
-    for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
-        with tab:
-            if tab_names[i] == st.session_state.current_tab:
-                load_tab_content(tab_names[i])
+    # 根据选择的标签页加载内容
+    if current_tab == "评论收集":
+        with tab1:
+            data_collect(db)
+    elif current_tab == "评论过滤":
+        with tab2:
+            data_filter(db)
+    elif current_tab == "评论分析_AI":
+        with tab3:
+            data_analyze(db)
+    elif current_tab == "生成文案_AI":
+        with tab4:
+            generate_msg(db)
+    elif current_tab == "触达客户":
+        with tab5:
+            send_msg(db)
+    elif current_tab == "(后台监控)":
+        with tab6:
+            worker_vnc(db)
+    elif current_tab == "(账号管理)":
+        with tab7:
+            account_management(db)
 
 finally:
     # 脚本结束时关闭数据库连接
