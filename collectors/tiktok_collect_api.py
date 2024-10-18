@@ -253,9 +253,9 @@ def process_messages_async(user_messages, account_id, batch_size, wait_time):
     db = MySQLDatabase()
     db.connect()
     try:
-        # 更新消息状态为 processing
+        # 更新消息状态为 processing 并设置 worker_ip
         for message in user_messages:
-            db.update_tiktok_message_status(message['user_id'], 'processing')
+            db.update_tiktok_message_status_and_worker(message['user_id'], 'processing', worker_ip)
         
         results = send_promotion_messages(user_messages, account_id, batch_size, wait_time)
         

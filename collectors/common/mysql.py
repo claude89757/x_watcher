@@ -1089,6 +1089,15 @@ class MySQLDatabase:
         results = self.execute_query(query, (keyword,))
         return [result['worker_ip'] for result in results if result.get('worker_ip')]
 
+    def update_tiktok_message_status_and_worker(self, user_id, status, worker_ip):
+        """更新TikTok消息状态和worker IP"""
+        query = """
+        UPDATE tiktok_messages
+        SET status = %s, worker_ip = %s
+        WHERE user_id = %s
+        """
+        return self.execute_update(query, (status, worker_ip, user_id))
+
 # 使用示例
 if __name__ == "__main__":
     db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
