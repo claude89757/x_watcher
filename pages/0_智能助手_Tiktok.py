@@ -18,7 +18,6 @@ from datetime import timedelta
 import pandas as pd
 import streamlit as st
 import requests
-import extra_streamlit_components as stx
 
 from common.config import CONFIG
 from common.cos import list_latest_files
@@ -81,34 +80,6 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# 在 hide_streamlit_style 之后添加以下 CSS
-tab_style = """
-<style>
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #F0F2F6;
-        border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #FFFFFF;
-    }
-    .stTabs [data-baseweb="tab-panel"] {
-        background-color: #FFFFFF;
-        border-radius: 0px 0px 4px 4px;
-        border: 1px solid #D3D3D3;
-        padding: 15px;
-    }
-</style>
-"""
-st.markdown(tab_style, unsafe_allow_html=True)
-
 # 添加大标题
 st.title("Tiktok智能助手 🤖")
 
@@ -153,51 +124,33 @@ try:
         st.metric("评论总数", global_stats['comment_count'])
         st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
-    # 使用 stx.tab_bar 创建标签页
-    chosen_id = stx.tab_bar(data=[
-        stx.TabBarItemData(id="tab1", title="评论收集", description=""),
-        stx.TabBarItemData(id="tab2", title="评论过滤", description=""),
-        stx.TabBarItemData(id="tab3", title="评论分析_AI", description=""),
-        stx.TabBarItemData(id="tab4", title="生成文案_AI", description=""),
-        stx.TabBarItemData(id="tab5", title="触达客户", description=""),
-        stx.TabBarItemData(id="tab6", title="后台监控", description=""),
-        stx.TabBarItemData(id="tab7", title="账号管理", description=""),
-    ])
+    # 创建标签页
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"])
 
-    # 创建一个占位符来显示内容
-    content_placeholder = st.container()
+    # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
+    if 'cached_keyword' not in st.session_state:
+        st.session_state.cached_keyword = load_keyword_from_cache()
 
-    # 根据选择的标签页加载内容
-    if chosen_id == "tab1":
-        with content_placeholder:
-            logger.info(f"评论收集================================================")
-            data_collect(db)
-    elif chosen_id == "tab2":
-        with content_placeholder:
-            logger.info(f"评论过滤================================================")
-            data_filter(db)
-    elif chosen_id == "tab3":
-        with content_placeholder:
-            logger.info(f"评论分析_AI================================================")
-            data_analyze(db)
-    elif chosen_id == "tab4":
-        with content_placeholder:
-            logger.info(f"生成文案_AI================================================")
-            generate_msg(db)
-    elif chosen_id == "tab5":
-        with content_placeholder:
-            logger.info(f"触达客户================================================")
-            send_msg(db)
-    elif chosen_id == "tab6":
-        with content_placeholder:
-            logger.info(f"后台监控================================================")
-            worker_vnc(db)
-    elif chosen_id == "tab7":
-        with content_placeholder:
-            logger.info(f"账号管理================================================")
-            account_management(db)
-    else:
-        content_placeholder.warning("请选择一个功能标签页")
+    with tab1:
+        data_collect(db)
+
+    with tab2:
+        data_filter(db)
+
+    with tab3:
+        data_analyze(db)
+
+    with tab4:
+        generate_msg(db)
+
+    with tab5:
+        send_msg(db)
+
+    with tab6:
+        worker_vnc(db)
+
+    with tab7:
+        account_management(db)
 
 finally:
     # 脚本结束时关闭数据库连接
