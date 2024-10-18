@@ -33,6 +33,7 @@ from pages.tiktok_tab.worker_vnc import worker_vnc
 from pages.tiktok_tab.account import account_management
 from pages.tiktok_tab.data_filter import data_filter
 from pages.tiktok_tab.data_analyze import data_analyze
+from pages.tiktok_tab.generate_msg import generate_msg
 from pages.tiktok_tab.send_msg import send_msg
 
 # Configure logger
@@ -120,29 +121,60 @@ try:
         st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
     # 创建标签页
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "批量私信_AI", "后台监控", "账号管理"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["评论收集", "��论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"])
 
-    # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
-    if 'cached_keyword' not in st.session_state:
-        st.session_state.cached_keyword = load_keyword_from_cache()
+    # 使用 st.session_state 来跟踪当前选中的标签页
+    if 'current_tab' not in st.session_state:
+        st.session_state.current_tab = "评论收集"
 
-    with tab1:
-        data_collect(db)
+    # 根据当前选中的标签页加载相应的内容
+    if st.session_state.current_tab == "评论收集":
+        with tab1:
+            data_collect(db)
+            st.session_state.current_tab = "评论收集"
 
-    with tab2:
-        data_filter(db)
+    if st.session_state.current_tab == "评论过滤":
+        with tab2:
+            data_filter(db)
+            st.session_state.current_tab = "评论过滤"
 
-    with tab3:
-        data_analyze(db)
+    if st.session_state.current_tab == "评论分析_AI":
+        with tab3:
+            data_analyze(db)
+            st.session_state.current_tab = "评论分析_AI"
 
-    with tab4:
-        send_msg(db)
+    if st.session_state.current_tab == "生成文案_AI":
+        with tab4:
+            generate_msg(db)
+            st.session_state.current_tab = "生成文案_AI"
 
-    with tab5:
-        worker_vnc(db)
+    if st.session_state.current_tab == "触达客户":
+        with tab5:
+            send_msg(db)
+            st.session_state.current_tab = "触达客户"
 
-    with tab6:
-        account_management(db)
+    if st.session_state.current_tab == "(后台监控)":
+        with tab6:
+            worker_vnc(db)
+            st.session_state.current_tab = "(后台监控)"
+
+    if st.session_state.current_tab == "(账号管理)":
+        with tab7:
+            account_management(db)
+            st.session_state.current_tab = "(账号管理)"
+
+    # 添加一个回调函数来更新当前选中的标签页
+    def on_tab_change():
+        tab_names = ["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"]
+        for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
+            if tab.selectbox_selected:
+                st.session_state.current_tab = tab_names[i]
+                st.rerun()
+
+    # 在每个标签页中添加一个隐藏的选择框来触发回调
+    for tab in [tab1, tab2, tab3, tab4, tab5, tab6, tab7]:
+        with tab:
+            st.selectbox("", [""], key=f"tab_{tab}", on_change=on_tab_change, label_visibility="hidden")
 
 finally:
     # 脚本结束时关闭数据库连接
