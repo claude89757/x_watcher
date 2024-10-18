@@ -39,17 +39,10 @@ def save_messages_to_cache(keyword, messages):
 
 def generate_messages(model, prompt, product_info, user_comments_str, additional_prompt):
     """使用选定的GPT模型为多个用户生成个性化消息"""
-    st.write(prompt)
-    st.write(product_info)
-    st.write(user_comments_str)
-    st.write(additional_prompt)
     try:
-        formatted_prompt = prompt.format(
-            product_info=product_info,
-            user_comments=user_comments_str,
-            additional_prompt=additional_prompt
-        )
-    except KeyError as e:
+        # 将 user_comments 作为一个整体字符串传入，而不是尝试格式化它
+        formatted_prompt = prompt.replace("{user_comments}", user_comments_str)
+    except Exception as e:
         st.error(f"格式化 prompt 时出错: {e}。请检查 prompt 模板中的占位符是否正确。")
         return {}
     
