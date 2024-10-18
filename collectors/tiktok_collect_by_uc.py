@@ -757,6 +757,91 @@ def check_account_status(account_id, username, email):
             driver.quit()
         db.disconnect()
 
+def send_promotion_message(user_id, message, account_id):
+    db = MySQLDatabase()
+    db.connect()
+    driver = None
+    try:
+        driver = setup_driver()
+        
+        # 获取账号信息
+        account = db.get_tiktok_account_by_id(account_id)
+        if not account:
+            return {"success": False, "message": "账号不存在", "action": "none"}
+        
+        # 使用账号登录
+        login_success = login_by_local_cookies(driver)
+        if not login_success:
+            return {"success": False, "message": "登录失败", "action": "none"}
+        
+        # 访问用户主页
+        user_profile_url = f"https://www.tiktok.com/@{user_id}"
+        driver.get(user_profile_url)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+        
+        # 尝试关注用户
+        try:
+            follow_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'follow-button')]"))
+            )
+            follow_button.click()
+            logger.info(f"成功关注用户 {user_id}")
+            
+            # 尝试在用户最新视频下留言
+            try:
+                latest_video = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'video-feed-item')]"))
+                )
+                latest_video.click()
+                
+                comment_input = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[@class='public-DraftEditor-content']"))
+                )
+                simulate_human_input(driver, comment_input, message)
+                
+                post_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'post-comment-button')]"))
+                )
+                post_button.click()
+                
+                logger.info(f"成功在用户 {user_id} 的视频下留言")
+                return {"success": True, "message": "成功关注并留言", "action": "follow_and_comment"}
+            except Exception as e:
+                logger.error(f"留言失败: {str(e)}")
+        except Exception as e:
+            logger.error(f"关注用户失败: {str(e)}")
+        
+        # 如果关注或留言失败，尝试发送私信
+        try:
+            message_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'message-button')]"))
+            )
+            message_button.click()
+            
+            message_input = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.XPATH, "//div[@class='public-DraftEditor-content']"))
+            )
+            simulate_human_input(driver, message_input, message)
+            
+            send_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(@class, 'send-message-button')]"))
+            )
+            send_button.click()
+            
+            logger.info(f"成功发送私信给用户 {user_id}")
+            return {"success": True, "message": "成功发送私信", "action": "direct_message"}
+        except Exception as e:
+            logger.error(f"发送私信失败: {str(e)}")
+        
+        return {"success": False, "message": "关注、留言和私信都失败", "action": "none"}
+    except Exception as e:
+        logger.error(f"发送推广消息时发生错误: {str(e)}")
+        return {"success": False, "message": f"发生错误: {str(e)}", "action": "none"}
+    finally:
+        if driver:
+            driver.quit()
+        db.disconnect()
+
 # for local test
 if __name__ == '__main__':
     main()

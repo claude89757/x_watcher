@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from common.mysql import MySQLDatabase
 import threading
-from tiktok_collect_by_uc import process_task, get_public_ip, check_account_status
+from tiktok_collect_by_uc import process_task, get_public_ip, check_account_status, send_promotion_message
 import logging
 import os
 import socket
@@ -221,6 +221,23 @@ def check_and_execute_tasks():
             db.disconnect()
     else:
         logger.info("当前有Chrome进程正在运行，跳过任务检查")
+
+@app.route('/send_promotion_message', methods=['POST'])
+def api_send_promotion_message():
+    data = request.json
+    user_id = data.get('user_id')
+    message = data.get('message')
+    account_id = data.get('account_id')
+    
+    if not all([user_id, message, account_id]):
+        return jsonify({"error": "缺少必要参数"}), 400
+    
+    try:
+        result = send_promotion_message(user_id, message, account_id)
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"发送推广消息时发生错误: {str(e)}")
+        return jsonify({"error": "发送消息失败"}), 500
 
 if __name__ == '__main__':
     register_worker()
