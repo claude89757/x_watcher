@@ -55,32 +55,13 @@ def generate_messages(model, prompt, product_info, user_comments, additional_pro
     st.write("GPT 响应:", response)  # 用于调试
     
     try:
-        # 尝试直接解析 JSON
         messages = json.loads(response.strip())
-    except json.JSONDecodeError:
-        # 如果直接解析失败，尝试提取 JSON 部分
-        json_match = re.search(r'\{.*\}', response, re.DOTALL)
-        if json_match:
-            try:
-                messages = json.loads(json_match.group())
-            except json.JSONDecodeError:
-                st.error("无法从 GPT 响应中提取有效的 JSON。请检查 prompt 或重试。")
-                return {}
-        else:
-            # 如果无法提取 JSON，尝试手动解析响应
-            messages = {}
-            lines = response.strip().split('\n')
-            for line in lines:
-                parts = line.split(':', 1)
-                if len(parts) == 2:
-                    user_id = parts[0].strip().strip('"')
-                    message = parts[1].strip().strip('"')
-                    messages[user_id] = message
-    
-    if not messages:
-        st.error("GPT 生成的响应不包含有效的消息。请重试或调整提示。")
-    
-    return messages
+        if not isinstance(messages, dict):
+            raise ValueError("GPT 响应不是有效的 JSON 对象")
+        return messages
+    except (json.JSONDecodeError, ValueError) as e:
+        st.error(f"解析 GPT 响应时出错: {e}")
+        return {}
 
 def generate_msg(db: MySQLDatabase):
     """
@@ -100,7 +81,7 @@ def generate_msg(db: MySQLDatabase):
     high_intent_df = pd.DataFrame(high_intent_customers)
     
     if high_intent_df.empty:
-        st.warning(f"未找到关键词 '{selected_keyword}' 的高意���客户。请先进行评论分析或选择其他关键词。")
+        st.warning(f"未找到关键词 '{selected_keyword}' 的高意向客户。请先进行评论分析或选择其他关键词。")
         return  # 提前结束函数
     
     # 根据可用的列筛选高意向客户
@@ -148,8 +129,8 @@ def generate_msg(db: MySQLDatabase):
 
 请以JSON格式返回结果，格式如下:
 {{
-    "user_id1": "为用户1生成的消息",
-    "user_id2": "为用户2生成的消息",
+    "用户ID1": "为用户1生成的消息",
+    "用户ID2": "为用户2生成的消息",
     ...
 }}
 """
