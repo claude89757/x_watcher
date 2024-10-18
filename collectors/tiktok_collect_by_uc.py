@@ -936,11 +936,20 @@ def send_single_promotion_message(driver, user_id, message):
             
             random_wait(2, 4)
             
-            logger.info(f"成功发送私信给用户 {user_id}")
-            dm_success = True
+            # 检查是否出现发送失败的警告元素
+            try:
+                warning_element = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='dm-warning']"))
+                )
+                logger.warning("检测到私信发送失败警告")
+                dm_success = False
+            except TimeoutException:
+                logger.info(f"成功发送私信给用户 {user_id}")
+                dm_success = True
         except Exception as e:
             logger.error(f"发送私信失败: {str(e)}")
             logger.error(f"发送私信失败的详细错误: {traceback.format_exc()}")
+            dm_success = False
         
         # 根据操作结果返回相应的信息
         if comment_success or dm_success:
