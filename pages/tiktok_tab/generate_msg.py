@@ -91,7 +91,7 @@ def generate_msg(db: MySQLDatabase):
 额外提示: {additional_prompt}
 
 请为每个用户生成一条私信，确保每条消息:
-1. 长度适中，不超过150字
+1. 长度适中，不超过100字
 2. 语气友好亲和
 3. 与用户评论内容相关
 4. 自然地引入产品/服务
@@ -103,8 +103,7 @@ def generate_msg(db: MySQLDatabase):
     "user_id2": "为用户2生成的消息",
     ...
 }}
-
-生成的消息:"""
+"""
     
     # 实时渲染product_info和additional_prompt到default_prompt
     rendered_prompt = default_prompt.format(
