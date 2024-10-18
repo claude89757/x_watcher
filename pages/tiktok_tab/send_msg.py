@@ -114,14 +114,9 @@ def send_msg(db: MySQLDatabase):
     selected_accounts = st.multiselect("选择发送账号", account_options)
     account_ids = [int(account.split("ID: ")[1].split(",")[0]) for account in selected_accounts]
 
-    # 初始化会话状态
-    if 'send_button_clicked' not in st.session_state:
-        st.session_state.send_button_clicked = False
-
     # 只有当选择了账号且按钮未被点击过时才显示
-    if selected_accounts and not st.session_state.send_button_clicked:
+    if account_ids:
         if st.button("开始发送", key="send_msg_button", type="primary"):
-            st.session_state.send_button_clicked = True
             
             # 限制发送消息数量，只选择未成功发送的消息
             user_messages = pending_df[['user_id', 'message']].to_dict('records')[:total_messages]
@@ -218,7 +213,5 @@ def send_msg(db: MySQLDatabase):
             
             time.sleep(20)
             st.rerun()  # 重新运行页面以刷新数据
-    elif not selected_accounts:
+    else:
         st.warning("请选择至少一个发送账号")
-    elif st.session_state.send_button_clicked:
-        pass
