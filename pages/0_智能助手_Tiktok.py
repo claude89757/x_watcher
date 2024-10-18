@@ -154,25 +154,17 @@ try:
     # 定义标签页名称列表
     tab_names = ["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"]
 
+    # 检查是否有标签页被点击
+    for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
+        if tab.selectbox(f"Tab {i+1} Selector", [""], key=f"tab_{i}", label_visibility="collapsed") != "":
+            st.session_state.current_tab = tab_names[i]
+            st.rerun()
+
     # 只加载当前选中的标签页内容
     for i, tab in enumerate([tab1, tab2, tab3, tab4, tab5, tab6, tab7]):
         with tab:
             if tab_names[i] == st.session_state.current_tab:
                 load_tab_content(tab_names[i])
-            
-            # 添加一个隐藏的选择框来触发回调
-            st.selectbox(
-                f"Tab {i+1} Selector",
-                [""],
-                key=f"tab_{tab}",
-                on_change=lambda: setattr(st.session_state, 'current_tab', tab_names[i]),
-                label_visibility="collapsed"
-            )
-
-    # 如果检测到标签页切换，重新加载页面
-    if st.session_state.get('reload_trigger', False):
-        st.session_state.reload_trigger = False
-        st.rerun()
 
 finally:
     # 脚本结束时关闭数据库连接
