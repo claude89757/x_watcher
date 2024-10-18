@@ -1057,7 +1057,7 @@ class MySQLDatabase:
         ORDER BY created_at ASC
         LIMIT %s
         """
-        return self.execute_query(query, (keyword, status, limit))
+        return self.execute_query(query, (keyword, limit))
 
     def update_tiktok_message_status(self, user_id, status):
         """更新TikTok消息状态"""
