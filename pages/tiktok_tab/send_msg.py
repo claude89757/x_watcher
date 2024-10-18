@@ -21,17 +21,28 @@ def send_msg(db):
     keywords = db.get_all_tiktok_keywords()
     selected_keyword = st.selectbox("选择关键词", keywords)
 
-    # 从数据库获取推广消息
-    messages = db.get_tiktok_messages(selected_keyword, status='pending')
-    if not messages:
-        st.warning("没有找到待发送的推广消息")
+    # 从数据库获取所有推广消息（包括已发送和未发送的）
+    all_messages = db.get_tiktok_messages(selected_keyword)
+    if not all_messages:
+        st.warning("没有找到推广消息")
         return
 
-    # 使用DataFrame展示推广消息
-    df = pd.DataFrame(messages)
-    st.dataframe(df[['id', 'user_id', 'message']])
+    # 使用DataFrame展示所有推广消息
+    df = pd.DataFrame(all_messages)
+    st.subheader("所有推广消息")
+    st.dataframe(df[['id', 'user_id', 'message', 'status', 'created_at', 'updated_at']])
 
-    # 使列布局来将设置放在一行
+    # 获取未成功发送的消息
+    pending_messages = [msg for msg in all_messages if msg['status'] == 'pending']
+    if not pending_messages:
+        st.warning("没有待发送的推广消息")
+        return
+
+    st.subheader("待发送的推广消息")
+    pending_df = pd.DataFrame(pending_messages)
+    st.dataframe(pending_df[['id', 'user_id', 'message']])
+
+    # 使用列布局来将设置放在一行
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -44,8 +55,8 @@ def send_msg(db):
         wait_time = st.selectbox("每批等待时间（秒）", options=[30, 60, 120, 300], index=1)
 
     if st.button("开始发送", key="send_msg_button", type="primary"):
-        # 限制发送消息数量
-        user_messages = df[['user_id', 'message']].to_dict('records')[:total_messages]
+        # 限制发送消息数量，只选择未成功发送的消息
+        user_messages = pending_df[['user_id', 'message']].to_dict('records')[:total_messages]
         
         if len(account_ids) == 1:
             # 单个账号发送所有消息
