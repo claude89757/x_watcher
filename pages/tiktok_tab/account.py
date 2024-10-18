@@ -92,19 +92,16 @@ def account_management(db: MySQLDatabase):
                                         encoded_password = urllib.parse.quote(novnc_password)
                                         vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
                                         
-                                        # 使用st.empty()创建一个可更新的容器
-                                        vnc_container = st.empty()
+                                        # 直接使用st.components.v1.iframe显示VNC窗口
+                                        st.components.v1.iframe(vnc_url, width=800, height=600)
                                         
-                                        # 显示VNC窗口
-                                        vnc_container.components.v1.iframe(vnc_url, width=800, height=600)
+                                        # 添加一个按钮来手动关闭VNC窗口
+                                        if st.button(f"关闭 Worker {worker_ip} 的VNC窗口"):
+                                            st.info(f"Worker {worker_ip} 的VNC窗口已关闭。")
+                                            st.rerun()
                                         
-                                        # 等待5分钟
-                                        time.sleep(300)
-                                        
-                                        # 5分钟后清空容器，effectively关闭VNC窗口
-                                        vnc_container.empty()
-                                        
-                                        st.info(f"Worker {worker_ip} 的VNC窗口已自动关闭。")
+                                        # 添加一个提示，告诉用户如何关闭VNC窗口
+                                        st.info("VNC窗口将保持打开状态。如果您想关闭它，请点击上方的'关闭VNC窗口'按钮。")
                             else:
                                 st.error("未能触发任何worker")
                 with col3:
