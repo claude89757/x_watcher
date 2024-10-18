@@ -60,48 +60,30 @@ def send_msg(db: MySQLDatabase):
     selected_accounts = st.multiselect("选择发送账号", account_options)
     account_ids = [int(account.split("ID: ")[1].split(",")[0]) for account in selected_accounts]
 
-    if st.button("开始发送", key="send_msg_button", type="primary"):
-        # 限制发送消息数量，只选择未成功发送的消息
-        user_messages = pending_df[['user_id', 'message']].to_dict('records')[:total_messages]
-        
-        active_workers = []
-        
-        if len(account_ids) == 1:
-            # 单个账号发送所有消息
-            account_id = account_ids[0]
-            account = next(acc for acc in accounts if acc['id'] == account_id)
-            worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
+    # 初始化会话状态
+    if 'send_button_clicked' not in st.session_state:
+        st.session_state.send_button_clicked = False
+
+    # 只有当按钮未被点击过时才显示
+    if not st.session_state.send_button_clicked:
+        if st.button("开始发送", key="send_msg_button", type="primary"):
+            st.session_state.send_button_clicked = True
             
-            response = requests.post(
-                f"http://{worker_ip}:5000/send_promotion_messages",
-                json={
-                    "user_messages": user_messages,
-                    "account_id": account_id,
-                    "batch_size": batch_size,
-                    "wait_time": wait_time
-                }
-            )
+            # 限制发送消息数量，只选择未成功发送的消息
+            user_messages = pending_df[['user_id', 'message']].to_dict('records')[:total_messages]
             
-            if response.status_code == 200:
-                response_data = response.json()
-                st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
-                active_workers.append(worker_ip)
-            else:
-                st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
-        else:
-            # 多个账号平均发送消息
-            messages_per_account = math.ceil(len(user_messages) / len(account_ids))
-            for i, account_id in enumerate(account_ids):
+            active_workers = []
+            
+            if len(account_ids) == 1:
+                # 单个账号发送所有消息
+                account_id = account_ids[0]
                 account = next(acc for acc in accounts if acc['id'] == account_id)
                 worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
-                start_index = i * messages_per_account
-                end_index = min((i + 1) * messages_per_account, len(user_messages))
-                account_user_messages = user_messages[start_index:end_index]
                 
                 response = requests.post(
                     f"http://{worker_ip}:5000/send_promotion_messages",
                     json={
-                        "user_messages": account_user_messages,
+                        "user_messages": user_messages,
                         "account_id": account_id,
                         "batch_size": batch_size,
                         "wait_time": wait_time
@@ -114,45 +96,82 @@ def send_msg(db: MySQLDatabase):
                     active_workers.append(worker_ip)
                 else:
                     st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
-        
-        st.success("所有消息发送任务已启动，请稍后检查发送状态。")
+            else:
+                # 多个账号平均发送消息
+                messages_per_account = math.ceil(len(user_messages) / len(account_ids))
+                for i, account_id in enumerate(account_ids):
+                    account = next(acc for acc in accounts if acc['id'] == account_id)
+                    worker_ip = account['login_ips'].split(',')[0]  # 使用第一个登录IP
+                    start_index = i * messages_per_account
+                    end_index = min((i + 1) * messages_per_account, len(user_messages))
+                    account_user_messages = user_messages[start_index:end_index]
+                    
+                    response = requests.post(
+                        f"http://{worker_ip}:5000/send_promotion_messages",
+                        json={
+                            "user_messages": account_user_messages,
+                            "account_id": account_id,
+                            "batch_size": batch_size,
+                            "wait_time": wait_time
+                        }
+                    )
+                    
+                    if response.status_code == 200:
+                        response_data = response.json()
+                        st.info(f"账号 {account['username']} 的消息发送任务已启动，执行worker IP: {response_data['worker_ip']}")
+                        active_workers.append(worker_ip)
+                    else:
+                        st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
+            
+            st.success("所有消息发送任务已启动，请稍后检查发送状态。")
 
-        # 显示活��worker的VNC画面
-        st.subheader("活跃Worker的VNC画面")
-        show_vnc = st.checkbox("展开VNC画面", value=False)
-        for worker_ip in active_workers:
-            worker_info = db.get_worker_by_ip(worker_ip)
-            if worker_info:
-                novnc_password = worker_info['novnc_password']
-                encoded_password = urllib.parse.quote(novnc_password)
-                vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                if show_vnc:
-                    st.components.v1.iframe(vnc_url, width=800, height=600)
-                else:
-                    st.write(f"[点击查看 Worker IP: {worker_ip} 的VNC画面]({vnc_url})")
+            # 显示worker的VNC画面
+            st.subheader("活跃Worker的VNC画面")
+            
+            # 创建两列布局
+            col1, col2 = st.columns(2)
+            
+            for i, worker_ip in enumerate(active_workers):
+                worker_info = db.get_worker_by_ip(worker_ip)
+                if worker_info:
+                    novnc_password = worker_info['novnc_password']
+                    encoded_password = urllib.parse.quote(novnc_password)
+                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                    
+                    # 根据索引决定将iframe放在哪一列
+                    if i % 2 == 0:
+                        with col1:
+                            st.write(f"Worker IP: {worker_ip}")
+                            st.components.v1.iframe(vnc_url, width=700, height=525)
+                    else:
+                        with col2:
+                            st.write(f"Worker IP: {worker_ip}")
+                            st.components.v1.iframe(vnc_url, width=700, height=525)
 
-        # 创建循环任务检查消息状态
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        all_completed = False
-        start_time = time.time()
-        while not all_completed and time.time() - start_time < 600:  # 最多等待10分钟
-            time.sleep(20)  # 每20秒检查一次
+            # 创建循环任务检查消息状态
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
-            current_status = db.get_tiktok_messages_status([msg['user_id'] for msg in user_messages])
-            completed_count = sum(1 for status in current_status if status in ['sent', 'failed'])
-            progress = completed_count / len(user_messages)
+            all_completed = False
+            start_time = time.time()
+            while not all_completed and time.time() - start_time < 600:  # 最多等待10分钟
+                time.sleep(20)  # 每20秒检查一次
+                
+                current_status = db.get_tiktok_messages_status([msg['user_id'] for msg in user_messages])
+                completed_count = sum(1 for status in current_status if status in ['sent', 'failed'])
+                progress = completed_count / len(user_messages)
+                
+                progress_bar.progress(progress)
+                status_text.text(f"已完成: {completed_count}/{len(user_messages)}")
+                
+                if completed_count == len(user_messages):
+                    all_completed = True
             
-            progress_bar.progress(progress)
-            status_text.text(f"已完成: {completed_count}/{len(user_messages)}")
+            if all_completed:
+                st.success("所有消息已处理完成！")
+            else:
+                st.warning("部分消息可能仍在处理中。")
             
-            if completed_count == len(user_messages):
-                all_completed = True
-        
-        if all_completed:
-            st.success("所有消息已处理完成！")
-        else:
-            st.warning("部分消息可能仍在处理中。")
-        
-        st.rerun()  # 重新运行页面以刷新数据
+            st.rerun()  # 重新运行页面以刷新数据
+    else:
+        st.warning("消息发送任务已启动，请关注worker的VNC画面，检查发送状态。")
