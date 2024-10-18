@@ -62,6 +62,9 @@ def send_msg(db):
         # 如果选择显示VNC画面，创建一个占位符
         vnc_placeholder = st.empty()
 
+        total_messages = len(high_intent_customers)
+        sent_messages = 0
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
             futures = []
             for i, customer in enumerate(high_intent_customers):
@@ -71,6 +74,7 @@ def send_msg(db):
                 if (i + 1) % concurrency == 0 or i == len(high_intent_customers) - 1:
                     for future in concurrent.futures.as_completed(futures):
                         result = future.result()
+                        sent_messages += 1
                         if "error" in result:
                             st.error(f"发送失败: {result['error']}")
                         else:
@@ -79,9 +83,9 @@ def send_msg(db):
                     futures = []
                     time.sleep(interval)
                 
-                progress = (i + 1) / len(high_intent_customers)
+                progress = sent_messages / total_messages
                 progress_bar.progress(progress)
-                status_text.text(f"进度: {i+1}/{len(high_intent_customers)}")
+                status_text.text(f"进度: {sent_messages}/{total_messages}")
 
                 # 如果选择显示VNC画面，更新VNC画面
                 if show_vnc:
@@ -93,9 +97,10 @@ def send_msg(db):
                             novnc_password = worker_info['novnc_password']
                             encoded_password = urllib.parse.quote(novnc_password)
                             vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                            vnc_placeholder.components.v1.iframe(vnc_url, width=800, height=600)
+                            with vnc_placeholder.container():
+                                st.components.v1.iframe(vnc_url, width=800, height=600)
 
-        st.success("所有消息发送完成！")
+        st.success(f"所有消息发送完成！共发送 {sent_messages} 条消息。")
 
         # 如果显示了VNC画面，添加一个关闭按钮
         if show_vnc:
