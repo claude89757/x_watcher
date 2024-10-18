@@ -833,8 +833,7 @@ class MySQLDatabase:
         query = """
         SELECT DISTINCT keyword 
         FROM tiktok_messages 
-        WHERE status = 'pending'
-        ORDER BY keyword
+        ORDER BY created_at
         """
         results = self.execute_query(query)
         return [result['keyword'] for result in results]

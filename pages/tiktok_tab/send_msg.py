@@ -5,11 +5,12 @@ import pandas as pd
 import math
 import time
 import urllib.parse
+from collectors.common.mysql import MySQLDatabase
 
 # 配置日志
 logger = setup_logger(__name__)
 
-def send_msg(db):
+def send_msg(db: MySQLDatabase):
     st.info("自动批量关注、留言、发送推广信息给高意向客户")
 
     # 获取关键词列表
@@ -116,18 +117,19 @@ def send_msg(db):
         
         st.success("所有消息发送任务已启动，请稍后检查发送状态。")
 
-        # 显示活跃worker的VNC画面
+        # 显示活��worker的VNC画面
         st.subheader("活跃Worker的VNC画面")
-        cols = st.columns(2)
-        for i, worker_ip in enumerate(active_workers):
-            with cols[i % 2]:
-                worker_info = db.get_worker_by_ip(worker_ip)
-                if worker_info:
-                    novnc_password = worker_info['novnc_password']
-                    encoded_password = urllib.parse.quote(novnc_password)
-                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                    st.components.v1.iframe(vnc_url, width=400, height=300)
-                    st.caption(f"Worker IP: {worker_ip}")
+        show_vnc = st.checkbox("展开VNC画面", value=False)
+        for worker_ip in active_workers:
+            worker_info = db.get_worker_by_ip(worker_ip)
+            if worker_info:
+                novnc_password = worker_info['novnc_password']
+                encoded_password = urllib.parse.quote(novnc_password)
+                vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                if show_vnc:
+                    st.components.v1.iframe(vnc_url, width=800, height=600)
+                else:
+                    st.write(f"[点击查看 Worker IP: {worker_ip} 的VNC画面]({vnc_url})")
 
         # 创建循环任务检查消息状态
         progress_bar = st.progress(0)
