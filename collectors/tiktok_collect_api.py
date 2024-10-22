@@ -251,26 +251,32 @@ def api_send_promotion_messages():
 
 def process_messages_async(user_messages, account_id, batch_size, wait_time):
     db = MySQLDatabase()
-    db.connect()
     try:
+        db.connect()
         # 更新消息状态为 processing 并设置 worker_ip
         for message in user_messages:
             db.update_tiktok_message_status_and_worker(message['user_id'], 'processing', worker_ip)
-        
+        db.disconnect()
+
         results = send_promotion_messages(user_messages, account_id, batch_size, wait_time)
         
+        db.connect()
         for result in results:
             if result['success']:
                 db.update_tiktok_message_status(result['user_id'], 'sent')
             else:
                 db.update_tiktok_message_status(result['user_id'], 'failed')
+        db.disconnect()
     except Exception as e:
         logger.error(f"批量发送推广消息时发生错误: {str(e)}")
         # 如果发生错误，将所有消息状态更新为 failed
+        db.connect()
         for message in user_messages:
             db.update_tiktok_message_status(message['user_id'], 'failed')
-    finally:
         db.disconnect()
+    finally:
+        if db.is_connected():
+            db.disconnect()
 
 if __name__ == '__main__':
     register_worker()

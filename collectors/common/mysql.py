@@ -58,6 +58,16 @@ class MySQLDatabase:
             logger.info(f"成功连接到MySQL数据库，地址：{self.host}:{self.port}")
         except pymysql.Error as e:
             logger.error(f"连接数据库时出错: {e}")
+    
+    def is_connected(self):
+        """检查数据库连接是否仍然有效"""
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
+                return result is not None and result[0] == 1
+        except pymysql.Error:
+            return False
 
     def disconnect(self):
         """关闭数据库连接"""
@@ -1536,6 +1546,7 @@ class MySQLDatabase:
         if not results:
             return []
         return [result['keyword'] for result in results if result.get('keyword')]
+
 
 # 使用示例
 if __name__ == "__main__":
