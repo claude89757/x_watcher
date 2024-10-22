@@ -73,7 +73,7 @@ st.title("X智能助手")
 db = MySQLDatabase()
 
 # 创建标签页
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "私信生成_AI", "私信发送"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "文案生成_AI", "触达用户"])
 
 # 在每个标签页中运行相应的py文件内容
 with tab1:

@@ -107,7 +107,7 @@ try:
         st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
     # 创建标签页
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达用户"])
 
     # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
     if 'cached_keyword' not in st.session_state:
