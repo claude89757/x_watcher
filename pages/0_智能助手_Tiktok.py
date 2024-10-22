@@ -20,13 +20,12 @@ from common.config import CONFIG
 from common.log_config import setup_logger
 from sidebar import sidebar_for_tiktok
 from collectors.common.mysql import MySQLDatabase
-from pages.tiktok_tab import (
-    data_collect,
-    data_filter,
-    data_analyze,
-    generate_msg,
-    send_msg
-)
+from pages.tiktok_tab.data_collect import data_collect
+from pages.tiktok_tab.data_filter import data_filter
+from pages.tiktok_tab.data_analyze import data_analyze
+from pages.tiktok_tab.generate_msg import generate_msg
+from pages.tiktok_tab.send_msg import send_msg
+
 
 # Configure logger
 logger = setup_logger(__name__)
