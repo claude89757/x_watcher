@@ -831,7 +831,7 @@ class MySQLDatabase:
         return [result['keyword'] for result in results]
 
     def get_all_tiktok_message_keywords(self):
-        """获取在tiktok_messages表中存在的所有TikTok关键字"""
+        """获取在tiktok_messages表中存在的所有TikTok关"""
         query = """
         SELECT DISTINCT keyword FROM tiktok_messages
         """
@@ -1165,6 +1165,62 @@ class MySQLDatabase:
                 FOREIGN KEY (tweet_id) REFERENCES x_tweets(id),
                 FOREIGN KEY (parent_comment_id) REFERENCES x_comments(id)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS x_filtered_comments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                tweet_id INT,
+                keyword VARCHAR(255),
+                user_id VARCHAR(255),
+                reply_content TEXT,
+                reply_time VARCHAR(255),
+                likes_count INT,
+                is_pinned BOOLEAN DEFAULT FALSE,
+                parent_comment_id INT NULL,
+                collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                collected_by VARCHAR(255),
+                tweet_url VARCHAR(255),
+                FOREIGN KEY (tweet_id) REFERENCES x_tweets(id),
+                FOREIGN KEY (parent_comment_id) REFERENCES x_filtered_comments(id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS x_analyzed_comments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                keyword VARCHAR(255),
+                user_id VARCHAR(255),
+                reply_content TEXT,
+                classification VARCHAR(50),
+                analysis_reason TEXT,
+                analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_comment (keyword, user_id, reply_content(255))
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS x_second_round_analyzed_comments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                keyword VARCHAR(255),
+                user_id VARCHAR(255),
+                reply_content TEXT,
+                first_round_classification VARCHAR(50),
+                second_round_classification VARCHAR(50),
+                analysis_reason TEXT,
+                analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_comment (keyword, user_id, reply_content(255))
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS x_messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                keyword VARCHAR(255) NOT NULL,
+                user_id VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                status ENUM('pending', 'sent', 'processing', 'failed') DEFAULT 'pending',
+                worker_ip VARCHAR(45),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_message (keyword, user_id)
+            )
             """
         ]
 
@@ -1276,6 +1332,36 @@ class MySQLDatabase:
         LIMIT 1000
         """
         return self.execute_query(query, (keyword,))
+
+    def get_all_x_keywords(self):
+        """获取X平台所有关键字"""
+        query = "SELECT DISTINCT keyword FROM x_tasks"
+        results = self.execute_query(query)
+        return [result['keyword'] for result in results]
+
+    def save_filtered_x_comments(self, filtered_comments):
+        """保存过滤后的X评论到新表"""
+        query = """
+        INSERT INTO x_filtered_comments 
+        (tweet_id, keyword, user_id, reply_content, reply_time, likes_count, is_pinned, 
+        parent_comment_id, collected_at, collected_by, tweet_url)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        values = [(
+            comment.get('tweet_id'),
+            comment['keyword'],
+            comment['user_id'],
+            comment['reply_content'],
+            comment['reply_time'],
+            comment.get('likes_count', 0),
+            comment.get('is_pinned', False),
+            comment.get('parent_comment_id'),
+            comment['collected_at'],
+            comment['collected_by'],
+            comment['tweet_url']
+        ) for comment in filtered_comments]
+        
+        return self.insert_many(query, values)
 
 # 使用示例
 if __name__ == "__main__":
