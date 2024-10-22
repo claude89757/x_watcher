@@ -29,8 +29,6 @@ class MySQLDatabase:
             raise ValueError("缺少必要的MySQL连接环境变量配置")
         self.connection = None
         self.connect()
-        self.initialize_tables()
-        self.initialize_x_tables()  # 添加这一行
 
     def log_sql(self, query, params=None):
         """记录 SQL 查询"""
