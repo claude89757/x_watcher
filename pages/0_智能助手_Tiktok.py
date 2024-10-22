@@ -6,35 +6,27 @@
 @File    : 0_Tiktok智能获客.py
 @Software: PyCharm
 """
+# 标准库导入
 import os
-import re
 import time
-import datetime
-import urllib.parse
-import random
 import json
 from datetime import timedelta
 
-import pandas as pd
+# 第三方库导入
 import streamlit as st
-import requests
 
+# 本地模块导入
 from common.config import CONFIG
-from common.cos import list_latest_files
-from common.cos import download_file
 from common.log_config import setup_logger
-from common.collector_sdk import call_collect_data_from_x
 from sidebar import sidebar_for_tiktok
-from sidebar import cache_file_counts
-from common.redis_client import RedisClient
 from collectors.common.mysql import MySQLDatabase
-from pages.tiktok_tab.data_collect import data_collect
-from pages.tiktok_tab.worker_vnc import worker_vnc
-from pages.tiktok_tab.account import account_management
-from pages.tiktok_tab.data_filter import data_filter
-from pages.tiktok_tab.data_analyze import data_analyze
-from pages.tiktok_tab.generate_msg import generate_msg
-from pages.tiktok_tab.send_msg import send_msg
+from pages.tiktok_tab import (
+    data_collect,
+    data_filter,
+    data_analyze,
+    generate_msg,
+    send_msg
+)
 
 # Configure logger
 logger = setup_logger(__name__)
@@ -116,7 +108,7 @@ try:
         st.metric("高意向客户", global_stats['high_intent_customer_count'])
 
     # 创建标签页
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户", "(后台监控)", "(账号管理)"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "生成文案_AI", "触达客户"])
 
     # 在创建标签页之前，确保cached_keyword已经被加载到session_state中
     if 'cached_keyword' not in st.session_state:
@@ -136,12 +128,6 @@ try:
 
     with tab5:
         send_msg(db)
-
-    with tab6:
-        worker_vnc(db)
-
-    with tab7:
-        account_management(db)
 
 finally:
     # 脚本结束时关闭数据库连接
