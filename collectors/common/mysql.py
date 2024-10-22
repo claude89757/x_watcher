@@ -1363,6 +1363,180 @@ class MySQLDatabase:
         
         return self.insert_many(query, values)
 
+    def get_filtered_x_comments_by_keyword(self, keyword, limit=1000):
+        query = """
+        SELECT * FROM x_filtered_comments
+        WHERE keyword = %s
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
+    def get_filtered_x_comments_count(self, keyword):
+        """获取指定关键词的已过滤X评论数量"""
+        query = """
+        SELECT COUNT(*) as count
+        FROM x_filtered_comments
+        WHERE keyword = %s
+        """
+        result = self.execute_query(query, (keyword,))
+        return result[0]['count'] if result else 0
+
+    def save_analyzed_x_comments(self, keyword, analyzed_data):
+        """保存分析后的X评论数据"""
+        query = """
+        INSERT INTO x_analyzed_comments 
+        (keyword, user_id, reply_content, classification, analysis_reason)
+        VALUES (%s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        classification = VALUES(classification),
+        analysis_reason = VALUES(analysis_reason),
+        analyzed_at = CURRENT_TIMESTAMP
+        """
+        values = [
+            (keyword, row['用户ID'], row['评论内容'], row['分类结果'], row['分析理由'])
+            for _, row in analyzed_data.iterrows()
+        ]
+        return self.insert_many(query, values)
+
+    def get_analyzed_x_comments(self, keyword, limit=1000):
+        """获取指定关键词的分析后X评论数据"""
+        query = """
+        SELECT * FROM x_analyzed_comments
+        WHERE keyword = %s
+        ORDER BY analyzed_at DESC
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
+    def save_second_round_analyzed_x_comments(self, keyword, analyzed_data):
+        """保存第二轮分析后的X评论数据"""
+        query = """
+        INSERT INTO x_second_round_analyzed_comments 
+        (keyword, user_id, reply_content, first_round_classification, second_round_classification, analysis_reason)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        second_round_classification = VALUES(second_round_classification),
+        analysis_reason = VALUES(analysis_reason),
+        analyzed_at = CURRENT_TIMESTAMP
+        """
+        values = [
+            (keyword, row['用户ID'], row['评论内容'], row['第一轮分类结果'], row['第二轮分类结果'], row['分析理由'])
+            for _, row in analyzed_data.iterrows()
+        ]
+        return self.insert_many(query, values)
+
+    def get_second_round_analyzed_x_comments(self, keyword, limit=1000):
+        """获取指定关键词的第二轮分析后X评论数据"""
+        query = """
+        SELECT * FROM x_second_round_analyzed_comments
+        WHERE keyword = %s
+        ORDER BY analyzed_at DESC
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
+    def get_x_potential_customers_count(self, keyword):
+        """获取指定关键词的X平台潜在客户数量"""
+        query = """
+        SELECT COUNT(*) as count
+        FROM x_analyzed_comments
+        WHERE keyword = %s AND classification = '潜在客户'
+        """
+        result = self.execute_query(query, (keyword,))
+        return result[0]['count'] if result else 0
+
+    def get_x_potential_customers(self, keyword, limit=1000):
+        """获取指定关键词X平台潜在客户评论数据"""
+        query = """
+        SELECT * FROM x_analyzed_comments
+        WHERE keyword = %s AND classification = '潜在客户'
+        ORDER BY analyzed_at DESC
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
+    def clear_first_round_x_analysis_by_keyword(self, keyword):
+        """清空指定关键字的X平台第一轮分析结果"""
+        query = "DELETE FROM x_analyzed_comments WHERE keyword = %s"
+        result = self.execute_update(query, (keyword,))
+        return result > 0  # 如果影响的行数大于0，则返回True
+
+    def clear_second_round_x_analysis_by_keyword(self, keyword):
+        """清空指定关键字的X平台第二轮分析结果"""
+        query = "DELETE FROM x_second_round_analyzed_comments WHERE keyword = %s"
+        result = self.execute_update(query, (keyword,))
+        return result > 0  # 如果影响的行数大于0，则返回True
+
+    def save_x_message(self, keyword, user_id, message):
+        """保存X平台私信到数据库"""
+        query = """
+        INSERT INTO x_messages (keyword, user_id, message)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        message = VALUES(message),
+        status = 'pending',
+        updated_at = CURRENT_TIMESTAMP
+        """
+        return self.execute_update(query, (keyword, user_id, message))
+
+    def get_x_messages(self, keyword, limit=1000):
+        """获取指定关键词的X平台私信"""
+        query = """
+        SELECT * FROM x_messages
+        WHERE keyword = %s
+        ORDER BY created_at ASC
+        LIMIT %s
+        """
+        return self.execute_query(query, (keyword, limit))
+
+    def update_x_message_status(self, user_id, status):
+        """更新X平台消息状态"""
+        query = """
+        UPDATE x_messages
+        SET status = %s
+        WHERE user_id = %s
+        """
+        return self.execute_update(query, (status, user_id))
+
+    def get_x_messages_status(self, user_ids):
+        query = """
+        SELECT status FROM x_messages
+        WHERE user_id IN (%s)
+        """
+        placeholders = ', '.join(['%s'] * len(user_ids))
+        query = query % placeholders
+        results = self.execute_query(query, tuple(user_ids))
+        return [result['status'] for result in results]
+
+    def get_worker_ip_for_processing_x_messages(self, keyword):
+        """获取正在处理指定关键词X平台消息的worker IP"""
+        query = """
+        SELECT DISTINCT worker_ip
+        FROM x_messages
+        WHERE keyword = %s AND status = 'processing' AND worker_ip IS NOT NULL
+        """
+        results = self.execute_query(query, (keyword,))
+        return [result['worker_ip'] for result in results if result.get('worker_ip')]
+
+    def update_x_message_status_and_worker(self, user_id, status, worker_ip):
+        """更新X平台消息状态和worker IP"""
+        query = """
+        UPDATE x_messages
+        SET status = %s, worker_ip = %s
+        WHERE user_id = %s
+        """
+        return self.execute_update(query, (status, worker_ip, user_id))
+
+    def get_all_x_message_keywords(self):
+        """获取在x_messages表中存在的所有X平台关键词"""
+        query = """
+        SELECT DISTINCT keyword FROM x_messages
+        """
+        results = self.execute_query(query)
+        if not results:
+            return []
+        return [result['keyword'] for result in results if result.get('keyword')]
+
 # 使用示例
 if __name__ == "__main__":
     pass
