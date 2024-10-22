@@ -195,7 +195,7 @@ def send_msg(db: MySQLDatabase):
             all_completed = False
             start_time = time.time()
             while not all_completed and time.time() - start_time < 600:  # 最多等待10分钟
-                time.sleep(20)  # 每20秒检查一次
+                time.sleep(60)  # 每60秒检查一次
                 
                 current_status = db.get_tiktok_messages_status([msg['user_id'] for msg in user_messages])
                 completed_count = sum(1 for status in current_status if status in ['sent', 'failed'])
