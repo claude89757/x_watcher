@@ -13,6 +13,7 @@ import streamlit as st
 from common.config import CONFIG
 from common.log_config import setup_logger
 from sidebar import sidebar_for_x
+from collectors.common.mysql import MySQLDatabase
 
 # 导入各个标签页的函数
 from pages.x_tab.data_collect import data_collect
@@ -68,21 +69,27 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # 添加大标题
 st.title("X智能助手")
 
+# 创建数据库连接
+db = MySQLDatabase()
+
 # 创建标签页
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "私信生成_AI", "私信发送"])
 
 # 在每个标签页中运行相应的py文件内容
 with tab1:
-    data_collect()
+    data_collect(db)
 
 with tab2:
-    comment_filter()
+    comment_filter(db)
 
 with tab3:
-    comment_analyze()
+    comment_analyze(db)
 
 with tab4:
-    generate_msg()
+    generate_msg(db)
 
 with tab5:
-    send_msg()
+    send_msg(db)
+
+# 关闭数据库连接
+db.disconnect()
