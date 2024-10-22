@@ -131,96 +131,9 @@ if access_granted:
     st.success(access_granted_message)
     st.markdown("-----")
 
-    # 创建两个标签页
-    tab1, tab2 = st.tabs(["AI 营销工具", "X 账号管理"])
-
-    with tab1:
-        st.page_link("pages/0_智能助手_Tiktok.py", label="TikTok智能助手", icon="1️⃣", use_container_width=True)
-        st.page_link("pages/1_智能助手_X.py", label="X智能助手", icon="2️⃣", use_container_width=True)
-        st.markdown("-----")
-
-    with tab2:
-        # 初始化 Redis 客户端
-        redis_client = RedisClient(db=0)
-
-        # 新增推特账号管理功能
-        def manage_twitter_accounts():
-            st.subheader(account_management_label)
-
-            # 从 Redis 中加载现有账号
-            accounts = redis_client.get_json_data('twitter_accounts') or {}
-
-            # 显示现有账号
-            if accounts:
-                st.write(existing_accounts_label)
-                for username, details in accounts.items():
-                    # 使用 emoji 显示登录状态
-                    status_emoji = "✅" if details.get('status') == 'Success' else "❌"
-                    last_checked = details.get('last_checked', 'Never')
-                    with st.expander(f"{status_emoji} {username}  Last Checked: {last_checked}"):
-                        col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
-                        with col1:
-                            st.write(f"{email_label}: {details['email']}")
-                        with col2:
-                            # 从 Redis 中读取状态
-                            st.write(f"Status: {details.get('status', 'Unknown')}")
-                        with col3:
-                            last_checked = details.get('last_checked', 'Never')
-                            st.write(f"Last Checked: {last_checked}")
-                        with col4:
-                            if st.button(f"{delete_account_label} {username}", key=f"delete_{username}", type="primary"):
-                                del accounts[username]
-                                redis_client.set_json_data('twitter_accounts', accounts)
-                                st.success(f"Deleted account: {username}")
-                                logger.info(f"Deleted account: {username}")
-
-            # 并排显示“新增账号”和“刷新账号状态”按钮
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button(add_new_account_label, use_container_width=True):
-                    st.session_state.show_add_account_form = True
-            with col2:
-                if st.button(refresh_account_status_label, use_container_width=True):
-                    for username, details in accounts.items():
-                        email = details['email']
-                        password = details['password']
-                        status_code, response_text = check_x_login_status(username, email, password)
-                        if status_code == 200:
-                            accounts[username]['status'] = 'Success'
-                        else:
-                            accounts[username]['status'] = 'Failed'
-                        accounts[username]['last_checked'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        redis_client.set_json_data('twitter_accounts', accounts)  # 更新 Redis 中的状态
-                        st.write(f"Account {username} login status: {accounts[username]['status']}")
-                        st.write(f"Last Checked: {accounts[username]['last_checked']}")
-                        logger.info(f"Account {username} login status: {accounts[username]['status']}")
-
-                    # 刷新页面
-                    st.rerun()
-
-            # 仅在点击“新增账号”按钮后显示输入表单
-            if st.session_state.get('show_add_account_form', False):
-                new_username = st.text_input(username_label, key="new_username")
-                new_email = st.text_input(email_label, key="new_email")
-                new_password = st.text_input(password_label, type="password", key="new_password")
-
-                if st.button(submit_new_account_label, type="primary"):
-                    if new_username and new_email and new_password:
-                        accounts[new_username] = {
-                            'email': new_email,
-                            'password': new_password,
-                            'status': 'Unknown',
-                            'last_checked': 'Never'
-                        }
-                        redis_client.set_json_data('twitter_accounts', accounts)
-                        st.success(f"Added account: {new_username}")
-                        logger.info(f"Added account: {new_username}")
-                        st.session_state.show_add_account_form = False  # 隐藏表单
-                    else:
-                        st.error("Please fill in all fields to add a new account.")
-
-        # 调用推特账号管理功能
-        manage_twitter_accounts()
+    st.page_link("pages/0_智能助手_Tiktok.py", label="TikTok智能助手", icon="1️⃣", use_container_width=True)
+    st.page_link("pages/1_智能助手_X.py", label="X智能助手", icon="2️⃣", use_container_width=True)
+    st.markdown("-----")
 
     # 创建文件夹
     base_path = os.path.join("./data", st.session_state.access_code)
@@ -241,8 +154,6 @@ if access_granted:
         else:
             # st.write(f"Directory already exists: {path}")
             pass
-
-    # todo: 显示当前用户的状态和数据信息
 
     if st.sidebar.button(label=log_out_button_label, type="primary"):
         st.query_params.clear()
