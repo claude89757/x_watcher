@@ -45,18 +45,19 @@ def send_msg(db: MySQLDatabase):
         if not worker_ips:
             st.info("当前没有worker正在处理消息，可能是处理已经完成或尚未开始。")
         else:
-            # 显示正在处理的worker的VNC画面
-            st.subheader("正在处理消息的Worker VNC画面")
-            
-            for worker_ip in worker_ips:
-                worker_info = db.get_worker_by_ip(worker_ip)
-                if worker_info:
-                    novnc_password = worker_info['novnc_password']
-                    encoded_password = urllib.parse.quote(novnc_password)
-                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                    
-                    st.write(f"Worker IP: {worker_ip}")
-                    st.components.v1.iframe(vnc_url, width=1000, height=750)
+            # 添加一个按钮来显示VNC画面
+            if st.button("显示正在处理的Worker VNC画面"):
+                st.subheader("正在处理消息的Worker VNC画面")
+                
+                for worker_ip in worker_ips:
+                    worker_info = db.get_worker_by_ip(worker_ip)
+                    if worker_info:
+                        novnc_password = worker_info['novnc_password']
+                        encoded_password = urllib.parse.quote(novnc_password)
+                        vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                        
+                        st.write(f"Worker IP: {worker_ip}")
+                        st.components.v1.iframe(vnc_url, width=1000, height=750)
         
         # 显示处理进度
         st.subheader("处理进度")
@@ -175,18 +176,17 @@ def send_msg(db: MySQLDatabase):
             
             st.success("所有消息发送任务已启动，请查看worker的VNC画面。")
 
-            # 显示worker的VNC画面
-            st.subheader("活跃Worker的VNC画面")
-            
-            for worker_ip in active_workers:
-                worker_info = db.get_worker_by_ip(worker_ip)
-                if worker_info:
-                    novnc_password = worker_info['novnc_password']
-                    encoded_password = urllib.parse.quote(novnc_password)
-                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                    
-                    st.write(f"Worker IP: {worker_ip}")
-                    st.components.v1.iframe(vnc_url, width=1000, height=750)
+            # 添加一个按钮来显示VNC画面
+            if st.button("显示监控画面"):                
+                for worker_ip in active_workers:
+                    worker_info = db.get_worker_by_ip(worker_ip)
+                    if worker_info:
+                        novnc_password = worker_info['novnc_password']
+                        encoded_password = urllib.parse.quote(novnc_password)
+                        vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                        
+                        st.write(f"Worker IP: {worker_ip}")
+                        st.components.v1.iframe(vnc_url, width=1000, height=750)
 
             # 创建循环任务检查消息状态
             progress_bar = st.progress(0)
@@ -195,7 +195,7 @@ def send_msg(db: MySQLDatabase):
             all_completed = False
             start_time = time.time()
             while not all_completed and time.time() - start_time < 600:  # 最多等待10分钟
-                time.sleep(60)  # 每60秒检查一次
+                time.sleep(20)  # 每20秒检查一次
                 
                 current_status = db.get_tiktok_messages_status([msg['user_id'] for msg in user_messages])
                 completed_count = sum(1 for status in current_status if status in ['sent', 'failed'])
