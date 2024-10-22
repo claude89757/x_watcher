@@ -33,6 +33,8 @@ if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
 if 'language' not in st.session_state:
     st.session_state.language = st.query_params.get('language')
+if 'cached_keyword' not in st.session_state:
+    st.session_state.language = ""
 
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
