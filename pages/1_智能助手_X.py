@@ -17,8 +17,8 @@ from collectors.common.mysql import MySQLDatabase
 
 # 导入各个标签页的函数
 from pages.x_tab.data_collect import data_collect
-from pages.x_tab.data_filter import comment_filter
-from pages.x_tab.data_analyze import comment_analyze
+from pages.x_tab.data_filter import data_filter
+from pages.x_tab.data_analyze import data_analyze
 from pages.x_tab.generate_msg import generate_msg
 from pages.x_tab.send_msg import send_msg
 
@@ -80,10 +80,10 @@ with tab1:
     data_collect(db)
 
 with tab2:
-    comment_filter(db)
+    data_filter(db)
 
 with tab3:
-    comment_analyze(db)
+    data_analyze(db)
 
 with tab4:
     generate_msg(db)
