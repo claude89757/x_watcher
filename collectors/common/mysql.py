@@ -28,6 +28,9 @@ class MySQLDatabase:
         if not all([self.host, self.user, self.password, self.database]):
             raise ValueError("缺少必要的MySQL连接环境变量配置")
         self.connection = None
+        self.connect()
+        self.initialize_tables()
+        self.initialize_x_tables()  # 添加这一行
 
     def log_sql(self, query, params=None):
         """记录 SQL 查询"""
@@ -459,7 +462,7 @@ class MySQLDatabase:
         return self.execute_query(query)
 
     def get_pending_tiktok_task_by_keyword(self, keyword):
-        """获取指定关键词的待处TikTok任务"""
+        """获取指定关键词的待处理TikTok任务"""
         query = f"""
         SELECT * FROM tiktok_tasks 
         WHERE status = 'pending' AND keyword = '{keyword}' 
@@ -1112,6 +1115,58 @@ class MySQLDatabase:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS x_tasks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                keyword VARCHAR(255) NOT NULL,
+                status ENUM('pending', 'running', 'completed', 'failed', 'paused') DEFAULT 'pending',
+                max_tweets INT DEFAULT 100,
+                max_comments_per_tweet INT DEFAULT 1000,
+                start_time TIMESTAMP NULL,
+                end_time TIMESTAMP NULL,
+                retry_count INT DEFAULT 0,
+                server_ips TEXT,
+                total_tweets_processed INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS x_tweets (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                task_id INT,
+                tweet_url VARCHAR(255) NOT NULL,
+                keyword VARCHAR(255),
+                status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+                processing_server_ip VARCHAR(45),
+                author VARCHAR(255),
+                content TEXT,
+                likes_count INT,
+                comments_count INT,
+                retweets_count INT,
+                views_count INT,
+                collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (task_id) REFERENCES x_tasks(id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS x_comments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                tweet_id INT,
+                keyword VARCHAR(255),
+                user_id VARCHAR(255),
+                reply_content TEXT,
+                reply_time VARCHAR(255),
+                likes_count INT,
+                is_pinned BOOLEAN DEFAULT FALSE,
+                parent_comment_id INT NULL,
+                collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                collected_by VARCHAR(255),
+                tweet_url VARCHAR(255),
+                FOREIGN KEY (tweet_id) REFERENCES x_tweets(id),
+                FOREIGN KEY (parent_comment_id) REFERENCES x_comments(id)
+            )
             """
         ]
 
@@ -1153,6 +1208,76 @@ class MySQLDatabase:
         query = "SELECT * FROM x_accounts WHERE id = %s"
         result = self.execute_query(query, (account_id,))
         return result[0] if result else None
+
+    def create_x_task(self, keyword):
+        """创X任务"""
+        query = "INSERT INTO x_tasks (keyword) VALUES (%s)"
+        return self.execute_update(query, (keyword,))
+
+    def get_running_x_task_by_keyword(self, keyword):
+        """获取指定关键词的正在运行的X任务"""
+        query = "SELECT * FROM x_tasks WHERE keyword = %s AND status = 'running'"
+        return self.execute_query(query, (keyword,))
+
+    def get_all_x_tasks(self):
+        """获取所有X任务"""
+        query = "SELECT * FROM x_tasks ORDER BY created_at DESC"
+        return self.execute_query(query)
+
+    def update_x_task_status(self, task_id, status):
+        """更新X任务状态"""
+        query = "UPDATE x_tasks SET status = %s WHERE id = %s"
+        return self.execute_update(query, (status, task_id))
+
+    def delete_x_task(self, task_id):
+        """删除X任务及相关数据"""
+        try:
+            with self.connection.cursor() as cursor:
+                # 删除相关评论
+                cursor.execute("DELETE FROM x_comments WHERE tweet_id IN (SELECT id FROM x_tweets WHERE task_id = %s)", (task_id,))
+                # 删除相关推文
+                cursor.execute("DELETE FROM x_tweets WHERE task_id = %s", (task_id,))
+                # 删除任务
+                cursor.execute("DELETE FROM x_tasks WHERE id = %s", (task_id,))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            logger.error(f"删除X任务时出错: {e}")
+            self.connection.rollback()
+            return False
+
+    def get_total_tweets_for_keyword(self, keyword):
+        """获取指定关键词的总推文数"""
+        query = """
+        SELECT COUNT(*) as total_tweets
+        FROM x_tweets t
+        JOIN x_tasks x ON t.task_id = x.id
+        WHERE x.keyword = %s
+        """
+        result = self.execute_query(query, (keyword,))
+        return result[0]['total_tweets'] if result else 0
+
+    def get_processed_tweets_for_keyword(self, keyword):
+        """获取指定关键词的已处理推文数"""
+        query = """
+        SELECT COUNT(*) as processed_tweets
+        FROM x_tweets t
+        JOIN x_tasks x ON t.task_id = x.id
+        WHERE x.keyword = %s AND t.status IN ('completed', 'failed')
+        """
+        result = self.execute_query(query, (keyword,))
+        return result[0]['processed_tweets'] if result else 0
+
+    def get_x_comments_by_keyword(self, keyword):
+        """获取指定关键词的X评论"""
+        query = """
+        SELECT c.* FROM x_comments c
+        JOIN x_tweets t ON c.tweet_id = t.id
+        JOIN x_tasks x ON t.task_id = x.id
+        WHERE x.keyword = %s
+        LIMIT 1000
+        """
+        return self.execute_query(query, (keyword,))
 
 # 使用示例
 if __name__ == "__main__":
