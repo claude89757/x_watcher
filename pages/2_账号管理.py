@@ -76,12 +76,11 @@ db.connect()
 st.title("账号管理")
 
 # 在st.title("账号管理")之后添加以下代码
-tab1, tab2 = st.tabs(["TikTok账号管理", "X平台账号管理"])
+tab1, tab2 = st.tabs(["TikTok账号管理", "X账号管理"])
 
-with tab1:
-    st.info("本页面用于管理TikTok账号。")
-
-    try:
+try:
+    with tab1:
+        st.info("本页面用于管理TikTok账号。")
         # 获取可用的worker IP列表
         available_worker_ips = db.get_available_worker_ips()
 
@@ -175,16 +174,11 @@ with tab1:
 
         else:
             st.write("暂无账号")
-    except Exception as e:
-        st.error(f"发生错误: {e}")
-    finally:
-        db.disconnect()
 
-with tab2:
-    st.header("X平台账号管理")
-    st.info("本页面用于管理X平台账号。")
-    
-    try:
+
+    with tab2:
+        st.info("本页面用于管理X平台账号。")
+            
         # 获取可用的worker IP列表
         available_worker_ips = db.get_available_worker_ips()
 
@@ -276,7 +270,7 @@ with tab2:
                                 st.error("未能触发任何worker")
         else:
             st.write("暂无X平台账号")
-    except Exception as e:
-        st.error(f"发生错误: {e}")
-    finally:
-        db.disconnect()
+except Exception as e:
+    st.error(f"发生错误: {e}")
+finally:
+    db.disconnect()
