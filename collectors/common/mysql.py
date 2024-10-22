@@ -1098,24 +1098,62 @@ class MySQLDatabase:
         """
         return self.execute_update(query, (status, worker_ip, user_id))
 
+    def initialize_x_tables(self):
+        """初始化并创建X平台所需的表"""
+        create_tables_queries = [
+            """
+            CREATE TABLE IF NOT EXISTS x_accounts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(255),
+                status ENUM('active', 'inactive') DEFAULT 'active',
+                login_ips TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+            """
+        ]
+
+        for query in create_tables_queries:
+            self.execute_update(query)
+        
+        logger.info("所有必要的X平台表已创建或已存在")
+
+    def add_x_account(self, username, password, email, login_ips):
+        """添加新的X平台账号"""
+        query = """
+        INSERT INTO x_accounts (username, password, email, login_ips)
+        VALUES (%s, %s, %s, %s)
+        """
+        return self.execute_update(query, (username, password, email, ','.join(login_ips)))
+
+    def get_x_accounts(self):
+        """获取所有X平台账号"""
+        query = "SELECT * FROM x_accounts"
+        return self.execute_query(query)
+
+    def update_x_account_status(self, account_id, status):
+        """更新X平台账号状态"""
+        query = "UPDATE x_accounts SET status = %s WHERE id = %s"
+        return self.execute_update(query, (status, account_id))
+
+    def delete_x_account(self, account_id):
+        """删除X平台账号"""
+        query = "DELETE FROM x_accounts WHERE id = %s"
+        return self.execute_update(query, (account_id,))
+
+    def update_x_account_login_ips(self, account_id, login_ips):
+        """更新X平台账号的登录主机IP"""
+        query = "UPDATE x_accounts SET login_ips = %s WHERE id = %s"
+        return self.execute_update(query, (','.join(login_ips), account_id))
+
+    def get_x_account_by_id(self, account_id):
+        """获取指定ID的X平台账号"""
+        query = "SELECT * FROM x_accounts WHERE id = %s"
+        result = self.execute_query(query, (account_id,))
+        return result[0] if result else None
+
 # 使用示例
 if __name__ == "__main__":
-    db = MySQLDatabase("localhost", "your_username", "your_password", "your_database")
-    db.connect()
-    db.initialize_tables()  # 初始化表
-
-    # 查询示例
-    results = db.execute_query("SELECT * FROM your_table WHERE condition = '%s'", ("value",))
-    if results:
-        for row in results:
-            print(row)
-
-    # 更新示例
-    affected_rows = db.execute_update("UPDATE your_table SET column = '%s' WHERE id = %s", ("new_value", 1))
-    print(f"更新影响的行数: {affected_rows}")
-
-    # 批量插入示例
-    data = [("value1", "value2"), ("value3", "value4")]
-    inserted_rows = db.insert_many("INSERT INTO your_table (column1, column2) VALUES (%s, %s)", data)
-    print(f"插入的行数: {inserted_rows}")
-    db.disconnect()
+    pass
