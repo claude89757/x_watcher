@@ -175,18 +175,17 @@ def send_msg(db: MySQLDatabase):
             
             st.success("所有消息发送任务已启动，请查看worker的VNC画面。")
 
-            # 显示worker的VNC画面
-            st.subheader("活跃Worker的VNC画面")
-            
-            for worker_ip in active_workers:
-                worker_info = db.get_worker_by_ip(worker_ip)
-                if worker_info:
-                    novnc_password = worker_info['novnc_password']
-                    encoded_password = urllib.parse.quote(novnc_password)
-                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-                    
-                    st.write(f"Worker IP: {worker_ip}")
-                    st.components.v1.iframe(vnc_url, width=1000, height=750)
+            # 添加一个按钮来显示VNC画面
+            if st.button("显示监控画面"):                
+                for worker_ip in active_workers:
+                    worker_info = db.get_worker_by_ip(worker_ip)
+                    if worker_info:
+                        novnc_password = worker_info['novnc_password']
+                        encoded_password = urllib.parse.quote(novnc_password)
+                        vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                        
+                        st.write(f"Worker IP: {worker_ip}")
+                        st.components.v1.iframe(vnc_url, width=1000, height=750)
 
             # 创建循环任务检查消息状态
             progress_bar = st.progress(0)
