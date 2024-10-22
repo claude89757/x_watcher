@@ -21,6 +21,9 @@ def data_filter(db: MySQLDatabase):
     keywords = db.get_all_x_keywords()
 
     # 创建下拉框让用户选择关键字，使用session_state中的cached_keyword作为默认值
+    if 'cached_keyword' not in st.session_state:
+        st.session_state.cached_keyword = keywords[0] if keywords else ""
+    
     selected_keyword = st.selectbox("选择关键字", keywords, 
                                     index=keywords.index(st.session_state.cached_keyword) if st.session_state.cached_keyword in keywords else 0,
                                     key="filter_keyword_select")
