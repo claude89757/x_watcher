@@ -6,7 +6,8 @@
 @File    : 1_X智能获客.py
 @Software: cursor
 """
-
+import os
+import json
 import time
 import streamlit as st
 
@@ -28,13 +29,26 @@ st.set_page_config(page_title="X智能获客", page_icon="🤖", layout="wide")
 # Configure logger
 logger = setup_logger(__name__)
 
+
+# 定义缓存文件路径
+KEYWORD_CACHE_FILE = 'x_keyword_cache.json'
+
+def load_keyword_from_cache():
+    """从缓存文件加载关键字"""
+    if os.path.exists(KEYWORD_CACHE_FILE):
+        with open(KEYWORD_CACHE_FILE, 'r') as f:
+            data = json.load(f)
+            return data.get('keyword', '')
+    return ''
+
+
 # 从URL读取缓存数据
 if 'access_code' not in st.session_state:
     st.session_state.access_code = st.query_params.get('access_code')
 if 'language' not in st.session_state:
     st.session_state.language = st.query_params.get('language')
 if 'cached_keyword' not in st.session_state:
-    st.session_state.language = ""
+    st.session_state.cached_keyword = load_keyword_from_cache()
 
 # check access
 if st.session_state.access_code and st.session_state.access_code in CONFIG['access_code_list']:
