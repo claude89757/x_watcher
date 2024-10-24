@@ -141,32 +141,72 @@ def check_x_account_status(account_id, username, email, password):
     db.connect()
     driver = None
     try:
+        logger.info(f"开始检查账号 {username} 的状态")
         driver = setup_driver()
+        logger.info(f"WebDriver 已设置完成")
         
         if login_by_local_cookies(driver, username):
             db.update_x_account_status(account_id, 'active')
             logger.info(f"账号 {username} 使用本地cookies登录成功，状态更新为active")
             return
         
-        # 手动登录逻辑
-        logger.info(f"尝试手动登录账号 {username}")
+        logger.info(f"本地cookies登录失败，尝试手动登录账号 {username}")
         driver.get("https://x.com/i/flow/login")
+        logger.info(f"已打开登录页面")
         
         # 输入用户名
-        username_input = WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.XPATH, "//input[@name='text' and @autocomplete='username']"))
-        )
-        username_input.send_keys(username)
-        username_input.send_keys(Keys.RETURN)
+        try:
+            logger.info(f"正在等待用户名输入框出现")
+            username_input = WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.XPATH, "//input[@name='text' and @autocomplete='username']"))
+            )
+            logger.info(f"用户名输入框已找到，开始输入用户名")
+            driver.execute_script("arguments[0].value = '';", username_input)
+            driver.execute_script("arguments[0].value = arguments[1];", username_input, username)
+            logger.info(f"用户名 {username} 已输入，等待2秒")
+            time.sleep(2)
+            
+            logger.info(f"正在查找'下一步'按钮")
+            next_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[@role='button']//span[text()='下一步']"))
+            )
+            logger.info(f"'下一步'按钮已找到，点击按钮")
+            driver.execute_script("arguments[0].click();", next_button)
+            
+            logger.info(f"用户名 {username} 已输入并点击下一步")
+        except Exception as e:
+            logger.error(f"输入用户名时发生错误: {str(e)}")
+            driver.save_screenshot(f"username_input_error_{username}.png")
+            logger.info(f"已保存错误截图: username_input_error_{username}.png")
+            raise
         
         # 输入密码
-        password_input = WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.XPATH, "//input[@name='password' and @type='password']"))
-        )
-        password_input.send_keys(password)
-        password_input.send_keys(Keys.RETURN)
+        try:
+            logger.info(f"正在等待密码输入框出现")
+            password_input = WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//input[@name='password' and @type='password']"))
+            )
+            logger.info(f"密码输入框已找到，开始输入密码")
+            driver.execute_script("arguments[0].value = '';", password_input)
+            driver.execute_script("arguments[0].value = arguments[1];", password_input, password)
+            logger.info(f"密码已输入，等待2秒")
+            time.sleep(2)
+            
+            logger.info(f"正在查找'登录'按钮")
+            login_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[@role='button']//span[text()='登录']"))
+            )
+            logger.info(f"'登录'按钮已找到，点击按钮")
+            driver.execute_script("arguments[0].click();", login_button)
+            
+            logger.info(f"密码已输入并点击登录按钮")
+        except Exception as e:
+            logger.error(f"输入密码时发生错误: {str(e)}")
+            driver.save_screenshot(f"password_input_error_{username}.png")
+            logger.info(f"已保存错误截图: password_input_error_{username}.png")
+            raise
         
-        # 检查登录状态
+        logger.info(f"正在检查登录状态")
         if check_login_status(driver):
             save_cookies(driver, username)
             db.update_x_account_status(account_id, 'active')
@@ -181,8 +221,11 @@ def check_x_account_status(account_id, username, email, password):
         db.update_x_account_status(account_id, 'inactive')
     finally:
         if driver:
+            logger.info(f"关闭WebDriver")
             driver.quit()
+        logger.info(f"断开数据库连接")
         db.disconnect()
+        logger.info(f"账号 {username} 状态检查完成")
 
 class TwitterWatcher:
     def __init__(self, driver_path, username, email, password, search_key_word='cat', timeout=10, headless: bool = True,
@@ -281,7 +324,7 @@ class TwitterWatcher:
             # 按回车键
             current_input.send_keys(Keys.RETURN)
 
-            # 等待浏览器页面变成home页面
+            # 等待浏览页面变成home页面
             try:
                 self.driver.save_screenshot(f"./saved_screenshots/{self.username}_login.png")
                 logging.info("Waiting for the home pages to load...")
@@ -539,7 +582,7 @@ class TwitterWatcher:
 
     def filter_posts(self, tweets):
         # 预留的推特过滤函数
-        # 在这里添加你的推特过滤逻���
+        # 在这里添加你的推特过滤逻
         return tweets
 
     def filter_comment(self, user, content):
@@ -662,7 +705,7 @@ class TwitterWatcher:
                 self.login()
                 
                 try:
-                    # 使用 WebDriverWait 等待页面加载完成
+                    # 使用 WebDriverWait 等页面加载完成
                     WebDriverWait(self.driver, 10).until(
                         EC.url_contains("home")
                     )
@@ -957,5 +1000,8 @@ def check_service_status(username: str, email: str, password: str):
     watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, "cat")
     logging.info("health checking...")
     return watcher.check_login_status()
+
+
+
 
 
