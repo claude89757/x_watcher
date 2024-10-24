@@ -837,6 +837,53 @@ def simulate_human_scroll(driver):
     logger.info("模拟人类滚动回到顶部")
     time.sleep(random.uniform(0.5, 1))
 
+# 尝试关注用户
+def try_follow_user(driver, user_id):
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            logger.info(f"尝试关注用户 {user_id}，第 {attempt + 1} 次尝试")
+            follow_button = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='follow-button']"))
+            )
+            
+            # 检查按钮文本，确保它是"关注"而不是"已关注"
+            if follow_button.text.lower() in ['follow', '关注']:
+                follow_button.click()
+                logger.info(f"点击关注按钮")
+                
+                # 等待关注状态更新
+                WebDriverWait(driver, 5).until(
+                    EC.text_to_be_present_in_element((By.XPATH, "//button[@data-e2e='follow-button']"), "Following")
+                )
+                
+                # 刷新页面并再次检查关注状态
+                driver.refresh()
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.TAG_NAME, 'body'))
+                )
+                
+                follow_status = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//button[@data-e2e='follow-button']"))
+                )
+                
+                if follow_status.text.lower() in ['following', '已关注']:
+                    logger.info(f"成功关注用户 {user_id}")
+                    return True
+                else:
+                    logger.warning(f"关注用户 {user_id} 失败，按钮文本为: {follow_status.text}")
+            else:
+                logger.info(f"用户 {user_id} 已经被关注")
+                return True
+        except Exception as e:
+            logger.error(f"关注用户 {user_id} 失败: {str(e)}")
+        
+        # 如果失败，等待一段时间后重试
+        time.sleep(random.uniform(2, 5))
+    
+    logger.error(f"在 {max_attempts} 次尝试后仍未能关注用户 {user_id}")
+    return False
+
 def send_single_promotion_message(driver, user_id, message, keyword):
     try:
         # 初始化操作结果
@@ -856,17 +903,7 @@ def send_single_promotion_message(driver, user_id, message, keyword):
         simulate_human_scroll(driver)
 
         # 尝试关注用户
-        try:
-            logger.info("正在尝试找到关注按钮")
-            follow_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='follow-button']"))
-            )
-            logger.info("找到关注按钮,正在点击")
-            follow_button.click()
-            logger.info(f"关注用户 {user_id}")
-            follow_success = True
-        except Exception as e:
-            logger.error(f"关注用户失败: {str(e)}")
+        follow_success = try_follow_user(driver, user_id)
 
         random_wait(1, 3)
 
