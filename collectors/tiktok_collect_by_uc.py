@@ -1091,9 +1091,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 
                 if correct_suggestion:
                     correct_suggestion.click()
-                    correct_suggestion.click()
                     logger.info(f"成功选择正确的艾特用户 {user_id}")
-                    time.sleep(60)  # 人工验证
                 else:
                     raise Exception(f"未找到匹配的用户建议: {user_id}")
 
