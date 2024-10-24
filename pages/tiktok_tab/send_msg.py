@@ -175,32 +175,7 @@ def send_msg(db: MySQLDatabase):
                         else:
                             st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
             
-            st.success("所有消息发送任务已启动，请查看worker的VNC画面。")
-
-            # 创建循环任务检查消息状态
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            all_completed = False
-            start_time = time.time()
-            while not all_completed and time.time() - start_time < 600:  # 最多等待10分钟
-                time.sleep(20)  # 每20秒检查一次
-                
-                current_status = db.get_tiktok_messages_status([msg['user_id'] for msg in user_messages])
-                completed_count = sum(1 for status in current_status if status in ['sent', 'failed'])
-                progress = completed_count / len(user_messages)
-                
-                progress_bar.progress(progress)
-                status_text.text(f"已完成: {completed_count}/{len(user_messages)}")
-                
-                if completed_count == len(user_messages):
-                    all_completed = True
-            
-            if all_completed:
-                st.success("所有消息已处理完成！")
-            else:
-                st.warning("部分消息可能仍在处理中。")
-            
+            st.success("所有消息发送任务已启动，请稍等查看worker的VNC画面。")
             time.sleep(20)
             st.rerun()  # 重新运行页面以刷新数据
     else:
