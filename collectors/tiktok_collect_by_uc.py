@@ -652,34 +652,6 @@ def process_task(task_id, keyword, server_ip):
         db.disconnect()
         cleanup_chrome_processes()  # 确保在任务结束时清理所有Chrome进程
 
-def main():
-    username = "claudexie1"
-    password = os.environ.get('TIKTOK_PASSWORD', "test")
-    keyword = "chatgpt"
-    driver = setup_driver()
-    try:
-        # 在登录之前清理所有cookies
-        driver.delete_all_cookies()
-        logger.info("已清理所有cookies")
-
-        # 尝试使用本地cookies登录
-        login_by_local_cookies(driver)
-        
-        video_links = search_tiktok_videos(driver, keyword)
-        all_comments = {}
-        for video_url in video_links:
-            comments = collect_comments(driver, video_url)
-            all_comments[video_url] = comments
-            logger.info(f"收集到 {len(comments)} 条来自 {video_url} 的评论")
-
-        # 处理并上传评论数据
-        # process_and_upload_csv_to_cos(all_comments)
-    except Exception as e:
-        logger.error(f"发生错误: {traceback.format_exc()}")
-        take_screenshot(driver, "error")
-    finally:
-        driver.quit()
-
 def simulate_human_input(driver, element, text):
     """模拟人类输入文本，并验证输入是否正确"""
     for char in text:

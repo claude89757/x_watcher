@@ -15,7 +15,8 @@ import datetime
 import logging
 import traceback
 import pyperclip
-
+import json
+import platform
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -25,7 +26,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
+import undetected_chromedriver as uc
 
+from common.mysql import MySQLDatabase
 from common.cos import process_and_upload_csv_to_cos
 
 # 配置日志记录到文件
@@ -37,6 +40,149 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+CHROME_DRIVER = '/usr/local/bin/chromedriver'
+
+def setup_driver():
+    """设置并返回一个Selenium WebDriver实例。"""
+    options = uc.ChromeOptions()
+    
+    # 根据操作系统设置无头模式
+    current_system = platform.system()
+    if current_system == "Linux":
+        if "Ubuntu" not in platform.version():
+            options.add_argument('--headless')
+    elif current_system != "Darwin":  # 非macOS系统
+        options.add_argument('--headless')
+    
+    options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--allow-insecure-localhost')
+    
+    logger.info("正在设置WebDriver选项")
+    
+    try:
+        driver = uc.Chrome(driver_executable_path=CHROME_DRIVER, options=options)
+        logger.info(f"WebDriver已设置成功，使用驱动程序路径: {CHROME_DRIVER}")
+        driver.maximize_window()
+        logger.info("浏览器已设置为全屏模式")
+        return driver
+    except Exception as e:
+        logger.error(f"设置WebDriver时发生错误: {str(e)}")
+        raise
+
+def random_sleep(min_seconds=1, max_seconds=3):
+    """随机等待一段时间，模拟人类行为。"""
+    time_to_sleep = random.uniform(min_seconds, max_seconds)
+    logger.info(f"随机等待 {time_to_sleep:.2f} 秒")
+    time.sleep(time_to_sleep)
+
+def save_cookies(driver, username):
+    """保存当前会话的Cookies到JSON文件。"""
+    logger.info("保存Cookies...")
+    cookies = driver.get_cookies()
+    filename = f"{username}_cookies_x.json"
+    with open(filename, "w") as file:
+        json.dump(cookies, file, indent=2)
+    logger.info(f"Cookies已保存到 {filename}")
+
+def load_cookies(driver, username):
+    """从文件加载Cookies到当前会话。"""
+    try:
+        driver.get("https://x.com")
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        
+        filename = f"{username}_cookies_x.json"
+        with open(filename, "r") as file:
+            cookies = json.load(file)
+            for cookie in cookies:
+                driver.add_cookie(cookie)
+        
+        driver.refresh()
+        logger.info(f"Cookies从 {filename} 加载")
+        return True
+    except Exception as e:
+        logger.error(f"加载Cookies失败: {str(e)}")
+        return False
+
+def check_login_status(driver):
+    """检查当前的登录状态"""
+    try:
+        driver.get("https://x.com/home")
+        WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        
+        # 检查是否在主页
+        if "twitter.com/home" in driver.current_url:
+            logger.info("检测到主页URL，登录状态有效")
+            return True
+        else:
+            logger.info("未检测到主页URL，登录状态无效")
+            return False
+    except Exception as e:
+        logger.error(f"检查登录状态时发生错误: {str(e)}")
+        return False
+
+def login_by_local_cookies(driver, username):
+    """尝试使用本地cookies文件登录Twitter"""
+    driver.delete_all_cookies()
+    logger.info("已清理所有cookies")
+
+    if load_cookies(driver, username):
+        if check_login_status(driver):
+            logger.info(f"使用本地cookies成功登录账号 {username}")
+            return True
+    
+    logger.info(f"使用本地cookies登录账号 {username} 失败")
+    return False
+
+def check_x_account_status(account_id, username, email, password):
+    db = MySQLDatabase()
+    db.connect()
+    driver = None
+    try:
+        driver = setup_driver()
+        
+        if login_by_local_cookies(driver, username):
+            db.update_x_account_status(account_id, 'active')
+            logger.info(f"账号 {username} 使用本地cookies登录成功，状态更新为active")
+            return
+        
+        # 手动登录逻辑
+        logger.info(f"尝试手动登录账号 {username}")
+        driver.get("https://x.com/i/flow/login")
+        
+        # 输入用户名
+        username_input = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.NAME, "text"))
+        )
+        username_input.send_keys(username)
+        username_input.send_keys(Keys.RETURN)
+        
+        # 输入密码
+        password_input = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.NAME, "password"))
+        )
+        password_input.send_keys(password)
+        password_input.send_keys(Keys.RETURN)
+        
+        # 检查登录状态
+        if check_login_status(driver):
+            save_cookies(driver, username)
+            db.update_x_account_status(account_id, 'active')
+            logger.info(f"账号 {username} 登录成功，状态更新为active")
+        else:
+            db.update_x_account_status(account_id, 'inactive')
+            logger.info(f"账号 {username} 登录失败，状态更新为inactive")
+
+    except Exception as e:
+        logger.error(f"检查账号 {username} 状态时发生错误: {str(e)}")
+        logger.error(f"错误详情: {traceback.format_exc()}")
+        db.update_x_account_status(account_id, 'inactive')
+    finally:
+        if driver:
+            driver.quit()
+        db.disconnect()
 
 class TwitterWatcher:
     def __init__(self, driver_path, username, email, password, search_key_word='cat', timeout=10, headless: bool = True,
@@ -48,7 +194,7 @@ class TwitterWatcher:
         self.search_key_word = search_key_word
         self.timeout = timeout
         self.interaction_timeout = 10
-        self.cookies_file = f'{username}_cookies.pkl'
+        self.cookies_file = f'{username}_cookies_x.json'
         self.driver = None
         self.headless = headless
         self.force_re_login = force_re_login
@@ -87,14 +233,14 @@ class TwitterWatcher:
 
     def save_cookies(self):
         logging.info("saving cookies")
-        with open(self.cookies_file, 'wb') as file:
-            pickle.dump(self.driver.get_cookies(), file)
+        with open(self.cookies_file, 'w') as file:
+            json.dump(self.driver.get_cookies(), file, indent=2)
 
     def load_cookies(self):
         logging.info("loading cookies")
         if os.path.exists(self.cookies_file):
-            with open(self.cookies_file, 'rb') as file:
-                cookies = pickle.load(file)
+            with open(self.cookies_file, 'r') as file:
+                cookies = json.load(file)
                 for cookie in cookies:
                     self.driver.add_cookie(cookie)
 
@@ -108,7 +254,7 @@ class TwitterWatcher:
         username_input.send_keys(self.username)
         time.sleep(random.uniform(0, 1))
 
-        # 点击“下一步”按钮
+        # 点击“下一步按钮
         next_button = self.find_element(By.XPATH, '//span[text()="Next"]/ancestor::button[@role="button"]')
         logging.info(f"click {next_button.text}")
         next_button.click()
@@ -465,7 +611,7 @@ class TwitterWatcher:
                 else:
                     logging.info("first time login...")
                     self.login()
-                # 混淆: 随机等待时间
+                # ���淆: 随机等待时间
                 time.sleep(random.uniform(1, 3))
 
                 # 再次检查是否需要登录
@@ -553,7 +699,7 @@ class TwitterWatcher:
             # 获取前N个推特
             top_n_posts = self.get_top_n_posts(max_post_num)
 
-            # 遍历每个推特的链接
+            # 遍历每个推特的接
             data_list = []
             for post in top_n_posts:
                 try:
@@ -812,12 +958,3 @@ def check_service_status(username: str, email: str, password: str):
     logging.info("health checking...")
     return watcher.check_login_status()
 
-
-# Test
-if __name__ == '__main__':
-    from common.config import CONFIG
-    username = "stephen__gzhh"
-    email = CONFIG['x_collector_account_infos'][username]['email']
-    password = CONFIG['x_collector_account_infos'][username]['password']
-    watcher = TwitterWatcher('/usr/local/bin/chromedriver', username, email, password, headless=False)
-    watcher.check_login_status()

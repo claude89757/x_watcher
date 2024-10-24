@@ -1,16 +1,19 @@
-from flask import Flask, request, jsonify
-from common.mysql import MySQLDatabase
-import threading
-from tiktok_collect_by_uc import process_task, get_public_ip, check_account_status, send_promotion_messages
+import concurrent.futures
 import logging
 import os
-import socket
 import psutil
 import signal
+import socket
+import threading
 import time
-from apscheduler.schedulers.background import BackgroundScheduler
-import concurrent.futures
 import uuid
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask import Flask, request, jsonify
+
+from common.mysql import MySQLDatabase
+from tiktok_collect_by_uc import process_task, get_public_ip, check_account_status, send_promotion_messages
+from x_collect import check_x_account_status
 
 app = Flask(__name__)
 
@@ -277,6 +280,40 @@ def process_messages_async(user_messages, account_id, batch_size, wait_time):
     finally:
         if db.is_connected():
             db.disconnect()
+
+@app.route('/check_x_account', methods=['POST'])
+def check_x_account():
+    account_id = request.json.get('account_id')
+    if not account_id:
+        return jsonify({"error": "Missing account_id parameter"}), 400
+
+    db = MySQLDatabase()
+    db.connect()
+    try:
+        account = db.get_x_account_by_id(account_id)
+        if not account:
+            return jsonify({"error": "Account not found"}), 404
+
+        # 检查当前运行的Chrome进程数
+        chrome_count = get_chrome_process_count()
+        if chrome_count >= MAX_CONCURRENT_CHROME:
+            return jsonify({"error": f"Maximum number of concurrent Chrome processes ({MAX_CONCURRENT_CHROME}) reached for this host"}), 429
+
+        # 启动新的线程来检查账号状态
+        check_thread = threading.Thread(target=check_x_account_status, args=(account_id, account['username'], account['email'], account['password']))
+        check_thread.start()
+
+        return jsonify({
+            "message": "Account status check started",
+            "account_id": account_id,
+            "username": account['username'],
+            "current_status": account['status']
+        }), 200
+    except Exception as e:
+        logger.error(f"Error in check_x_account: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+    finally:
+        db.disconnect()
 
 if __name__ == '__main__':
     register_worker()
