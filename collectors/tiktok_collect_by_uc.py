@@ -838,21 +838,12 @@ def simulate_human_scroll(driver):
     time.sleep(random.uniform(0.5, 1))
 
 def send_single_promotion_message(driver, user_id, message, keyword):
-    db = MySQLDatabase()
-    db.connect()
     try:
         # 初始化操作结果
         follow_success = False
         comment_success = False
         dm_success = False
         at_comment_success = False
-
-        # 使用新方法获取源视频链接
-        video_url = db.get_video_url_by_keyword_and_user_id(keyword, user_id)
-        if video_url:
-            logger.info(f"找到用户 {user_id} 的源视频链接: {video_url}")
-        else:
-            logger.warning(f"未找到用户 {user_id} 的源视频链接")
 
         # 访问用户主页
         user_profile_url = f"https://www.tiktok.com/@{user_id}"
@@ -879,119 +870,135 @@ def send_single_promotion_message(driver, user_id, message, keyword):
 
         random_wait(1, 3)
 
-
-        # 尝试发送私信
+        # 尝试在用户最新视频下留言
         try:
-            logger.info(f"重新访问用户 {user_id} 的主页")
-            driver.get(user_profile_url)
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
-            logger.info("用户主页重新加载完成")
-
-            random_wait(2, 4)
-
-            logger.info("正在尝试找到发送私信按钮")
-            message_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='message-button']"))
+            logger.info("正在尝试找到最新视频")
+            latest_video = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, 'video'))
             )
-            logger.info("找到发送私信按钮,正在点击")
-            message_button.click()
+            logger.info("找到最新视频,正在点击")
+            latest_video.click()
 
-            random_wait(2, 4)
+            random_wait(1, 3)
 
-            logger.info("正在等待私信输入框出现")
-            message_input = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='message-input-area'] div.public-DraftEditor-content"))
+            WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+
+            logger.info("正在等待评论输入框出现")
+            comment_input = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-input'] div.public-DraftEditor-content"))
             )
-            logger.info("找到私信输入框,正在输入私信")
+            logger.info("找到评论输入框,正在输入评论")
 
             for char in message:
-                message_input.send_keys(char)
+                comment_input.send_keys(char)
                 time.sleep(random.uniform(0.1, 0.3))
 
             random_wait(1, 2)
 
-            logger.info("正在尝试使用回车键发送私信")
-            message_input.send_keys(Keys.RETURN)
+            logger.info("正在尝试使用回车键发送评论")
+            comment_input.send_keys(Keys.RETURN)
 
             random_wait(2, 4)
 
-            # 检查私信是否发送成功
-            try:
-                # 获取发送前的消息数量
-                messages_before = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='chat-item']")
-                messages_count_before = len(messages_before)
-                
-                # 等待新消息出现或失败警告出现
-                WebDriverWait(driver, 10).until(
-                    lambda d: len(d.find_elements(By.CSS_SELECTOR, "div[data-e2e='chat-item']")) > messages_count_before or
-                              d.find_elements(By.CSS_SELECTOR, "div[data-e2e='dm-warning']")
-                )
-                
-                # 再次获取消息数量
-                messages_after = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='chat-item']")
-                messages_count_after = len(messages_after)
-                
-                # 检查是否有新消息出现
-                if messages_count_after > messages_count_before:
-                    logger.info(f"成功发送私信给用户 {user_id}")
-                    dm_success = True
-                else:
-                    # 检查是否出现失败警告
-                    warning_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='dm-warning']")
-                    if warning_elements:
-                        logger.warning("检测到私信发送失败警告")
-                        dm_success = False
-                    else:
-                        logger.warning("无法确定私信发送状态")
-                        dm_success = False
-            except TimeoutException:
-                logger.warning("等待私信发送结果超时")
-                dm_success = False
-
+            logger.info(f"成功在用户 {user_id} 的视频下留言")
+            comment_success = True
         except Exception as e:
-            logger.error(f"发送私信失败: {str(e)}")
-            logger.error(f"发送私信失败的详细错误: {traceback.format_exc()}")
-            dm_success = False
+            logger.error(f"留言失败: {str(e)}")
 
-        if not dm_success:
-            # 尝试在用户最新视频下留言
+        if not comment_success:
+            # 如果留言失败，则尝试发送私信
             try:
-                logger.info("正在尝试找到最新视频")
-                latest_video = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, 'video'))
+                logger.info(f"重新访问用户 {user_id} 的主页")
+                driver.get(user_profile_url)
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+                logger.info("用户主页重新加载完成")
+
+                random_wait(2, 4)
+
+                logger.info("正在尝试找到发送私信按钮")
+                message_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='message-button']"))
                 )
-                logger.info("找到最新视频,正在点击")
-                latest_video.click()
+                logger.info("找到发送私信按钮,正在点击")
+                message_button.click()
 
-                random_wait(1, 3)
+                random_wait(2, 4)
 
-                WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-
-                logger.info("正在等待评论输入框出现")
-                comment_input = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-input'] div.public-DraftEditor-content"))
+                logger.info("正在等待私信输入框出现")
+                message_input = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='message-input-area'] div.public-DraftEditor-content"))
                 )
-                logger.info("找到评论输入框,正在输入评论")
+                logger.info("找到私信输入框,正在输入私信")
 
                 for char in message:
-                    comment_input.send_keys(char)
+                    message_input.send_keys(char)
                     time.sleep(random.uniform(0.1, 0.3))
 
                 random_wait(1, 2)
 
-                logger.info("正在尝试使用回车键发送评论")
-                comment_input.send_keys(Keys.RETURN)
+                logger.info("正在尝试使用回车键发送私信")
+                message_input.send_keys(Keys.RETURN)
 
                 random_wait(2, 4)
 
-                logger.info(f"成功在用户 {user_id} 的视频下留言")
-                comment_success = True
-            except Exception as e:
-                logger.error(f"留言失败: {str(e)}")
+                # 检查私信是否发送成功
+                try:
+                    # 获取发送前的消息数量
+                    messages_before = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='chat-item']")
+                    messages_count_before = len(messages_before)
+                    
+                    # 等待新消息出现或失败警告出现
+                    WebDriverWait(driver, 10).until(
+                        lambda d: len(d.find_elements(By.CSS_SELECTOR, "div[data-e2e='chat-item']")) > messages_count_before or
+                                d.find_elements(By.CSS_SELECTOR, "div[data-e2e='dm-warning']")
+                    )
+                    
+                    # 再次获取消息数量
+                    messages_after = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='chat-item']")
+                    messages_count_after = len(messages_after)
+                    
+                    # 检查是否有新消息出现
+                    if messages_count_after > messages_count_before:
+                        logger.info(f"成功发送私信给用户 {user_id}")
+                        dm_success = True
+                    else:
+                        # 检查是否出现失败警告
+                        warning_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='dm-warning']")
+                        if warning_elements:
+                            logger.warning("检测到私信发送失败警告")
+                            dm_success = False
+                        else:
+                            logger.warning("无法确定私信发送状态")
+                            dm_success = False
+                except TimeoutException:
+                    logger.warning("等待私信发送结果超时")
+                    dm_success = False
 
-        # 新增：在源视频下留言并艾特用户
+            except Exception as e:
+                logger.error(f"发送私信失败: {str(e)}")
+                logger.error(f"发送私信失败的详细错误: {traceback.format_exc()}")
+                dm_success = False
+        else:
+            # 如果私信发送成功，则不再尝试在源视频下留言
+            pass
+
         if video_url and not dm_success and not comment_success:
+            # 如果私信和留言都失败，则尝试在源视频下留言并艾特用户
             try:
+                # 使用新方法获取源视频链接
+                db = MySQLDatabase()
+                db.connect()
+                try:
+                    video_url = db.get_video_url_by_keyword_and_user_id(keyword, user_id)
+                finally:
+                    db.disconnect()
+                
+                if video_url:
+                    logger.info(f"找到用户 {user_id} 的源视频链接: {video_url}")
+                else:
+                    logger.warning(f"未找到用户 {user_id} 的源视频链接")
+                    raise Exception("未找到用户 {user_id} 的源视频链接")
+
                 driver.get(video_url)
                 logger.info(f"正在访问源视频链接: {video_url}")
                 WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
@@ -1010,16 +1017,24 @@ def send_single_promotion_message(driver, user_id, message, keyword):
                 comment_input.send_keys(f"@{user_id}")
                 random_wait(1, 2)
 
-                # 等待并选择艾特建议
-                try:
-                    mention_suggestion = WebDriverWait(driver, 5).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-at-list'] div[data-e2e='comment-at-item']"))
-                    )
-                    mention_suggestion.click()
-                    logger.info(f"成功选择艾特用户 {user_id}")
-                except TimeoutException:
-                    logger.warning(f"未找到艾特建议，继续输入消息")
-                    comment_input.send_keys(Keys.SPACE)  # 添加空格以确认艾特
+                # 等待艾特建议列表出现
+                WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-at-user']"))
+                )
+                
+                # 查找匹配的用户建议
+                mention_suggestions = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='comment-at-list']")
+                correct_suggestion = None
+                for suggestion in mention_suggestions:
+                    unique_id_element = suggestion.find_element(By.CSS_SELECTOR, "span[data-e2e='comment-at-uniqueid']")
+                    if unique_id_element.text.lower() == user_id.lower():
+                        correct_suggestion = suggestion
+                        break
+                if correct_suggestion:
+                    correct_suggestion.click()
+                    logger.info(f"成功选择正确的艾特用户 {user_id}")
+                else:
+                    raise Exception("未找到匹配的用户建议")
 
                 random_wait(1, 2)
 
