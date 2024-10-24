@@ -243,7 +243,7 @@ def check_login_status(driver):
         )
         logger.info("检测到用户头像，登录状态有效")
         
-        # 检并提��户ID
+        # 检并提��ID
         profile_link = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'a[data-e2e="nav-profile"]'))
         )
@@ -485,7 +485,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
 
         # 优化的滚动策
         if consecutive_no_new_comments >= max_consecutive_no_new:
-            logger.info("连续多次未加载新评论，尝��更激进的滚动策略")
+            logger.info("连续多次未加载新评论，尝更激进的滚动策略")
             # 尝试快速滚动到底部然后回到顶部
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             random_sleep(1, 2)
@@ -744,7 +744,7 @@ def check_account_status(account_id, username, email):
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active���已保存新的cookies")
+            logger.info(f"账号 {username} 状态更新为 active���保存新的cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
@@ -1049,9 +1049,12 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-at-user']"))
                 )
                 
-                # 使用回车键选择第一个建议的用户
-                comment_input.send_keys(Keys.RETURN)
-                logger.info(f"使用回车键选择艾特用户 {user_id}")
+                # 点击第一个建议的用户
+                first_suggestion = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div[data-e2e='comment-at-list'] div[data-e2e='comment-at-user']"))
+                )
+                first_suggestion.click()
+                logger.info(f"点击选择第一个艾特用户建议")
 
                 random_wait(1, 2)
 
