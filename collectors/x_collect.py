@@ -180,40 +180,62 @@ def check_x_account_status(account_id, username, email, password):
             logger.info(f"已保存错误截图: username_input_error_{username}.png")
             raise
         
-        # 输入密码
+        # 输入密码或邮箱
         try:
-            logger.info(f"正在等待密码输入框出现")
-            password_input = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.XPATH, "//input[@name='password' and @type='password']"))
-            )
-            logger.info(f"密码输入框已找到，开始输入密码")
-            driver.execute_script("arguments[0].value = '';", password_input)
-            driver.execute_script("arguments[0].value = arguments[1];", password_input, password)
-            logger.info(f"密码已输入，等待2秒")
-            time.sleep(2)
+            current_input = None
+            try:
+                current_input = WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@name='password' and @type='password']"))
+                )
+                input_type = "password"
+            except TimeoutException:
+                try:
+                    current_input = WebDriverWait(driver, 15).until(
+                        EC.presence_of_element_located((By.XPATH, "//input[@name='text' and @autocomplete='email']"))
+                    )
+                    input_type = "email"
+                except TimeoutException:
+                    input_type = "check_people"
             
-            logger.info(f"正在查找'登录'按钮")
-            login_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, "//div[@role='button']//span[text()='登录']"))
-            )
-            logger.info(f"'登录'按钮已找到，点击按钮")
-            driver.execute_script("arguments[0].click();", login_button)
+            logger.info(f"input_type: {input_type}")
+
+            if input_type == "password":
+                logger.info("直接账号密码登录")
+                time.sleep(random.uniform(1, 3))
+                current_input.send_keys(password)
+                time.sleep(random.uniform(0, 1))
+                current_input.send_keys(Keys.RETURN)
+            elif input_type == "email":
+                logger.info("账号受限可能需要输入邮箱")
+                current_input.send_keys(email)
+                time.sleep(random.uniform(0, 1))
+                current_input.send_keys(Keys.RETURN)
+                
+                password_input = WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@name='password' and @type='password']"))
+                )
+                password_input.send_keys(password)
+                time.sleep(random.uniform(0, 1))
+                password_input.send_keys(Keys.RETURN)
+            else:
+                logger.info("需人工介入")
+                driver.save_screenshot(f"./saved_screenshots/{username}_login_check_people.png")
+                raise Exception("auto login failed!")
             
-            logger.info(f"密码已输入并点击登录按钮")
+            logger.info(f"正在检查登录状态")
+            if check_login_status(driver):
+                save_cookies(driver, username)
+                db.update_x_account_status(account_id, 'active')
+                logger.info(f"账号 {username} 登录成功，状态更新为active")
+            else:
+                db.update_x_account_status(account_id, 'inactive')
+                logger.info(f"账号 {username} 登录失败，状态更新为inactive")
+
         except Exception as e:
-            logger.error(f"输入密码时发生错误: {str(e)}")
+            logger.error(f"输入密码或邮箱时发生错误: {str(e)}")
             driver.save_screenshot(f"password_input_error_{username}.png")
             logger.info(f"已保存错误截图: password_input_error_{username}.png")
             raise
-        
-        logger.info(f"正在检查登录状态")
-        if check_login_status(driver):
-            save_cookies(driver, username)
-            db.update_x_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 登录成功，状态更新为active")
-        else:
-            db.update_x_account_status(account_id, 'inactive')
-            logger.info(f"账号 {username} 登录失败，状态更新为inactive")
 
     except Exception as e:
         logger.error(f"检查账号 {username} 状态时发生错误: {str(e)}")
@@ -821,7 +843,7 @@ class TwitterWatcher:
                     self.driver.save_screenshot(f"./saved_screenshots/{user_id}_error.png")
                     page_loaded = "no"
 
-                # 显式��待私信按钮出现
+                # 显式待私信按钮出现
                 try:
                     self.driver.find_element(By.XPATH, '//button[@data-testid="sendDMFromProfile"]')
                     enable_dm = "yes"
@@ -1000,6 +1022,7 @@ def check_service_status(username: str, email: str, password: str):
     watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, "cat")
     logging.info("health checking...")
     return watcher.check_login_status()
+
 
 
 
