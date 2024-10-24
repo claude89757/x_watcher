@@ -744,7 +744,7 @@ def check_account_status(account_id, username, email):
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active新的cookies")
+            logger.info(f"账号 {username} 状态更新为 active的cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
@@ -779,13 +779,21 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
         # 分批处理用户
         for i in range(0, len(user_messages), batch_size):
             batch_users = user_messages[i:i+batch_size]
+            batch_results = []
             for user_msg in batch_users:
                 result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'], keyword, db)
-                results.append(result)
+                batch_results.append(result)
             
-            # 等待指定时间
-            logger.info(f"已发送 {len(results)} 条消息，等待 {wait_time} 秒后继续...")
-            time.sleep(wait_time)
+            results.extend(batch_results)
+            
+            # 检查是否还有剩余的消息需要发送
+            remaining_messages = len(user_messages) - len(results)
+            if remaining_messages > 0:
+                logger.info(f"已发送 {len(results)} 条消息，还剩 {remaining_messages} 条，等待 {wait_time} 秒后继续...")
+                time.sleep(wait_time)
+            else:
+                logger.info("所有消息已发送完毕，结束处理。")
+                break
         
         return results
     except Exception as e:
