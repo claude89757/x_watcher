@@ -780,7 +780,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
         for i in range(0, len(user_messages), batch_size):
             batch_users = user_messages[i:i+batch_size]
             for user_msg in batch_users:
-                result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'], keyword)
+                result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'], keyword, db)
                 results.append(result)
             
             # 等待指定时间
@@ -874,7 +874,7 @@ def try_follow_user(driver, user_id):
         logger.error(f"关注用户 {user_id} 时发生错误: {str(e)}")
         return False
 
-def send_single_promotion_message(driver, user_id, message, keyword):
+def send_single_promotion_message(driver, user_id, message, keyword, db):
     try:
         # 初始化操作结果
         follow_success = False
@@ -1013,12 +1013,11 @@ def send_single_promotion_message(driver, user_id, message, keyword):
             # 如果私信和留言都失败，则尝���在源视频下留言并艾特用户
             try:
                 # 使用新方法获取源视频链接
-                db = MySQLDatabase()
-                db.connect()
-                try:
-                    video_url = db.get_video_url_by_keyword_and_user_id(keyword, user_id)
-                finally:
-                    db.disconnect()
+                if db.is_connected():
+                    pass
+                else:
+                    db.connect()
+                video_url = db.get_video_url_by_keyword_and_user_id(keyword, user_id)
                 
                 if video_url:
                     logger.info(f"找到用户 {user_id} 的源视频链接: {video_url}")
@@ -1056,6 +1055,7 @@ def send_single_promotion_message(driver, user_id, message, keyword):
                     unique_id_element = suggestion.find_element(By.CSS_SELECTOR, "span[data-e2e='comment-at-uniqueid']")
                     if unique_id_element.text.lower() == user_id.lower():
                         correct_suggestion = suggestion
+                        logger.info(f"找到匹配的用户建议: {user_id}")
                         break
                 if correct_suggestion:
                     correct_suggestion.click()
