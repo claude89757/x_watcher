@@ -134,6 +134,7 @@ def send_msg(db: MySQLDatabase):
                     response = requests.post(
                         f"http://{worker_ip}:5000/send_promotion_messages",
                         json={
+                            "keyword": selected_keyword,
                             "user_messages": user_messages,
                             "account_id": account_id,
                             "batch_size": batch_size,

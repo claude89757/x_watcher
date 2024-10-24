@@ -1090,14 +1090,22 @@ class MySQLDatabase:
         """
         return self.execute_query(query, (keyword, limit))
 
-    def update_tiktok_message_status(self, user_id, status):
-        """更新TikTok消息状态"""
+    def update_tiktok_message_status(self, user_id, status, delivery_method=None):
+        """更新TikTok消息状态和发送方式"""
         query = """
         UPDATE tiktok_messages
         SET status = %s
-        WHERE user_id = %s
         """
-        return self.execute_update(query, (status, user_id))
+        params = [status]
+
+        if delivery_method is not None:
+            query += ", delivery_method = %s"
+            params.append(delivery_method)
+
+        query += " WHERE user_id = %s"
+        params.append(user_id)
+
+        return self.execute_update(query, tuple(params))
 
     def get_tiktok_messages_status(self, user_ids):
         query = """
@@ -1293,7 +1301,7 @@ class MySQLDatabase:
         return result[0] if result else None
 
     def create_x_task(self, keyword):
-        """创X任务"""
+        """创建X任务"""
         query = "INSERT INTO x_tasks (keyword) VALUES (%s)"
         return self.execute_update(query, (keyword,))
 
@@ -1565,6 +1573,16 @@ class MySQLDatabase:
         if not results:
             return []
         return [result['keyword'] for result in results if result.get('keyword')]
+
+    def get_video_url_by_keyword_and_user_id(self, keyword, user_id):
+        """根据关键词和用户ID获取源视频链接"""
+        query = """
+        SELECT video_url FROM tiktok_comments
+        WHERE keyword = %s AND user_id = %s
+        LIMIT 1
+        """
+        result = self.execute_query(query, (keyword, user_id))
+        return result[0]['video_url'] if result else None
 
 
 # 使用示例

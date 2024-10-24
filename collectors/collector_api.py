@@ -230,6 +230,7 @@ def check_and_execute_tasks():
 @app.route('/send_promotion_messages', methods=['POST'])
 def api_send_promotion_messages():
     data = request.json
+    keyword = data.get('keyword')
     user_messages = data.get('user_messages')
     account_id = data.get('account_id')
     batch_size = data.get('batch_size', 5)
@@ -244,7 +245,7 @@ def api_send_promotion_messages():
         return jsonify({"error": f"当前主机已达到最大并发Chrome进程数 ({MAX_CONCURRENT_CHROME})"}), 429
     
     # 启动后台线程处理消息发送
-    thread = threading.Thread(target=process_messages_async, args=(user_messages, account_id, batch_size, wait_time))
+    thread = threading.Thread(target=process_messages_async, args=(user_messages, account_id, batch_size, wait_time, keyword))
     thread.start()
     
     return jsonify({
@@ -252,7 +253,7 @@ def api_send_promotion_messages():
         "worker_ip": worker_ip  # 返回当前worker的IP
     }), 200
 
-def process_messages_async(user_messages, account_id, batch_size, wait_time):
+def process_messages_async(user_messages, account_id, batch_size, wait_time, keyword):
     db = MySQLDatabase()
     try:
         db.connect()
@@ -261,12 +262,12 @@ def process_messages_async(user_messages, account_id, batch_size, wait_time):
             db.update_tiktok_message_status_and_worker(message['user_id'], 'processing', worker_ip)
         db.disconnect()
 
-        results = send_promotion_messages(user_messages, account_id, batch_size, wait_time)
+        results = send_promotion_messages(user_messages, account_id, batch_size, wait_time, keyword)
         
         db.connect()
         for result in results:
             if result['success']:
-                db.update_tiktok_message_status(result['user_id'], 'sent')
+                db.update_tiktok_message_status(result['user_id'], 'sent', delivery_method=result['action'])
             else:
                 db.update_tiktok_message_status(result['user_id'], 'failed')
         db.disconnect()

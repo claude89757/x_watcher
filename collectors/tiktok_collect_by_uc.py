@@ -84,7 +84,7 @@ atexit.register(cleanup_chrome_processes)
 
 def cleanup_zombie_processes():
     """
-    清理系统中的僵尸进程。
+    清理系统中僵尸进程。
     这个函数会查找系统中的僵尸进程并尝试终止它们。
     僵尸进程是已经结束但仍然在进程表中的进程。
     """
@@ -211,7 +211,7 @@ def load_cookies(driver, username):
         logger.info(f"未找到 {filename} 文件")
         return False
     except json.JSONDecodeError:
-        logger.error(f"{filename} 文件格式错误")
+        logger.error(f"{filename} 文件错误")
         return False
 
 def is_captcha_present(driver):
@@ -243,7 +243,7 @@ def check_login_status(driver):
         )
         logger.info("检测到用户头像，登录状态有效")
         
-        # 检查并提取户ID
+        # 检并提取户ID
         profile_link = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'a[data-e2e="nav-profile"]'))
         )
@@ -279,7 +279,7 @@ def login_by_local_cookies(driver, username=None):
     """
     # 清理所有cookies
     driver.delete_all_cookies()
-    logger.info("已清理所有cookies")
+    logger.info("已清理所cookies")
 
     if username:
         # 如果指定了用户名，只尝试加载该用户的cookie文件
@@ -396,7 +396,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
     scroll_attempts = 0
     max_scroll_attempts = 10  # 最大滚动尝试次数
     consecutive_no_new_comments = 0
-    max_consecutive_no_new = 5  # 连续无新评论的最大次数
+    max_consecutive_no_new = 5  # 连续无新评的最大次数
 
     last_comments_count = 0
     seen_comments = set()
@@ -419,7 +419,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
             
-            # 如果用户ID已经在数据库中，跳过这条评论
+            # 如果用户ID已经在数据中，跳过这条评论
             if user_id in existing_user_ids:
                 continue
 
@@ -613,7 +613,7 @@ def process_task(task_id, keyword, server_ip):
                 if status == 'processing':
                     logger.info(f"继续处理之前未完成的视频：ID {video_id}, URL {video_url}")
                 else:
-                    logger.info(f"开始处理新的视频：ID {video_id}, URL {video_url}")
+                    logger.info(f"开始处理新���视频：ID {video_id}, URL {video_url}")
                 try:
                     comments = collect_comments(driver, video_url, video_id, keyword, db, user_id, task_id)
                     logger.info(f"任务 {task_id} 收集到 {len(comments)} 条来自 {video_url} 的评论")
@@ -692,7 +692,7 @@ def check_account_status(account_id, username, email):
             logger.error(f"使用本地cookies登录失败: {str(e)}")
             # 继续执行手动登录逻辑
         
-        # 登录失败或发生异常，尝试手动登录
+        # 登录失或发生异常，尝试手动登录
         logger.info(f"尝试手动登录账号 {username}")
         
         # 导航到TikTok登录页面
@@ -758,7 +758,7 @@ def check_account_status(account_id, username, email):
             driver.quit()
         db.disconnect()
 
-def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=60):
+def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=60, keyword=None):
     db = MySQLDatabase()
     db.connect()
     driver = None
@@ -780,7 +780,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
         for i in range(0, len(user_messages), batch_size):
             batch_users = user_messages[i:i+batch_size]
             for user_msg in batch_users:
-                result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'])
+                result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'], keyword)
                 results.append(result)
             
             # 等待指定时间
@@ -837,21 +837,33 @@ def simulate_human_scroll(driver):
     logger.info("模拟人类滚动回到顶部")
     time.sleep(random.uniform(0.5, 1))
 
-def send_single_promotion_message(driver, user_id, message):
+def send_single_promotion_message(driver, user_id, message, keyword):
+    db = MySQLDatabase()
+    db.connect()
     try:
+        # 初始化操作结果
+        follow_success = False
+        comment_success = False
+        dm_success = False
+        at_comment_success = False
+
+        # 使用新方法获取源视频链接
+        video_url = db.get_video_url_by_keyword_and_user_id(keyword, user_id)
+        if video_url:
+            logger.info(f"找到用户 {user_id} 的源视频链接: {video_url}")
+        else:
+            logger.warning(f"未找到用户 {user_id} 的源视频链接")
+
+        # 访问用户主页
         user_profile_url = f"https://www.tiktok.com/@{user_id}"
         driver.get(user_profile_url)
         logger.info(f"正在访问用户 {user_id} 的主页: {user_profile_url}")
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
         logger.info("页面加载完成")
-        
+
         random_wait(2, 5)
         simulate_human_scroll(driver)
-        
-        follow_success = False
-        comment_success = False
-        dm_success = False
-        
+
         # 尝试关注用户
         try:
             logger.info("正在尝试找到关注按钮")
@@ -864,9 +876,9 @@ def send_single_promotion_message(driver, user_id, message):
             follow_success = True
         except Exception as e:
             logger.error(f"关注用户失败: {str(e)}")
-        
+
         random_wait(1, 3)
-        
+
         # 尝试在用户最新视频下留言
         try:
             logger.info("正在尝试找到最新视频")
@@ -875,68 +887,68 @@ def send_single_promotion_message(driver, user_id, message):
             )
             logger.info("找到最新视频,正在点击")
             latest_video.click()
-            
+
             random_wait(1, 3)
-            
+
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-            
+
             logger.info("正在等待评论输入框出现")
             comment_input = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-input'] div.public-DraftEditor-content"))
             )
             logger.info("找到评论输入框,正在输入评论")
-            
+
             for char in message:
                 comment_input.send_keys(char)
                 time.sleep(random.uniform(0.1, 0.3))
-            
+
             random_wait(1, 2)
-            
+
             logger.info("正在尝试使用回车键发送评论")
             comment_input.send_keys(Keys.RETURN)
-            
+
             random_wait(2, 4)
-            
+
             logger.info(f"成功在用户 {user_id} 的视频下留言")
             comment_success = True
         except Exception as e:
             logger.error(f"留言失败: {str(e)}")
-        
+
         # 尝试发送私信
         try:
             logger.info(f"重新访问用户 {user_id} 的主页")
             driver.get(user_profile_url)
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
             logger.info("用户主页重新加载完成")
-            
+
             random_wait(2, 4)
-            
+
             logger.info("正在尝试找到发送私信按钮")
             message_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='message-button']"))
             )
             logger.info("找到发送私信按钮,正在点击")
             message_button.click()
-            
+
             random_wait(2, 4)
-            
+
             logger.info("正在等待私信输入框出现")
             message_input = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='message-input-area'] div.public-DraftEditor-content"))
             )
             logger.info("找到私信输入框,正在输入私信")
-            
+
             for char in message:
                 message_input.send_keys(char)
                 time.sleep(random.uniform(0.1, 0.3))
-            
+
             random_wait(1, 2)
-            
+
             logger.info("正在尝试使用回车键发送私信")
             message_input.send_keys(Keys.RETURN)
-            
+
             random_wait(2, 4)
-            
+
             # 检查是否出现发送失败的警告元素
             try:
                 warning_element = WebDriverWait(driver, 5).until(
@@ -951,26 +963,65 @@ def send_single_promotion_message(driver, user_id, message):
             logger.error(f"发送私信失败: {str(e)}")
             logger.error(f"发送私信失败的详细错误: {traceback.format_exc()}")
             dm_success = False
-        
+
+        # 新增：在源视频下留言并艾特用户
+        if video_url:
+            try:
+                driver.get(video_url)
+                logger.info(f"正在访问源视频链接: {video_url}")
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+                logger.info("源视频页面加载完成")
+
+                random_wait(2, 5)
+                simulate_human_scroll(driver)
+
+                logger.info("正在等待源视频评论输入框出现")
+                comment_input = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-input'] div.public-DraftEditor-content"))
+                )
+                logger.info("找到源视频评论输入框,正在输入评论")
+
+                # 添加艾特用户的内容
+                at_message = f"@{user_id} {message}"
+                for char in at_message:
+                    comment_input.send_keys(char)
+                    time.sleep(random.uniform(0.1, 0.3))
+
+                random_wait(1, 2)
+
+                logger.info("正在尝试使用回车键发送评论")
+                comment_input.send_keys(Keys.RETURN)
+
+                random_wait(2, 4)
+
+                logger.info(f"成功在源视频 {video_url} 下留言并艾特用户 {user_id}")
+                at_comment_success = True
+            except Exception as e:
+                logger.error(f"在源视频下留言并艾特用户失败: {str(e)}")
+
         # 根据操作结果返回相应的信息
-        if comment_success or dm_success:
-            actions = []
-            if follow_success:
-                actions.append("关注")
-            if comment_success:
-                actions.append("留言")
-            if dm_success:
-                actions.append("私信")
-            action_str = "和".join(actions)
+        actions = []
+        if follow_success:
+            # 关注不记录
+            pass
+            # actions.append("关注")
+        if comment_success:
+            actions.append("用户视频留言")
+        if dm_success:
+            actions.append("直接私信")
+        if at_comment_success:
+            actions.append("源视频留言")
+        action_str = "|".join(actions)
+
+        if actions:
             return {"success": True, "message": f"成功{action_str}", "action": action_str, "user_id": user_id}
         else:
             logger.warning(f"对用户 {user_id} 的所有操作都失败")
-            return {"success": False, "message": "关注、留言和私信都失败", "action": "none", "user_id": user_id}
+            return {"success": False, "message": "所有操作都失败", "action": "none", "user_id": user_id}
+
     except Exception as e:
         logger.error(f"发送推广消息给用户 {user_id} 时发生错误: {str(e)}")
         logger.error(f"发送推广消息失败的详细错误: {traceback.format_exc()}")
         return {"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_id}
-
-# for local test
-if __name__ == '__main__':
-    main()
+    finally:
+        db.disconnect()
