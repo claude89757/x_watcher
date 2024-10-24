@@ -11,11 +11,7 @@ import os
 
 
 def sidebar_home():
-    try:
-        st.sidebar.subheader("构建中")
-    except:
-        st.write("...")
-
+    pass
 
 def sidebar_for_x():
     pass
