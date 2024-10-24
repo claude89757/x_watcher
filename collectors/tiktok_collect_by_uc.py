@@ -211,7 +211,7 @@ def load_cookies(driver, username):
         logger.info(f"未找到 {filename} 文件")
         return False
     except json.JSONDecodeError:
-        logger.error(f"{filename} 文件错误")
+        logger.error(f"{filename} 文件���误")
         return False
 
 def is_captcha_present(driver):
@@ -744,7 +744,7 @@ def check_account_status(account_id, username, email):
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active，并已保存新的cookies")
+            logger.info(f"账号 {username} 状态更新为 active���并已保存新的cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
@@ -839,50 +839,40 @@ def simulate_human_scroll(driver):
 
 # 尝试关注用户
 def try_follow_user(driver, user_id):
-    max_attempts = 3
-    for attempt in range(max_attempts):
-        try:
-            logger.info(f"尝试关注用户 {user_id}，第 {attempt + 1} 次尝试")
-            follow_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='follow-button']"))
-            )
-            
-            # 检查按钮文本，确保它是"关注"而不是"已关注"
-            if follow_button.text.lower() in ['follow', '关注']:
-                follow_button.click()
-                logger.info(f"点击关注按钮")
-                
-                # 等待关注状态更新
-                WebDriverWait(driver, 5).until(
-                    EC.text_to_be_present_in_element((By.XPATH, "//button[@data-e2e='follow-button']"), "Following")
-                )
-                
-                # 刷新页面并再次检查关注状态
-                driver.refresh()
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.TAG_NAME, 'body'))
-                )
-                
-                follow_status = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.XPATH, "//button[@data-e2e='follow-button']"))
-                )
-                
-                if follow_status.text.lower() in ['following', '已关注']:
-                    logger.info(f"成功关注用户 {user_id}")
-                    return True
-                else:
-                    logger.warning(f"关注用户 {user_id} 失败，按钮文本为: {follow_status.text}")
-            else:
-                logger.info(f"用户 {user_id} 已经被关注")
-                return True
-        except Exception as e:
-            logger.error(f"关注用户 {user_id} 失败: {str(e)}")
+    # 备注：好像关注不生效...似乎是IP问题
+    try:
+        logger.info(f"尝试关注用户 {user_id}")
+        follow_button = WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, "//button[@data-e2e='follow-button']"))
+        )
         
-        # 如果失败，等待一段时间后重试
-        time.sleep(random.uniform(2, 5))
-    
-    logger.error(f"在 {max_attempts} 次尝试后仍未能关注用户 {user_id}")
-    return False
+        # 检查按钮文本
+        button_text = follow_button.text.lower()
+        if button_text in ['following', '已关注']:
+            logger.info(f"用户 {user_id} 已经被关注")
+            return True
+        elif button_text not in ['follow', '关注']:
+            logger.warning(f"无法确定关注按钮状态，按钮文本为: {button_text}")
+            return False
+        
+        # 如果是"关注"状态，则点击关注
+        follow_button.click()
+        logger.info(f"点击关注按钮")
+        
+        # 等待关注状态更新
+        try:
+            WebDriverWait(driver, 5).until(
+                EC.text_to_be_present_in_element((By.XPATH, "//button[@data-e2e='follow-button']"), "Following")
+            )
+            logger.info(f"成功关注用户 {user_id}")
+            return True
+        except TimeoutException:
+            logger.warning(f"关注用户 {user_id} 后未能确认状态更新")
+            return False
+
+    except Exception as e:
+        logger.error(f"关注用户 {user_id} 时发生错误: {str(e)}")
+        return False
 
 def send_single_promotion_message(driver, user_id, message, keyword):
     try:
@@ -1019,8 +1009,8 @@ def send_single_promotion_message(driver, user_id, message, keyword):
             # 如果私信发送成功，则不再尝试在源视频下留言
             pass
 
-        if video_url and not dm_success and not comment_success:
-            # 如果私信和留言都失败，则尝试在源视频下留言并艾特用户
+        if not dm_success and not comment_success:
+            # 如果私信和留言都失败，则尝���在源视频下留言并艾特用户
             try:
                 # 使用新方法获取源视频链接
                 db = MySQLDatabase()
