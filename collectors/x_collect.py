@@ -160,7 +160,11 @@ def check_x_account_status(account_id, username, email, password):
             username_input = WebDriverWait(driver, 20).until(
                 EC.presence_of_element_located((By.XPATH, "//input[@name='text' and @autocomplete='username']"))
             )
-            logger.info(f"用户名输入框已找到，开始输入用户名")
+            logger.info(f"用户名输入框已找到，点击输入框")
+            driver.execute_script("arguments[0].click();", username_input)
+            time.sleep(1)  # 短暂等待以确保点击生效
+            
+            logger.info(f"开始输入用户名")
             driver.execute_script("arguments[0].value = '';", username_input)
             driver.execute_script("arguments[0].value = arguments[1];", username_input, username)
             logger.info(f"用户名 {username} 已输入，等待2秒")
@@ -345,7 +349,7 @@ class TwitterWatcher:
                     EC.url_to_be('https://x.com/home')
                 )
         elif input_type == "email":
-            logging.info("���号受限可能需要输入邮箱")
+            logging.info("号受限可能需要输入邮箱")
             # 定位并输入账号
             email_input = self.find_element(By.XPATH, '//input[@name="text" and @autocomplete="on" and '
                                                       '@type="text" and @data-testid="ocfEnterTextTextInput"]')
@@ -817,7 +821,7 @@ class TwitterWatcher:
                     self.driver.save_screenshot(f"./saved_screenshots/{user_id}_error.png")
                     page_loaded = "no"
 
-                # 显式等待私信按钮出现
+                # 显式��待私信按钮出现
                 try:
                     self.driver.find_element(By.XPATH, '//button[@data-testid="sendDMFromProfile"]')
                     enable_dm = "yes"
@@ -996,6 +1000,7 @@ def check_service_status(username: str, email: str, password: str):
     watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, "cat")
     logging.info("health checking...")
     return watcher.check_login_status()
+
 
 
 
