@@ -166,14 +166,10 @@ def check_x_account_status(account_id, username, email, password):
             logger.info(f"用户名 {username} 已输入，等待2秒")
             time.sleep(2)
             
-            logger.info(f"正在查找'下一步'按钮")
-            next_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, "//div[@role='button']//span[text()='下一步']"))
-            )
-            logger.info(f"'下一步'按钮已找到，点击按钮")
-            driver.execute_script("arguments[0].click();", next_button)
+            logger.info(f"模拟按下回车键")
+            username_input.send_keys(Keys.RETURN)
             
-            logger.info(f"用户名 {username} 已输入并点击下一步")
+            logger.info(f"用户名 {username} 已输入并按下回车键")
         except Exception as e:
             logger.error(f"输入用户名时发生错误: {str(e)}")
             driver.save_screenshot(f"username_input_error_{username}.png")
@@ -349,7 +345,7 @@ class TwitterWatcher:
                     EC.url_to_be('https://x.com/home')
                 )
         elif input_type == "email":
-            logging.info("账号受限可能需要输入邮箱")
+            logging.info("���号受限可能需要输入邮箱")
             # 定位并输入账号
             email_input = self.find_element(By.XPATH, '//input[@name="text" and @autocomplete="on" and '
                                                       '@type="text" and @data-testid="ocfEnterTextTextInput"]')
@@ -1000,6 +996,7 @@ def check_service_status(username: str, email: str, password: str):
     watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, "cat")
     logging.info("health checking...")
     return watcher.check_login_status()
+
 
 
 
