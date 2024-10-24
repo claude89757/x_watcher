@@ -55,9 +55,6 @@ def data_filter(db: MySQLDatabase):
                 'video_url': 'first'
             }).reset_index()
 
-            # 3. 重复评论用户或者评论内容相同的，去重
-            df = df.drop_duplicates(subset=['user_id', 'reply_content'])
-
             st.write(f"过滤后的评论数量: {len(df)}")
 
             # 数据过滤规则
@@ -66,7 +63,6 @@ def data_filter(db: MySQLDatabase):
             - 删除评论中的逗号、单引号和双引号
             - 过滤长度小于或等于5的评论
             - 相同用户ID的评论合并成一条
-            - 对重复的用户评论或相同内容的评论进行去重处理
             """)
 
             # 保存过滤后的数据
