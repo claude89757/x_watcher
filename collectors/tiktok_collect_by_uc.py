@@ -243,7 +243,7 @@ def check_login_status(driver):
         )
         logger.info("检测到用户头像，登录状态有效")
         
-        # 检并提��ID
+        # 检并提ID
         profile_link = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'a[data-e2e="nav-profile"]'))
         )
@@ -744,7 +744,7 @@ def check_account_status(account_id, username, email):
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active���保存新的cookies")
+            logger.info(f"账号 {username} 状态更新为 active���存新的cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
@@ -1049,12 +1049,23 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-at-user']"))
                 )
                 
-                # 点击第一个建议的用户
-                first_suggestion = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "div[data-e2e='comment-at-list'] div[data-e2e='comment-at-user']"))
-                )
-                first_suggestion.click()
-                logger.info(f"点击选择第一个艾特用户建议")
+                # 查找匹配的用户建议并点击
+                mention_suggestions = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='comment-at-list']")
+                correct_suggestion = None
+                for suggestion in mention_suggestions:
+                    unique_id_element = suggestion.find_element(By.CSS_SELECTOR, "span[data-e2e='comment-at-uniqueid']")
+                    if unique_id_element.text.lower() == user_id.lower():
+                        correct_suggestion = suggestion
+                        logger.info(f"找到匹配的用户建议: {user_id}")
+                        break
+                    else:
+                        logger.warning(f"当前建议用户ID: {unique_id_element.text.lower()}, 目标用户ID: {user_id.lower()}")
+                
+                if correct_suggestion:
+                    correct_suggestion.click()
+                    logger.info(f"成功选择正确的艾特用户 {user_id}")
+                else:
+                    raise Exception(f"未找到匹配的用户建议: {user_id}")
 
                 random_wait(1, 2)
 
