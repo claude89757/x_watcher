@@ -202,7 +202,7 @@ def generate_msg(db: MySQLDatabase):
                                        all_messages_text, 
                                        height=400)
         
-        if st.button("保存的推广信息", type="primary"):
+        if st.button("保存推广信息", type="primary"):
             # 解析编辑后的文本，更新 st.session_state.generated_messages
             updated_messages = {}
             for line in edited_messages.split("\n"):
@@ -210,19 +210,21 @@ def generate_msg(db: MySQLDatabase):
                     user_id, message = line.split(":", 1)
                     updated_messages[user_id.strip()] = message.strip()
             
+            # 保存新的推广消息到数据库
+            for user_id, message in updated_messages.items():
+                db.save_tiktok_message(selected_keyword, user_id, message)
+            
             # 更新 session_state 和缓存
             st.session_state.generated_messages = updated_messages
             save_messages_to_cache(selected_keyword, updated_messages)
             
-            # 保存到数据库
-            for user_id, message in updated_messages.items():
-                db.save_tiktok_message(selected_keyword, user_id, message)
-            
-            st.success(f"成功保存 {len(updated_messages)} 条推广信息到数据库!，请跳转到【触达客户】页面发送推广信息")
+            st.success(f"成功保存 {len(updated_messages)} 条新的推广信息到数据库!，请跳转到【触达客户】页面发送推广信息")
 
     # 添加清除缓存的按钮
     if st.button("清除所有生成的推广信息"):
         st.session_state.generated_messages = {}
         save_messages_to_cache(selected_keyword, {})
+        # 清空当前关键字的所有推广消息
+        db.clear_tiktok_messages(selected_keyword)
         st.success("已清除所有生成的推广信息。")
         st.rerun()

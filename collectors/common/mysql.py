@@ -1584,6 +1584,11 @@ class MySQLDatabase:
         result = self.execute_query(query, (keyword, user_id))
         return result[0]['video_url'] if result else None
 
+    def clear_tiktok_messages(self, keyword):
+        """清空指定关键词的所有TikTok推广消息"""
+        query = "DELETE FROM tiktok_messages WHERE keyword = %s"
+        return self.execute_update(query, (keyword,))
+
 
 # 使用示例
 if __name__ == "__main__":
