@@ -95,7 +95,6 @@ def data_collect(db: MySQLDatabase):
         tasks = db.get_all_tiktok_tasks()
         if tasks:
             task_data = []
-            current_time = datetime.now()
             for task in tasks:
                 status_emoji = {
                     'pending': '⏳',
@@ -111,9 +110,8 @@ def data_collect(db: MySQLDatabase):
                 comments_count = len(db.get_tiktok_comments_by_keyword(task['keyword']))
                 
                 # 计算运行时间
-                if task['status'] in ['running', 'completed']:
-                    start_time = task['created_at'] if task['status'] == 'running' else task['created_at']
-                    duration = current_time - start_time
+                if task['status'] in ['running', 'completed', 'failed', 'paused']:
+                    duration = task['updated_at'] - task['created_at']
                     hours, remainder = divmod(duration.total_seconds(), 3600)
                     minutes, seconds = divmod(remainder, 60)
                     run_time = f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
