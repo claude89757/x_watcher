@@ -154,14 +154,14 @@ def check_x_account_status(account_id, username, email, password):
         
         # 输入用户名
         username_input = WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.NAME, "text"))
+            EC.presence_of_element_located((By.XPATH, "//input[@name='text' and @autocomplete='username']"))
         )
         username_input.send_keys(username)
         username_input.send_keys(Keys.RETURN)
         
         # 输入密码
         password_input = WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.NAME, "password"))
+            EC.presence_of_element_located((By.XPATH, "//input[@name='password' and @type='password']"))
         )
         password_input.send_keys(password)
         password_input.send_keys(Keys.RETURN)
@@ -539,7 +539,7 @@ class TwitterWatcher:
 
     def filter_posts(self, tweets):
         # 预留的推特过滤函数
-        # 在这里添加你的推特过滤逻辑
+        # 在这里添加你的推特过滤逻���
         return tweets
 
     def filter_comment(self, user, content):
@@ -611,7 +611,7 @@ class TwitterWatcher:
                 else:
                     logging.info("first time login...")
                     self.login()
-                # ���淆: 随机等待时间
+                # 淆: 随机等待时间
                 time.sleep(random.uniform(1, 3))
 
                 # 再次检查是否需要登录
@@ -957,4 +957,5 @@ def check_service_status(username: str, email: str, password: str):
     watcher = TwitterWatcher(CHROME_DRIVER, username, email, password, "cat")
     logging.info("health checking...")
     return watcher.check_login_status()
+
 
