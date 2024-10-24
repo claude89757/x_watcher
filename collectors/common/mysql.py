@@ -116,110 +116,144 @@ class MySQLDatabase:
     def initialize_tables(self):
         """初始化并创建所需的表"""
         create_tables_queries = [
-            """
-            CREATE TABLE IF NOT EXISTS tiktok_tasks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                keyword VARCHAR(255) NOT NULL,
-                status ENUM('pending', 'running', 'completed', 'failed', 'paused') DEFAULT 'pending',
-                max_videos INT DEFAULT 100,
-                max_comments_per_video INT DEFAULT 1000,
-                start_time TIMESTAMP NULL,
-                end_time TIMESTAMP NULL,
-                retry_count INT DEFAULT 0,
-                server_ips TEXT,
-                total_videos_processed INT DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS tiktok_videos (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                task_id INT,
-                video_url VARCHAR(255) NOT NULL,
-                keyword VARCHAR(255),
-                status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
-                processing_server_ip VARCHAR(45),
-                author VARCHAR(255),
-                description TEXT,
-                likes_count INT,
-                comments_count INT,
-                shares_count INT,
-                views_count INT,
-                duration FLOAT,
-                collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (task_id) REFERENCES tiktok_tasks(id)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS tiktok_comments (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                video_id INT,
-                keyword VARCHAR(255),
-                user_id VARCHAR(255),
-                reply_content TEXT,
-                reply_time VARCHAR(255),
-                likes_count INT,
-                is_pinned BOOLEAN DEFAULT FALSE,
-                parent_comment_id INT NULL,
-                collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                collected_by VARCHAR(255),
-                video_url VARCHAR(255),
-                FOREIGN KEY (video_id) REFERENCES tiktok_videos(id),
-                FOREIGN KEY (parent_comment_id) REFERENCES tiktok_comments(id)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS tiktok_task_logs (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                task_id INT,
-                log_level ENUM('INFO', 'WARNING', 'ERROR', 'DEBUG') DEFAULT 'INFO',
-                log_type ENUM('info', 'warning', 'error'),
-                message TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (task_id) REFERENCES tiktok_tasks(id)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS worker_infos (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                worker_ip VARCHAR(45) NOT NULL,
-                worker_name VARCHAR(255),
-                status ENUM('active', 'inactive', 'busy') DEFAULT 'inactive',
-                last_heartbeat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                novnc_password VARCHAR(255),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_worker_ip (worker_ip)
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS tiktok_accounts (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(255) NOT NULL,
-                password VARCHAR(255) NOT NULL,
-                email VARCHAR(255),
-                status ENUM('active', 'inactive') DEFAULT 'active',
-                login_ips TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )
-            """
+            self._create_tiktok_tasks_table(),
+            self._create_tiktok_videos_table(),
+            self._create_tiktok_comments_table(),
+            self._create_tiktok_task_logs_table(),
+            self._create_worker_infos_table(),
+            self._create_tiktok_accounts_table(),
+            self._create_tiktok_messages_table(),
+            self._create_tiktok_filtered_comments_table(),
+            self._create_tiktok_analyzed_comments_table(),
+            self._create_tiktok_second_round_analyzed_comments_table(),
+            self._create_tiktok_analysis_tasks_table(),
         ]
 
         for query in create_tables_queries:
             self.execute_update(query)
         
-        # 添加唯一索引
-        add_index_query = """
-        ALTER TABLE tiktok_comments
-        ADD UNIQUE INDEX idx_user_content (user_id, reply_content(255))
-        """
-        self.execute_update(add_index_query)
-        
         logger.info("所有必要的表和索引已创建或已存在")
 
-        create_filtered_comments_table = """
+    def _create_tiktok_tasks_table(self):
+        return """
+        CREATE TABLE IF NOT EXISTS tiktok_tasks (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            keyword VARCHAR(255) NOT NULL,
+            status ENUM('pending', 'running', 'completed', 'failed', 'paused') DEFAULT 'pending',
+            max_videos INT DEFAULT 100,
+            max_comments_per_video INT DEFAULT 1000,
+            start_time TIMESTAMP NULL,
+            end_time TIMESTAMP NULL,
+            retry_count INT DEFAULT 0,
+            server_ips TEXT,
+            total_videos_processed INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+        """
+
+    def _create_tiktok_videos_table(self):
+        return """
+        CREATE TABLE IF NOT EXISTS tiktok_videos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            task_id INT,
+            video_url VARCHAR(255) NOT NULL,
+            keyword VARCHAR(255),
+            status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+            processing_server_ip VARCHAR(45),
+            author VARCHAR(255),
+            description TEXT,
+            likes_count INT,
+            comments_count INT,
+            shares_count INT,
+            views_count INT,
+            duration FLOAT,
+            collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES tiktok_tasks(id)
+        )
+        """
+
+    def _create_tiktok_comments_table(self):
+        return """
+        CREATE TABLE IF NOT EXISTS tiktok_comments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            video_id INT,
+            keyword VARCHAR(255),
+            user_id VARCHAR(255),
+            reply_content TEXT,
+            reply_time VARCHAR(255),
+            likes_count INT,
+            is_pinned BOOLEAN DEFAULT FALSE,
+            parent_comment_id INT NULL,
+            collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            collected_by VARCHAR(255),
+            video_url VARCHAR(255),
+            FOREIGN KEY (video_id) REFERENCES tiktok_videos(id),
+            FOREIGN KEY (parent_comment_id) REFERENCES tiktok_comments(id),
+            UNIQUE INDEX idx_user_content (user_id, reply_content(255))
+        )
+        """
+
+    def _create_tiktok_task_logs_table(self):
+        return """
+        CREATE TABLE IF NOT EXISTS tiktok_task_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            task_id INT,
+            log_level ENUM('INFO', 'WARNING', 'ERROR', 'DEBUG') DEFAULT 'INFO',
+            log_type ENUM('info', 'warning', 'error'),
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES tiktok_tasks(id)
+        )
+        """
+
+    def _create_worker_infos_table(self):
+        return """
+        CREATE TABLE IF NOT EXISTS worker_infos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            worker_ip VARCHAR(45) NOT NULL,
+            worker_name VARCHAR(255),
+            status ENUM('active', 'inactive', 'busy') DEFAULT 'inactive',
+            last_heartbeat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            novnc_password VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_worker_ip (worker_ip)
+        )
+        """
+
+    def _create_tiktok_accounts_table(self):
+        return """
+        CREATE TABLE IF NOT EXISTS tiktok_accounts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            email VARCHAR(255),
+            status ENUM('active', 'inactive') DEFAULT 'active',
+            login_ips TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+        """
+
+    def _create_tiktok_messages_table(self):
+        return """
+        CREATE TABLE IF NOT EXISTS tiktok_messages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            keyword VARCHAR(255) NOT NULL,
+            user_id VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            delivery_method VARCHAR(50) DEFAULT 'unknown',
+            status ENUM('pending', 'sent', 'processing', 'failed') DEFAULT 'pending',
+            worker_ip VARCHAR(45),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_message (keyword, user_id)
+        )
+        """
+
+    def _create_tiktok_filtered_comments_table(self):
+        return """
         CREATE TABLE IF NOT EXISTS tiktok_filtered_comments (
             id INT AUTO_INCREMENT PRIMARY KEY,
             video_id INT,
@@ -237,9 +271,9 @@ class MySQLDatabase:
             FOREIGN KEY (parent_comment_id) REFERENCES tiktok_filtered_comments(id)
         )
         """
-        self.execute_update(create_filtered_comments_table)
 
-        create_analyzed_comments_table = """
+    def _create_tiktok_analyzed_comments_table(self):
+        return """
         CREATE TABLE IF NOT EXISTS tiktok_analyzed_comments (
             id INT AUTO_INCREMENT PRIMARY KEY,
             keyword VARCHAR(255),
@@ -251,9 +285,9 @@ class MySQLDatabase:
             UNIQUE KEY unique_comment (keyword, user_id, reply_content(255))
         )
         """
-        self.execute_update(create_analyzed_comments_table)
 
-        create_second_round_analyzed_comments_table = """
+    def _create_tiktok_second_round_analyzed_comments_table(self):
+        return """
         CREATE TABLE IF NOT EXISTS tiktok_second_round_analyzed_comments (
             id INT AUTO_INCREMENT PRIMARY KEY,
             keyword VARCHAR(255),
@@ -266,9 +300,9 @@ class MySQLDatabase:
             UNIQUE KEY unique_comment (keyword, user_id, reply_content(255))
         )
         """
-        self.execute_update(create_second_round_analyzed_comments_table)
 
-        create_analysis_tasks_table = """
+    def _create_tiktok_analysis_tasks_table(self):
+        return """
         CREATE TABLE IF NOT EXISTS tiktok_analysis_tasks (
             id INT AUTO_INCREMENT PRIMARY KEY,
             keyword VARCHAR(255) NOT NULL,
@@ -282,22 +316,6 @@ class MySQLDatabase:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
         """
-        self.execute_update(create_analysis_tasks_table)
-
-        create_tiktok_messages_table = """
-        CREATE TABLE IF NOT EXISTS tiktok_messages (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            keyword VARCHAR(255) NOT NULL,
-            user_id VARCHAR(255) NOT NULL,
-            message TEXT NOT NULL,
-            status ENUM('pending', 'sent', 'processing', 'failed') DEFAULT 'pending',
-            worker_ip VARCHAR(45),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY unique_message (keyword, user_id)
-        )
-        """
-        self.execute_update(create_tiktok_messages_table)
 
     def create_tiktok_task(self, keyword):
         """创建TikTok任务,如果已在相同关键字待处理任务则返回该任务ID"""
@@ -1049,17 +1067,18 @@ class MySQLDatabase:
         update_values.append(task_id)
         return self.execute_update(query, tuple(update_values))
 
-    def save_tiktok_message(self, keyword, user_id, message):
+    def save_tiktok_message(self, keyword, user_id, message, delivery_method='unknown'):
         """保存TikTok私信到数据库"""
         query = """
-        INSERT INTO tiktok_messages (keyword, user_id, message)
-        VALUES (%s, %s, %s)
+        INSERT INTO tiktok_messages (keyword, user_id, message, delivery_method)
+        VALUES (%s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
         message = VALUES(message),
+        delivery_method = VALUES(delivery_method),
         status = 'pending',
         updated_at = CURRENT_TIMESTAMP
         """
-        return self.execute_update(query, (keyword, user_id, message))
+        return self.execute_update(query, (keyword, user_id, message, delivery_method))
 
     def get_tiktok_messages(self, keyword, limit=1000):
         """获取指定关键词的TikTok私信"""
