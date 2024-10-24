@@ -535,7 +535,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
             logger.info(f"随机暂停 {pause_time:.2f} 秒")
             time.sleep(pause_time)
 
-    logger.info(f"滚动结束，原因: {'达到最大滚动次数' if scroll_attempts >= max_scroll_attempts else '到达页面底部'}")
+    logger.info(f"��动结束，原因: {'达到最大滚动次数' if scroll_attempts >= max_scroll_attempts else '到达页面底部'}")
 
     # 循环结束后，存储剩余的评论
     if comments_batch:
@@ -1098,21 +1098,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 random_wait(1, 2)
 
                 # 输入消息内容
-                message_input_text = ""
-                for char in message:
-                    comment_input.send_keys(char)
-                    time.sleep(random.uniform(0.05, 0.1))
-                    message_input_text += char
-                    
-                    # 验证消息输入
-                    actual_message_text = comment_input.text
-                    if not actual_message_text.endswith(message_input_text):
-                        logger.warning(f"消息输入不匹配。预期结尾: {message_input_text}, 实际: {actual_message_text}")
-                        # 使用JavaScript纠正输入
-                        corrected_text = actual_message_text[:len(actual_message_text)-len(message_input_text)] + message_input_text
-                        driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, corrected_text)
-                        driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
-
+                comment_input.send_keys(message)
                 logger.info("消息内容输入完成")
 
                 random_wait(1, 2)
