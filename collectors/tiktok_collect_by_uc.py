@@ -211,7 +211,7 @@ def load_cookies(driver, username):
         logger.info(f"未找到 {filename} 文件")
         return False
     except json.JSONDecodeError:
-        logger.error(f"{filename} 文件���误")
+        logger.error(f"{filename} 文件误")
         return False
 
 def is_captcha_present(driver):
@@ -243,7 +243,7 @@ def check_login_status(driver):
         )
         logger.info("检测到用户头像，登录状态有效")
         
-        # 检并提取户ID
+        # 检并提��户ID
         profile_link = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'a[data-e2e="nav-profile"]'))
         )
@@ -485,7 +485,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
 
         # 优化的滚动策
         if consecutive_no_new_comments >= max_consecutive_no_new:
-            logger.info("连续多次未加载新评论，尝试更激进的滚动策略")
+            logger.info("连续多次未加载新评论，尝��更激进的滚动策略")
             # 尝试快速滚动到底部然后回到顶部
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             random_sleep(1, 2)
@@ -744,7 +744,7 @@ def check_account_status(account_id, username, email):
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active���并已保存新的cookies")
+            logger.info(f"账号 {username} 状态更新为 active���已保存新的cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
@@ -1010,13 +1010,14 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             pass
 
         if not dm_success and not comment_success:
-            # 如果私信和留言都失败，则尝���在源视频下留言并艾特用户
+            # 如果私信和留言都失败，则尝试在源视频下留言并艾特用户
             try:
                 # 使用新方法获取源视频链接
-                if db.is_connected():
-                    pass
-                else:
+                try:
                     db.connect()
+                except Exception as e:
+                    logger.error(f"连接数据库失败: {str(e)}")
+                
                 video_url = db.get_video_url_by_keyword_and_user_id(keyword, user_id)
                 
                 if video_url:
@@ -1048,20 +1049,9 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-at-user']"))
                 )
                 
-                # 查找匹配的用户建议
-                mention_suggestions = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='comment-at-list']")
-                correct_suggestion = None
-                for suggestion in mention_suggestions:
-                    unique_id_element = suggestion.find_element(By.CSS_SELECTOR, "span[data-e2e='comment-at-uniqueid']")
-                    if unique_id_element.text.lower() == user_id.lower():
-                        correct_suggestion = suggestion
-                        logger.info(f"找到匹配的用户建议: {user_id}")
-                        break
-                if correct_suggestion:
-                    correct_suggestion.click()
-                    logger.info(f"成功选择正确的艾特用户 {user_id}")
-                else:
-                    raise Exception("未找到匹配的用户建议")
+                # 使用回车键选择第一个建议的用户
+                comment_input.send_keys(Keys.RETURN)
+                logger.info(f"使用回车键选择艾特用户 {user_id}")
 
                 random_wait(1, 2)
 
