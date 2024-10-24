@@ -1116,5 +1116,3 @@ def send_single_promotion_message(driver, user_id, message, keyword):
         logger.error(f"发送推广消息给用户 {user_id} 时发生错误: {str(e)}")
         logger.error(f"发送推广消息失败的详细错误: {traceback.format_exc()}")
         return {"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_id}
-    finally:
-        db.disconnect()
