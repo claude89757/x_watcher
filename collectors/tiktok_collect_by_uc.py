@@ -744,7 +744,7 @@ def check_account_status(account_id, username, email):
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active���存新的cookies")
+            logger.info(f"账号 {username} 状态更新为 active新的cookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
@@ -1040,9 +1040,22 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 )
                 logger.info("找到源视频评论输入框,正在输入艾特")
 
-                # 输入@符号和用户ID
-                comment_input.send_keys(f"@{user_id}")
+                # 逐字符输入@用户ID
+                at_text = f"@{user_id}"
+                for char in at_text:
+                    comment_input.send_keys(char)
+                    time.sleep(random.uniform(0.1, 0.3))
+
                 random_wait(1, 2)
+
+                # 验证输入是否正确
+                input_value = comment_input.text
+                if input_value != at_text:
+                    logger.warning(f"输入不完整: 预期 '{at_text}', 实际 '{input_value}'")
+                    # 尝试使用JavaScript直接设置值
+                    driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, at_text)
+                    # 触发input事件
+                    driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
 
                 # 等待艾特建议列表出现
                 WebDriverWait(driver, 5).until(
