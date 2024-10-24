@@ -1048,22 +1048,15 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 )
                 logger.info("找到源视频评论输入框,正在输入艾特")
 
-                # 逐字符输入@用户ID
+                # 使用JavaScript直接设置@用户ID
                 at_text = f"@{user_id}"
-                for char in at_text:
-                    comment_input.send_keys(char)
-                    time.sleep(random.uniform(0.1, 0.3))
+                driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, at_text)
+                # 触发input事件
+                driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
+
+                logger.info(f"已使用JavaScript设置艾特文本: {at_text}")
 
                 random_wait(1, 2)
-
-                # 验证输入是否正确
-                input_value = comment_input.text
-                if input_value != at_text:
-                    logger.warning(f"输入不完整: 预期 '{at_text}', 实际 '{input_value}'")
-                    # 尝试使用JavaScript直接设置值
-                    driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, at_text)
-                    # 触发input事件
-                    driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
 
                 # 等待艾特建议列表出现
                 WebDriverWait(driver, 5).until(
@@ -1077,6 +1070,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                     unique_id_element = suggestion.find_element(By.CSS_SELECTOR, "span[data-e2e='comment-at-uniqueid']")
                     if unique_id_element.text.lower() == user_id.lower():
                         correct_suggestion = suggestion
+                        logger.info(f"当前建议用户ID: {unique_id_element.text.lower()}, 目标用户ID: {user_id.lower()}")
                         logger.info(f"找到匹配的用户建议: {user_id}")
                         break
                     else:
