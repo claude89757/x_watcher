@@ -29,7 +29,7 @@ from bs4 import BeautifulSoup
 import undetected_chromedriver as uc
 
 from common.mysql import MySQLDatabase
-from common.cos import process_and_upload_csv_to_cos
+
 
 # 配置日志记录到文件
 logging.basicConfig(
@@ -745,7 +745,7 @@ class TwitterWatcher:
                 logging.info(f"uploading {len(data_list)} to cos")
                 current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M')
                 filename = f"{self.search_key_word}_{current_time}_{len(data_list)}_{self.username}.csv"
-                process_and_upload_csv_to_cos(data_list, f"./{filename}", f"{access_code}/{filename}")
+                # process_and_upload_csv_to_cos(data_list, f"./{filename}", f"{access_code}/{filename}")
             else:
                 self.driver.save_screenshot(f"{self.username}_nothings_{current_time}.png")
                 logging.error("found nothinng...")
