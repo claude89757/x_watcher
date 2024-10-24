@@ -117,7 +117,9 @@ def send_msg(db: MySQLDatabase):
 
     # 只有当选择了账号且按钮未被点击过时才显示
     if account_ids:
-        if st.button("开始发送", key="send_msg_button", type="primary"):
+        send_button = st.empty()  # 创建一个空元素来放置按钮
+        if send_button.button("开始发送", key="send_msg_button", type="primary"):
+            send_button.button("发送中...", key="sending_msg_button", disabled=True)  # 替换为不可点击的按钮
             
             # 限制发送消息数量，只选择未成功发送的消息
             user_messages = pending_df[['user_id', 'message']].to_dict('records')[:total_messages]
@@ -176,7 +178,7 @@ def send_msg(db: MySQLDatabase):
                             st.error(f"账号 {account['username']} 触发发送失败: {response.json().get('error', '未知错误')}")
             
             st.success("所有消息发送任务已启动，请稍等查看worker的VNC画面。")
-            time.sleep(20)
+            time.sleep(5)
             st.rerun()  # 重新运行页面以刷新数据
     else:
         st.warning("请选择至少一个发送账号")
