@@ -611,7 +611,7 @@ def process_task(task_id, keyword, server_ip):
 
                 video_id, video_url, status = next_video['id'], next_video['video_url'], next_video['status']
                 if status == 'processing':
-                    logger.info(f"继续处理之前未完成的视频：ID {video_id}, URL {video_url}")
+                    logger.info(f"继续处理之前未完成的视频ID {video_id}, URL {video_url}")
                 else:
                     logger.info(f"开始处理新视频：ID {video_id}, URL {video_url}")
                 try:
@@ -926,7 +926,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
 
             for char in message:
                 comment_input.send_keys(char)
-                time.sleep(random.uniform(0.1, 0.3))
+                time.sleep(random.uniform(0.05, 0.1))
 
             random_wait(1, 2)
 
@@ -941,7 +941,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             logger.error(f"留言失败: {str(e)}")
 
         if not comment_success:
-            # 如果留言失败，则尝试发送私信
+            # 如果留言失��，则尝试发送私信
             try:
                 logger.info(f"重新访问用户 {user_id} 的主页")
                 driver.get(user_profile_url)
@@ -950,7 +950,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
 
                 random_wait(2, 4)
 
-                logger.info("正在尝试找到发送私信按钮")
+                logger.info("正尝试找到发送私信按钮")
                 message_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@data-e2e='message-button']"))
                 )
@@ -967,7 +967,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
 
                 for char in message:
                     message_input.send_keys(char)
-                    time.sleep(random.uniform(0.1, 0.3))
+                    time.sleep(random.uniform(0.05, 0.1))
 
                 random_wait(1, 2)
 
@@ -1048,13 +1048,26 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 )
                 logger.info("找到源视频评论输入框,正在输入艾特")
 
-                # 使用JavaScript直接设置@用户ID
-                at_text = f"@{user_id}"
-                driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, at_text)
-                # 触发input事件
-                driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
+                # 先输入@符号
+                comment_input.send_keys("@")
+                time.sleep(random.uniform(0.3, 0.5))
 
-                logger.info(f"已使用JavaScript设置艾特文本: {at_text}")
+                # 逐字符输入用户ID并验证
+                input_text = "@"
+                for char in user_id:
+                    comment_input.send_keys(char)
+                    time.sleep(random.uniform(0.1, 0.3))
+                    input_text += char
+                    
+                    # 验证输入
+                    actual_text = comment_input.text
+                    if actual_text != input_text:
+                        logger.warning(f"输入不匹配。预期: {input_text}, 实际: {actual_text}")
+                        # 使用JavaScript纠正输入
+                        driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, input_text)
+                        driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
+
+                logger.info(f"已输入艾特文本: @{user_id}")
 
                 random_wait(1, 2)
 
@@ -1085,9 +1098,22 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 random_wait(1, 2)
 
                 # 输入消息内容
+                message_input_text = ""
                 for char in message:
                     comment_input.send_keys(char)
-                    time.sleep(random.uniform(0.1, 0.3))
+                    time.sleep(random.uniform(0.05, 0.1))
+                    message_input_text += char
+                    
+                    # 验证消息输入
+                    actual_message_text = comment_input.text
+                    if not actual_message_text.endswith(message_input_text):
+                        logger.warning(f"消息输入不匹配。预期结尾: {message_input_text}, 实际: {actual_message_text}")
+                        # 使用JavaScript纠正输入
+                        corrected_text = actual_message_text[:len(actual_message_text)-len(message_input_text)] + message_input_text
+                        driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, corrected_text)
+                        driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
+
+                logger.info("消息内容输入完成")
 
                 random_wait(1, 2)
 
