@@ -716,26 +716,25 @@ def process_task(task_id, keyword, server_ip):
         # 批量添加视频到数据库
         for video in video_data:
             try:
-                # 构建插入数据
-                video_info = {
-                    'task_id': task_id,
-                    'video_url': video['video_url'],
-                    'keyword': keyword,
-                    'author': video['author'],
-                    'description': video['description'],
-                    'views_count': video['views_count'],
-                    'status': 'pending',
-                    'processing_server_ip': None
-                }
-                
-                # 添加到数据库
-                db.execute_update("""
+                # 修改插入语句，使用 %s 占位符
+                query = """
                     INSERT INTO tiktok_videos 
                     (task_id, video_url, keyword, author, description, views_count, status, processing_server_ip)
-                    VALUES (%(task_id)s, %(video_url)s, %(keyword)s, %(author)s, %(description)s, 
-                            %(views_count)s, %(status)s, %(processing_server_ip)s)
-                """, video_info)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                params = (
+                    task_id,
+                    video['video_url'],
+                    keyword,
+                    video['author'],
+                    video['description'],
+                    video['views_count'],
+                    'pending',
+                    None
+                )
                 
+                # 执行插入
+                db.execute_update(query, params)
                 logger.info(f"成功添加视频到数据库: {video['video_url']}")
             except Exception as e:
                 logger.error(f"添加视频到数据库时发生错误: {str(e)}")
