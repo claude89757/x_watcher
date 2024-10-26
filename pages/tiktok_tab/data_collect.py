@@ -267,9 +267,17 @@ def data_collect(db: MySQLDatabase):
                     # 添加批量操作功能
                     col1, col2 = st.columns([3, 1])
                     with col1:
+                        status_options = {
+                            "pending": "待处理",
+                            "processing": "处理中",
+                            "completed": "已完成",
+                            "failed": "失败",
+                            "skipped": "跳过"
+                        }
                         selected_status = st.selectbox(
                             "选择要更新的状态",
-                            ["pending", "processing", "completed", "failed"],
+                            options=list(status_options.keys()),
+                            format_func=lambda x: f"{x} - {status_options[x]}",
                             key="video_status_select"
                         )
                     with col2:
@@ -296,7 +304,8 @@ def data_collect(db: MySQLDatabase):
                             "视频链接": st.column_config.LinkColumn("视频链接"),
                             "状态": st.column_config.SelectboxColumn(
                                 "状态",
-                                options=["pending", "processing", "completed", "failed"]
+                                options=["pending", "processing", "completed", "failed", "skipped"],
+                                help="pending-待处理, processing-处理中, completed-已完成, failed-失败, skipped-已跳过"
                             )
                         }
                     )
@@ -308,7 +317,7 @@ def data_collect(db: MySQLDatabase):
                     
                     # 显示统计信息
                     st.markdown("---")
-                    col1, col2, col3, col4 = st.columns(4)
+                    col1, col2, col3, col4, col5 = st.columns(5)
                     with col1:
                         st.metric("总视频数", len(video_df))
                     with col2:
@@ -317,6 +326,8 @@ def data_collect(db: MySQLDatabase):
                         st.metric("处理中", len(video_df[video_df['状态'] == 'processing']))
                     with col4:
                         st.metric("已完成", len(video_df[video_df['状态'] == 'completed']))
+                    with col5:
+                        st.metric("跳过", len(video_df[video_df['状态'] == 'skipped']))
                 else:
                     st.info("该任务暂无相关视频")
 
@@ -341,4 +352,3 @@ def data_collect(db: MySQLDatabase):
 def get_running_tasks(tasks: List[Dict]) -> List[Dict]:
     """获取所有正在运行的任务"""
     return [task for task in tasks if task['status'] == 'running']
-
