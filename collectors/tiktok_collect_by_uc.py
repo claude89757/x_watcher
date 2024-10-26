@@ -345,26 +345,97 @@ def search_tiktok_videos(driver, keyword):
     search_url = f"https://www.tiktok.com/search?q={keyword}"
     driver.get(search_url)
     logger.info(f"正在访问搜索页面: {search_url}")
+    
+    # 等待第一个视频加载
     WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.TAG_NAME, 'video'))
     )
-    logger.info("视频加载成功, 等待30秒")
-    time.sleep(30)
- 
-    # 使用BeautifulSoup解析页面
-    logger.info("开始解析页")
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    video_links = []
-    for link in soup.find_all('a', href=True):
-        if '/video/' in link['href']:
-            video_links.append(link['href'])
+    logger.info("视频加载成功")
     
-    logger.info(f"找到 {len(video_links)} 个视频接")
-    index = 1
-    for link in video_links:
-        logger.info(f"第{index}个视频链接: {link}")
-        index += 1
-    return video_links
+    video_links = set()  # 使用集合去重
+    scroll_attempts = 0
+    max_scroll_attempts = 20  # 最大滚动次数
+    consecutive_no_new = 0
+    max_consecutive_no_new = 5  # 连续未发现新视频的最大次数
+    
+    # 动态调整滚动距离
+    min_scroll_distance = 500
+    max_scroll_distance = 1500
+    current_scroll_distance = min_scroll_distance
+    
+    while len(video_links) < 50 and scroll_attempts < max_scroll_attempts:
+        scroll_attempts += 1
+        logger.info(f"滚动尝试次数: {scroll_attempts}/{max_scroll_attempts}, 当前已收集 {len(video_links)} 个视频")
+        
+        # 获取当前视频链接数量
+        current_count = len(video_links)
+        
+        # 使用BeautifulSoup解析页面
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+        # 查找所有视频链接
+        for link in soup.find_all('a', href=True):
+            if '/video/' in link['href']:
+                video_links.add(link['href'])
+        
+        # 检查是否有新视频被添加
+        if len(video_links) > current_count:
+            consecutive_no_new = 0
+            logger.info(f"本次滚动发现 {len(video_links) - current_count} 个新视频")
+            current_scroll_distance = min_scroll_distance  # 重置滚动距离
+        else:
+            consecutive_no_new += 1
+            logger.info(f"本次滚动未发现新视频，连续未发现次数: {consecutive_no_new}")
+            # 增加滚动距离
+            current_scroll_distance = min(current_scroll_distance + 200, max_scroll_distance)
+        
+        # 如果连续多次未发现新视频，尝试更激进的滚动策略
+        if consecutive_no_new >= max_consecutive_no_new:
+            logger.info("连续多次未发现新视频，尝试更激进的滚动策略")
+            # 快速滚动到底部然后回到顶部
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            random_sleep(1, 2)
+            driver.execute_script("window.scrollTo(0, 0);")
+            random_sleep(1, 2)
+            consecutive_no_new = 0
+            continue
+        
+        # 正常滚动
+        scroll_distance = random.randint(current_scroll_distance, current_scroll_distance + 300)
+        driver.execute_script(f"window.scrollBy(0, {scroll_distance});")
+        logger.info(f"向下滚动 {scroll_distance} 像素")
+        
+        # 随机暂停
+        random_sleep(2, 4)
+        
+        # 检查是否到达页面底部
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        random_sleep(1, 2)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        
+        if new_height == last_height:
+            logger.info("已到达页面底部")
+            break
+        
+        # 随机完整性检查
+        if random.random() < 0.2:  # 20%的概率
+            # 短暂向上滚动然后再向下，模拟人类行为
+            up_scroll = random.randint(200, 400)
+            driver.execute_script(f"window.scrollBy(0, -{up_scroll});")
+            random_sleep(0.5, 1)
+            driver.execute_script(f"window.scrollBy(0, {up_scroll});")
+            logger.info(f"执行随机向上滚动 {up_scroll} 像素后返回")
+    
+    # 将集合转换为列表
+    video_links = list(video_links)
+    
+    # 记录收集结果
+    logger.info(f"搜索完成，共收集到 {len(video_links)} 个视频链接")
+    for i, link in enumerate(video_links, 1):
+        logger.info(f"第{i}个视频链接: {link}")
+    
+    return video_links[:50]  # 最多返回50个视频链接
 
 def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
@@ -535,7 +606,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
             logger.info(f"随机暂停 {pause_time:.2f} 秒")
             time.sleep(pause_time)
 
-    logger.info(f"��动结束，原因: {'达到最大滚动次数' if scroll_attempts >= max_scroll_attempts else '到达页面底部'}")
+    logger.info(f"动结束，原因: {'达到最大滚动次数' if scroll_attempts >= max_scroll_attempts else '到达页面底部'}")
 
     # 循环结束后，存储剩余的评论
     if comments_batch:
@@ -941,7 +1012,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             logger.error(f"留言失败: {str(e)}")
 
         if not comment_success:
-            # 如果留言失��，则尝试发送私信
+            # 如果留言失败，则尝试发送私信
             try:
                 logger.info(f"重新访问用户 {user_id} 的主页")
                 driver.get(user_profile_url)
@@ -1027,7 +1098,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                     logger.error(f"连接数据库失败: {str(e)}")
                 
                 video_url = db.get_video_url_by_keyword_and_user_id(keyword, user_id)
-                
+
                 if video_url:
                     logger.info(f"找到用户 {user_id} 的源视频链接: {video_url}")
                 else:

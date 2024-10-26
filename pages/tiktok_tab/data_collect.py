@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 
 # 定义全局变量：同时运行的最大任务数
-MAX_RUNNING_TASKS = 2
+MAX_RUNNING_TASKS = 1
 
 
 def data_collect(db: MySQLDatabase):
@@ -33,7 +33,7 @@ def data_collect(db: MySQLDatabase):
             default_search_keyword = ""
         else:
             default_search_keyword = st.session_state.cached_keyword
-        search_keyword = st.text_input("搜索关键词", value=default_search_keyword, key="data_collect_keyword_input")
+        search_keyword = st.text_input("关键词", value=default_search_keyword, key="data_collect_keyword_input")
         submit_task = st.form_submit_button("🚀 创建任务")
 
     if submit_task and search_keyword:
@@ -219,7 +219,87 @@ def data_collect(db: MySQLDatabase):
                         st.rerun()
                     else:
                         st.error(f"❌ 删除任务 ID: {selected_task_id} 失败。请检查数据库日志以获取更多信息。")
- 
+            
+            # 添加视频列表展示和操作
+            if selected_task:
+                st.markdown("---")
+                st.subheader("视频列表")
+                
+                # 获取任务相关的视频
+                videos = db.get_tiktok_task_videos(selected_task_id)
+                if videos:
+                    # 转换为DataFrame以便展示
+                    video_data = []
+                    for video in videos:
+                        video_data.append({
+                            "ID": video['id'],
+                            "视频链接": video['video_url'],
+                            "状态": video['status'],
+                            "处理服务器": video['processing_server_ip'] or "未分配",
+                            "作者": video['author'] or "未知",
+                            "点赞数": video['likes_count'] or 0,
+                            "评论数": video['comments_count'] or 0,
+                            "采集时间": video['collected_at'].strftime('%Y-%m-%d %H:%M:%S') if video['collected_at'] else "未知"
+                        })
+                    
+                    video_df = pd.DataFrame(video_data)
+                    
+                    # 添加批量操作功能
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        selected_status = st.selectbox(
+                            "选择要更新的状态",
+                            ["pending", "processing", "completed", "failed"],
+                            key="video_status_select"
+                        )
+                    with col2:
+                        if st.button("批量更新所选视频"):
+                            selected_videos = st.session_state.get('selected_videos', [])
+                            if selected_videos:
+                                success_count = 0
+                                for video_id in selected_videos:
+                                    if db.update_tiktok_video_status(video_id, selected_status):
+                                        success_count += 1
+                                st.success(f"成功更新 {success_count} 个视频的状态")
+                                st.rerun()
+                            else:
+                                st.warning("请先选择要更新的视频")
+                    
+                    # 使用 data_editor 来支持选择功能
+                    edited_df = st.data_editor(
+                        video_df,
+                        hide_index=True,
+                        use_container_width=True,
+                        num_rows="dynamic",
+                        key="video_editor",
+                        column_config={
+                            "视频链接": st.column_config.LinkColumn("视频链接"),
+                            "状态": st.column_config.SelectboxColumn(
+                                "状态",
+                                options=["pending", "processing", "completed", "failed"]
+                            )
+                        }
+                    )
+                    
+                    # 保存选中的视频ID到session_state
+                    if 'selected_videos' not in st.session_state:
+                        st.session_state.selected_videos = []
+                    st.session_state.selected_videos = edited_df.index[edited_df.index.isin(edited_df.index)].tolist()
+                    
+                    # 显示统计信息
+                    st.markdown("---")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("总视频数", len(video_df))
+                    with col2:
+                        st.metric("待处理", len(video_df[video_df['状态'] == 'pending']))
+                    with col3:
+                        st.metric("处理中", len(video_df[video_df['状态'] == 'processing']))
+                    with col4:
+                        st.metric("已完成", len(video_df[video_df['状态'] == 'completed']))
+                else:
+                    st.info("该任务暂无相关视频")
+
     if search_keyword:
         # 动态展示评论数据
         st.subheader("评论数据")
