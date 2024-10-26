@@ -183,8 +183,6 @@ def data_collect(db: MySQLDatabase):
             )
         with col2:
             selected_task = next((task for task in all_tasks if task['id'] == selected_task_id), None)
-            if selected_task:
-                st.write(f"当前状态: {selected_task['status']}")
 
         if selected_task:
             col1, col2, col3 = st.columns(3)
@@ -251,14 +249,14 @@ def data_collect(db: MySQLDatabase):
                     video_data = []
                     for video in videos:
                         video_data.append({
-                            "ID": video['id'],
+                            "关键字": video['keyword'],
                             "视频链接": video['video_url'],
                             "状态": video['status'],
                             "处理服务器": video['processing_server_ip'] or "未分配",
-                            "作者": video['author'] or "未知",
-                            "视频描述": video['description'] or "无描述",  # 增加视频描述字段
-                            "点赞数": video['likes_count'] or 0,
-                            "评论数": video['comments_count'] or 0,
+                            "作者": video['author'] or "-",
+                            "视频描述": video['description'] or "-",  # 增加视频描述字段
+                            "点赞数": video['likes_count'] or "-",
+                            "评论数": video['comments_count'] or "-",
                             "采集时间": video['collected_at'].strftime('%Y-%m-%d %H:%M:%S') if video['collected_at'] else "未知"
                         })
                     
