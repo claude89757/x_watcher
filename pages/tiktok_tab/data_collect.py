@@ -329,24 +329,45 @@ def data_collect(db: MySQLDatabase):
                 else:
                     st.info("该任务暂无相关视频")
 
-    if search_keyword:
-        # 动态展示评论数据
-        st.subheader("评论数据")
-        comments = db.get_tiktok_comments_by_keyword(search_keyword)
-        st.info(f"当前关键字 '{search_keyword}' 的评论数量：{len(comments)}")
-        if comments:
-            # 显示当前关键字的评论数量
-            comment_df = pd.DataFrame(comments)
-            comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+    # 将评论数据展示部分改为动态更新
+    if "data_collect_keyword_input" in st.session_state:
+        current_keyword = st.session_state.data_collect_keyword_input
+        if current_keyword:
+            # 创建一个容器用于动态更新评论数据
+            comment_container = st.container()
             
-            # 重新排序列，将 'keyword' 放在第一列
-            comment_df = comment_df[['keyword', 'user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
-            
-            # 展示评论数据，包括关键字列
-            st.dataframe(comment_df, use_container_width=True)
-        else:
-            st.write("暂无相关评论")
+            with comment_container:
+                st.subheader("评论数据")
+                comments = db.get_tiktok_comments_by_keyword(current_keyword)
+                st.info(f"当前关键字 '{current_keyword}' 的评论数量：{len(comments)}")
+                
+                if comments:
+                    # 显示当前关键字的评论数量
+                    comment_df = pd.DataFrame(comments)
+                    comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    # 重新排序列，将 'keyword' 放在第一列
+                    comment_df = comment_df[['keyword', 'user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
+                    
+                    # 使用data_editor来展示评论数据，支持排序和筛选
+                    st.data_editor(
+                        comment_df,
+                        hide_index=True,
+                        use_container_width=True,
+                        column_config={
+                            "video_url": st.column_config.LinkColumn("视频链接"),
+                            "reply_content": st.column_config.TextColumn("评论内容", width="large"),
+                            "reply_time": "评论时间",
+                            "collected_at": "采集时间",
+                            "collected_by": "采集服务器",
+                            "user_id": "用户ID",
+                            "keyword": "关键词"
+                        }
+                    )
+                else:
+                    st.write("暂无相关评论")
 
 def get_running_tasks(tasks: List[Dict]) -> List[Dict]:
     """获取所有正在运行的任务"""
     return [task for task in tasks if task['status'] == 'running']
+
