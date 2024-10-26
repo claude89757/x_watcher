@@ -342,7 +342,9 @@ def data_collect(db: MySQLDatabase):
 
     # 确定默认选中的关键字
     default_keyword = None
-    if "data_collect_keyword_input" in st.session_state and st.session_state.data_collect_keyword_input:
+    if search_keyword:  # 如果搜索关键词不为空，则使用搜索关键词作为默认关键字
+        default_keyword = search_keyword
+    elif "data_collect_keyword_input" in st.session_state and st.session_state.data_collect_keyword_input:
         default_keyword = st.session_state.data_collect_keyword_input
     elif all_keywords:
         default_keyword = all_keywords[0]
