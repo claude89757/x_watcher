@@ -249,12 +249,13 @@ def data_collect(db: MySQLDatabase):
                     video_data = []
                     for video in videos:
                         video_data.append({
+                            "ID": video['id'],  # 添加视频ID字段
                             "关键字": video['keyword'],
                             "视频链接": video['video_url'],
                             "状态": video['status'],
                             "处理服务器": video['processing_server_ip'] or "未分配",
                             "作者": video['author'] or "-",
-                            "视频描述": video['description'] or "-",  # 增加视频描述字段
+                            "视频描述": video['description'] or "-",
                             "点赞数": video['likes_count'] or "-",
                             "评论数": video['comments_count'] or "-",
                             "采集时间": video['collected_at'].strftime('%Y-%m-%d %H:%M:%S') if video['collected_at'] else "未知"
@@ -280,10 +281,11 @@ def data_collect(db: MySQLDatabase):
                         )
                     with col2:
                         if st.button("批量更新所选视频"):
-                            selected_videos = st.session_state.get('selected_videos', [])
-                            if selected_videos:
+                            selected_indices = st.session_state.get('selected_videos', [])
+                            if selected_indices:
                                 success_count = 0
-                                for video_id in selected_videos:
+                                selected_video_ids = [video_df.iloc[idx]['ID'] for idx in selected_indices]
+                                for video_id in selected_video_ids:
                                     if db.update_tiktok_video_status(video_id, selected_status):
                                         success_count += 1
                                 st.success(f"成功更新 {success_count} 个视频的状态")
@@ -299,16 +301,18 @@ def data_collect(db: MySQLDatabase):
                         num_rows="dynamic",
                         key="video_editor",
                         column_config={
+                            "ID": st.column_config.NumberColumn("ID", required=True),
                             "视频链接": st.column_config.LinkColumn("视频链接"),
                             "状态": st.column_config.SelectboxColumn(
                                 "状态",
-                                options=["pending", "processing", "completed", "failed", "skipped"],
+                                options=list(status_options.keys()),
                                 help="pending-待处理, processing-处理中, completed-已完成, failed-失败, skipped-已跳过"
                             )
-                        }
+                        },
+                        disabled=["ID", "关键字", "采集时间"],  # 禁用不应该直接编辑的列
                     )
                     
-                    # 保存选中的视频ID到session_state
+                    # 保存选中的行索引到session_state
                     if 'selected_videos' not in st.session_state:
                         st.session_state.selected_videos = []
                     st.session_state.selected_videos = edited_df.index[edited_df.index.isin(edited_df.index)].tolist()
