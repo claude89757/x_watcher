@@ -363,7 +363,7 @@ def search_tiktok_videos(driver, keyword):
     max_scroll_distance = 1500
     current_scroll_distance = min_scroll_distance
     
-    while len(video_data) < 50 and scroll_attempts < max_scroll_attempts:
+    while len(video_data) < 20 and scroll_attempts < max_scroll_attempts:
         scroll_attempts += 1
         logger.info(f"滚动尝试次数: {scroll_attempts}/{max_scroll_attempts}, 当前已收集 {len(video_data)} 个视频")
         
@@ -481,7 +481,7 @@ def search_tiktok_videos(driver, keyword):
     for i, video in enumerate(video_data, 1):
         logger.info(f"第{i}个视频: URL={video['video_url']}, 作者={video['author']}, 观看次数={video['views_count']}")
     
-    return video_data[:50]  # 返回视频详细信息列表
+    return video_data[:20]  # 返回视频详细信息列表
 
 def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
