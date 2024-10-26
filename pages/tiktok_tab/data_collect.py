@@ -232,7 +232,7 @@ def data_collect(db: MySQLDatabase):
                         except Exception as e:
                             st.error(f"恢复任务失败: {str(e)}")
             with col2:
-                if st.button('🗑️ 删除'): 
+                if st.button('🗑️ 删除', type="primary"): 
                     if db.delete_tiktok_task(selected_task_id):
                         st.success(f"✅ 成功删除任务 ID: {selected_task_id}")
                         st.rerun()
