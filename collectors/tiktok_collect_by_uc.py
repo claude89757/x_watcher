@@ -352,41 +352,86 @@ def search_tiktok_videos(driver, keyword):
     )
     logger.info("视频加载成功")
     
-    video_links = set()  # 使用集合去重
+    video_data = []  # 修改为存储视频详细信息的列表
     scroll_attempts = 0
-    max_scroll_attempts = 20  # 最大滚动次数
+    max_scroll_attempts = 20
     consecutive_no_new = 0
-    max_consecutive_no_new = 5  # 连续未发现新视频的最大次数
+    max_consecutive_no_new = 5
     
     # 动态调整滚动距离
     min_scroll_distance = 500
     max_scroll_distance = 1500
     current_scroll_distance = min_scroll_distance
     
-    while len(video_links) < 50 and scroll_attempts < max_scroll_attempts:
+    while len(video_data) < 50 and scroll_attempts < max_scroll_attempts:
         scroll_attempts += 1
-        logger.info(f"滚动尝试次数: {scroll_attempts}/{max_scroll_attempts}, 当前已收集 {len(video_links)} 个视频")
+        logger.info(f"滚动尝试次数: {scroll_attempts}/{max_scroll_attempts}, 当前已收集 {len(video_data)} 个视频")
         
-        # 获取当前视频链接数量
-        current_count = len(video_links)
+        # 获取当前视频数量
+        current_count = len(video_data)
         
         # 使用BeautifulSoup解析页面
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         
-        # 查找所有视频链接
-        for link in soup.find_all('a', href=True):
-            if '/video/' in link['href']:
-                video_links.add(link['href'])
+        # 查找所有视频容器
+        video_containers = soup.find_all('div', {'data-e2e': 'search_top-item'})
+        
+        for container in video_containers:
+            try:
+                # 获取视频链接
+                video_link = container.find('a', {'class': 'css-1g95xhm-AVideoContainer'})
+                if not video_link or '/video/' not in video_link['href']:
+                    continue
+                
+                video_url = video_link['href']
+                
+                # 检查是否已经收集过这个视频
+                if any(v['video_url'] == video_url for v in video_data):
+                    continue
+                
+                # 获取视频描述
+                desc_element = container.find('div', {'data-e2e': 'search-card-desc'})
+                description = desc_element.get_text(strip=True) if desc_element else ""
+                
+                # 获取作者信息
+                author_element = container.find('p', {'data-e2e': 'search-card-user-unique-id'})
+                author = author_element.get_text(strip=True) if author_element else ""
+                
+                # 获取观看次数 - 使用方案2
+                views_count = "0"
+                try:
+                    views_element = container.select_one('div[data-e2e="search-card-like-container"] strong')
+                    if views_element:
+                        views_count = views_element.get_text(strip=True)
+                        # 数值清理和格式化
+                        views_count = views_count.replace('K', '000').replace('M', '000000').replace('B', '000000000')
+                        views_count = ''.join(filter(str.isdigit, views_count)) or "0"
+                except Exception as e:
+                    logger.error(f"获取视频观看次数时发生错误: {str(e)}")
+                
+                # 收集视频数据
+                video_info = {
+                    'video_url': video_url,
+                    'description': description,
+                    'author': author,
+                    'views_count': views_count
+                }
+                
+                video_data.append(video_info)
+                logger.info(f"收集到视频: {video_url}, 作者: {author}, 观看次数: {views_count}")
+                
+            except Exception as e:
+                logger.error(f"处理视频容器时发生错误: {str(e)}")
+                continue
         
         # 检查是否有新视频被添加
-        if len(video_links) > current_count:
+        if len(video_data) > current_count:
             consecutive_no_new = 0
-            logger.info(f"本次滚动发现 {len(video_links) - current_count} 个新视频")
-            current_scroll_distance = min_scroll_distance  # 重置滚动距离
+            logger.info(f"本次滚动发现 {len(video_data) - current_count} 个新视频")
+            current_scroll_distance = min_scroll_distance
         else:
             consecutive_no_new += 1
             logger.info(f"本次滚动未发现新视频，连续未发现次数: {consecutive_no_new}")
-            # 增加滚动距离
             current_scroll_distance = min(current_scroll_distance + 200, max_scroll_distance)
         
         # 如果连续多次未发现新视频，尝试更激进的滚动策略
@@ -426,16 +471,17 @@ def search_tiktok_videos(driver, keyword):
             random_sleep(0.5, 1)
             driver.execute_script(f"window.scrollBy(0, {up_scroll});")
             logger.info(f"执行随机向上滚动 {up_scroll} 像素后返回")
+        
+        # 检查是否出现验证码
+        if is_captcha_present(driver):
+            logger.warning("检测到验证码，等待手动处理")
+            solve_captcha(driver)
     
-    # 将集合转换为列表
-    video_links = list(video_links)
+    logger.info(f"搜索完成，共收集到 {len(video_data)} 个视频")
+    for i, video in enumerate(video_data, 1):
+        logger.info(f"第{i}个视频: URL={video['video_url']}, 作者={video['author']}, 观看次数={video['views_count']}")
     
-    # 记录收集结果
-    logger.info(f"搜索完成，共收集到 {len(video_links)} 个视频链接")
-    for i, link in enumerate(video_links, 1):
-        logger.info(f"第{i}个视频链接: {link}")
-    
-    return video_links[:50]  # 最多返回50个视频链接
+    return video_data[:50]  # 返回视频详细信息列表
 
 def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
@@ -664,15 +710,44 @@ def process_task(task_id, keyword, server_ip):
         logger.info(f"成功登录，用户ID: {user_id}")
 
         # 搜索视频并添加到数据库
-        video_links = search_tiktok_videos(driver, keyword)
-        db.add_tiktok_videos_batch(task_id, video_links, keyword)
-        logger.info(f"为任务 {task_id} 添加了 {len(video_links)} 个视频")
+        video_data = search_tiktok_videos(driver, keyword)
+        logger.info(f"搜索到 {len(video_data)} 个视频")
+        
+        # 批量添加视频到数据库
+        for video in video_data:
+            try:
+                # 构建插入数据
+                video_info = {
+                    'task_id': task_id,
+                    'video_url': video['video_url'],
+                    'keyword': keyword,
+                    'author': video['author'],
+                    'description': video['description'],
+                    'views_count': video['views_count'],
+                    'status': 'pending',
+                    'processing_server_ip': None
+                }
+                
+                # 添加到数据库
+                db.execute_update("""
+                    INSERT INTO tiktok_videos 
+                    (task_id, video_url, keyword, author, description, views_count, status, processing_server_ip)
+                    VALUES (%(task_id)s, %(video_url)s, %(keyword)s, %(author)s, %(description)s, 
+                            %(views_count)s, %(status)s, %(processing_server_ip)s)
+                """, video_info)
+                
+                logger.info(f"成功添加视频到数据库: {video['video_url']}")
+            except Exception as e:
+                logger.error(f"添加视频到数据库时发生错误: {str(e)}")
+                continue
+        
+        logger.info(f"为任务 {task_id} 添加了 {len(video_data)} 个视频")
 
         video_count = 0
         while True:
             # 检查任务状态
             task_status = db.get_tiktok_task_status(task_id)
-           
+            
             if task_status == 'running':
                 logger.info(f"正在获取任务 {task_id} 的下一个待处理视频")
                 next_video = db.get_next_pending_video(task_id, server_ip)
@@ -695,7 +770,7 @@ def process_task(task_id, keyword, server_ip):
                     logger.error(f"处理视频 {video_url} 时出错: {str(e)}")
                     db.update_tiktok_video_status(video_id, 'failed')
             else:
-                logger.info(f"任务 {task_id} 知状态 {task_status}, 退出浏览器...")
+                logger.info(f"任务 {task_id} 状态为 {task_status}, 退出浏览器...")
                 break
 
         logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
@@ -706,7 +781,7 @@ def process_task(task_id, keyword, server_ip):
             # 任务态为paused，更新为paused
             db.update_tiktok_task_details(task_id, status='paused', end_time=datetime.now())
         elif task_status == 'failed':
-            # 任务状态为failed，更新为failed
+            # 任状态为failed，更新为failed
             db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
     except Exception as e:
         logger.error(f"处理任务时发生错误: {str(e)}")
@@ -1012,7 +1087,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             logger.error(f"留言失败: {str(e)}")
 
         if not comment_success:
-            # 如果留言失败，则尝试发送私信
+            # 如果留失败，则尝试发送私信
             try:
                 logger.info(f"重新访问用户 {user_id} 的主页")
                 driver.get(user_profile_url)

@@ -163,11 +163,11 @@ class MySQLDatabase:
             processing_server_ip VARCHAR(45),
             author VARCHAR(255),
             description TEXT,
-            likes_count INT,
-            comments_count INT,
-            shares_count INT,
-            views_count INT,
-            duration FLOAT,
+            likes_count VARCHAR(25),
+            comments_count VARCHAR(25),
+            shares_count VARCHAR(25),
+            views_count VARCHAR(25),
+            duration VARCHAR(25),
             collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (task_id) REFERENCES tiktok_tasks(id)
         )
