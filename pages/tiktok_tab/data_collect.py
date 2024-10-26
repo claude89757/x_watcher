@@ -330,6 +330,7 @@ def data_collect(db: MySQLDatabase):
                     st.info("该任务暂无相关视频")
 
     # 将评论数据展示部分修改为支持选择关键字
+    st.markdown("---")
     st.subheader("评论数据")
 
     # 获取所有历史关键字
