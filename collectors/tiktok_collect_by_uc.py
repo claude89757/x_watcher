@@ -483,6 +483,33 @@ def search_tiktok_videos(driver, keyword):
     
     return video_data[:20]  # 返回视频详细信息列表
 
+def search_tiktok_video_links(driver, keyword):
+    """在TikTok上搜索关键字并返回视频链接列表。"""
+    logger.info(f"开始搜索关键词: {keyword}")
+    search_url = f"https://www.tiktok.com/search?q={keyword}"
+    driver.get(search_url)
+    logger.info(f"正在访问搜索页面: {search_url}")
+    WebDriverWait(driver, 30).until(
+        EC.presence_of_element_located((By.TAG_NAME, 'video'))
+    )
+    logger.info("视频加载成功, 等待30秒")
+    time.sleep(30)
+ 
+    # 使用BeautifulSoup解析页面
+    logger.info("开始解析页")
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    video_links = []
+    for link in soup.find_all('a', href=True):
+        if '/video/' in link['href']:
+            video_links.append(link['href'])
+    
+    logger.info(f"找到 {len(video_links)} 个视频接")
+    index = 1
+    for link in video_links:
+        logger.info(f"第{index}个视频链接: {link}")
+        index += 1
+    return video_links
+
 def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
@@ -710,39 +737,9 @@ def process_task(task_id, keyword, server_ip):
         logger.info(f"成功登录，用户ID: {user_id}")
 
         # 搜索视频并添加到数据库
-        video_data = search_tiktok_videos(driver, keyword)
-        logger.info(f"搜索到 {len(video_data)} 个视频")
-        
-        # 批量添加视频到数据库
-        success_count = 0
-        for video in video_data:
-            try:
-                # 修改插入语句，使用 %s 占位符
-                query = """
-                    INSERT INTO tiktok_videos 
-                    (task_id, video_url, keyword, author, description, views_count, status, processing_server_ip)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """
-                params = (
-                    task_id,
-                    video['video_url'],
-                    keyword,
-                    video['author'],
-                    video['description'],
-                    video['views_count'],
-                    'pending',
-                    None
-                )
-                
-                # 执行插入
-                db.execute_update(query, params)
-                logger.info(f"成功添加视频到数据库: {video['video_url']}")
-                success_count += 1
-            except Exception as e:
-                logger.error(f"添加视频到数据库时发生错误: {str(e)}")
-                continue
-        
-        logger.info(f"为任务 {task_id} 添加了 {success_count} 个视频, 失败 {len(video_data) - success_count} 个")
+        video_links = search_tiktok_video_links(driver, keyword)
+        db.add_tiktok_videos_batch(task_id, video_links, keyword)
+        logger.info(f"为任务 {task_id} 添加了 {len(video_links)} 个视频")
 
         video_count = 0
         while True:
