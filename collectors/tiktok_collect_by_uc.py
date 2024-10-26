@@ -513,9 +513,107 @@ def search_tiktok_video_links(driver, keyword):
 def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
-    driver.get(video_url)
-    random_sleep(5, 10)
-    logger.info("等待页面加载完成")
+    
+    # 在访问视频URL前添加一些反检测措施
+    try:
+        # 1. 修改 WebDriver 特征
+        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+        })
+        
+        # 2. 移除 WebDriver 特征
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+        # 3. 添加必要的浏览器特征
+        driver.execute_script("""
+            // 添加语言特征
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['zh-CN', 'zh', 'en-US', 'en']
+            });
+            
+            // 添加插件特征
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5]
+            });
+            
+            // 修改 permissions 行为
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                Promise.resolve({state: Notification.permission}) :
+                originalQuery(parameters)
+            );
+        """)
+        
+        # 4. 随机化 Canvas 指纹
+        driver.execute_script("""
+            const originalGetContext = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype.getContext = function(type) {
+                const context = originalGetContext.apply(this, arguments);
+                if (type === '2d') {
+                    const originalFillText = context.fillText;
+                    context.fillText = function() {
+                        arguments[0] = arguments[0] + ' ';
+                        return originalFillText.apply(this, arguments);
+                    }
+                }
+                return context;
+            }
+        """)
+        
+        # 5. 设置一些必要的 Cookie
+        driver.add_cookie({
+            'name': 'tt_webid_v2',
+            'value': str(random.randint(10**18, 10**19)),
+            'domain': '.tiktok.com'
+        })
+        
+        # 6. 先访问TikTok主页
+        logger.info("先访问TikTok主页建立会话...")
+        driver.get("https://www.tiktok.com")
+        random_sleep(3, 5)
+        
+        # 7. 模拟真实用户行为
+        logger.info("模拟真实用户行为...")
+        simulate_human_scroll(driver)
+        random_sleep(2, 4)
+        
+        # 8. 通过中间页面跳转到目标URL
+        logger.info("准备访问视频页面...")
+        driver.execute_script(f'window.location.href = "{video_url}";')
+        
+        # 9. 等待页面加载完成
+        WebDriverWait(driver, 30).until(
+            lambda d: d.execute_script('return document.readyState') == 'complete'
+        )
+        
+        # 10. 检查是否出现 please wait
+        def check_please_wait():
+            try:
+                please_wait = driver.find_elements(By.XPATH, "//*[contains(text(), 'Please wait')]")
+                return len(please_wait) > 0
+            except:
+                return False
+        
+        wait_count = 0
+        while check_please_wait() and wait_count < 3:
+            logger.info("检测到 Please wait 页面，尝试刷新...")
+            wait_count += 1
+            driver.refresh()
+            random_sleep(5, 8)
+        
+        if check_please_wait():
+            raise Exception("页面持续显示 Please wait，无法加载内容")
+        
+        logger.info("成功加载视频页面")
+        random_sleep(3, 5)
+        
+        # 继续原有的评论收集逻辑...
+        logger.info("等待页面加载完成")
+        
+    except Exception as e:
+        logger.error(f"访问视频页面时发生错误: {str(e)}")
+        raise
 
     try:
         video_element = WebDriverWait(driver, 10).until(
