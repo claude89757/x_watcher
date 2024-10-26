@@ -123,28 +123,156 @@ def setup_driver():
         logger.info(f"检测到其他系统: {current_system}，默认启用无头模式")
         options.add_argument('--headless')
 
+    # 添加更多反检测参数
+    options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--allow-insecure-localhost')
     
+    # 添加随机UA
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ]
+    options.add_argument(f'user-agent={random.choice(user_agents)}')
+    
+    # 添加语言参数
+    options.add_argument('--lang=zh-CN,zh,en-US,en')
+    
+    # 添加更多浏览器特征
+    options.add_argument('--window-size=1920,1080')
+    options.add_argument('--start-maximized')
+    
     logger.info("正在设置WebDriver选项")
     
-    # 使用全局定义的 CHROME_DRIVER 常量
     try:
         driver = uc.Chrome(driver_executable_path=CHROME_DRIVER, options=options)
-        # 将新创建的Chrome进程添加到全局列表中
         chrome_processes.append(driver.service.process)
         logger.info(f"WebDriver已设置成功，使用驱动程序路径: {CHROME_DRIVER}")
-        driver.maximize_window()
-        logger.info("浏览器已设置为全屏模式")
+        
+        
+        # 初始化浏览器特征
+        init_browser_features(driver)
+        
         return driver
     except Exception as e:
         logger.error(f"设置WebDriver时发生错误: {str(e)}")
-        # 如果设置失败,清理所有Chrome进程
         cleanup_chrome_processes()
         raise
+
+def init_browser_features(driver):
+    """初始化浏览器特征"""
+    try:
+        # 执行反检测JavaScript
+        stealth_js = """
+        // 覆盖webdriver属性
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined
+        });
+
+        // 添加Chrome对象
+        if (!window.chrome) {
+            window.chrome = {
+                runtime: {},
+                loadTimes: function() {},
+                csi: function() {},
+                app: {}
+            };
+        }
+
+        // 修改plugins
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => {
+                return [
+                    {
+                        0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format"},
+                        description: "Portable Document Format",
+                        filename: "internal-pdf-viewer",
+                        length: 1,
+                        name: "Chrome PDF Plugin"
+                    },
+                    {
+                        0: {type: "application/pdf", suffixes: "pdf", description: "Portable Document Format"},
+                        description: "Portable Document Format",
+                        filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+                        length: 1,
+                        name: "Chrome PDF Viewer"
+                    }
+                ];
+            }
+        });
+
+        // 修改languages
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['zh-CN', 'zh', 'en-US', 'en']
+        });
+
+        // 添加Notification权限
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+            Promise.resolve({state: Notification.permission}) :
+            originalQuery(parameters)
+        );
+
+        // WebGL参数
+        const getParameter = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function(parameter) {
+            if (parameter === 37445) {
+                return 'Intel Inc.'
+            }
+            if (parameter === 37446) {
+                return 'Intel(R) Iris(TM) Graphics 6100'
+            }
+            return getParameter.apply(this, [parameter]);
+        };
+        """
+        
+        driver.execute_script(stealth_js)
+        logger.info("已初始化浏览器反检测特征")
+        
+        # 设置初始cookies
+        driver.get("https://www.tiktok.com")
+        driver.add_cookie({
+            'name': 'tt_webid_v2',
+            'value': str(random.randint(10**18, 10**19)),
+            'domain': '.tiktok.com'
+        })
+        
+        # 添加更多必要的cookies
+        cookies = [
+            {
+                'name': 'ttwid',
+                'value': ''.join(random.choices('0123456789abcdef', k=32)),
+                'domain': '.tiktok.com'
+            },
+            {
+                'name': 'msToken',
+                'value': ''.join(random.choices('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_', k=107)),
+                'domain': '.tiktok.com'
+            }
+        ]
+        
+        for cookie in cookies:
+            try:
+                driver.add_cookie(cookie)
+            except Exception as e:
+                logger.warning(f"添加cookie失败: {str(e)}")
+        
+        logger.info("已添加基础cookies")
+        
+        # 执行一些随机操作
+        actions = ActionChains(driver)
+        actions.move_by_offset(random.randint(0, 100), random.randint(0, 100))
+        actions.perform()
+        
+        return True
+    except Exception as e:
+        logger.error(f"初始化浏览器特征时发生错误: {str(e)}")
+        return False
 
 def random_sleep(min_seconds=1, max_seconds=3):
     """随机等待一段时间，模拟人类行为。"""
@@ -513,108 +641,7 @@ def search_tiktok_video_links(driver, keyword):
 def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
-    
-    # 在访问视频URL前添加一些反检测措施
-    try:
-        # 1. 修改 WebDriver 特征
-        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-        })
-        
-        # 2. 移除 WebDriver 特征
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        
-        # 3. 添加必要的浏览器特征
-        driver.execute_script("""
-            // 添加语言特征
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['zh-CN', 'zh', 'en-US', 'en']
-            });
-            
-            // 添加插件特征
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [1, 2, 3, 4, 5]
-            });
-            
-            // 修改 permissions 行为
-            const originalQuery = window.navigator.permissions.query;
-            window.navigator.permissions.query = (parameters) => (
-                parameters.name === 'notifications' ?
-                Promise.resolve({state: Notification.permission}) :
-                originalQuery(parameters)
-            );
-        """)
-        
-        # 4. 随机化 Canvas 指纹
-        driver.execute_script("""
-            const originalGetContext = HTMLCanvasElement.prototype.getContext;
-            HTMLCanvasElement.prototype.getContext = function(type) {
-                const context = originalGetContext.apply(this, arguments);
-                if (type === '2d') {
-                    const originalFillText = context.fillText;
-                    context.fillText = function() {
-                        arguments[0] = arguments[0] + ' ';
-                        return originalFillText.apply(this, arguments);
-                    }
-                }
-                return context;
-            }
-        """)
-        
-        # 5. 设置一些必要的 Cookie
-        driver.add_cookie({
-            'name': 'tt_webid_v2',
-            'value': str(random.randint(10**18, 10**19)),
-            'domain': '.tiktok.com'
-        })
-        
-        # 6. 先访问TikTok主页
-        logger.info("先访问TikTok主页建立会话...")
-        driver.get("https://www.tiktok.com")
-        random_sleep(3, 5)
-        
-        # 7. 模拟真实用户行为
-        logger.info("模拟真实用户行为...")
-        simulate_human_scroll(driver)
-        random_sleep(2, 4)
-        
-        # 8. 通过中间页面跳转到目标URL
-        logger.info("准备访问视频页面...")
-        driver.execute_script(f'window.location.href = "{video_url}";')
-        
-        # 9. 等待页面加载完成
-        WebDriverWait(driver, 30).until(
-            lambda d: d.execute_script('return document.readyState') == 'complete'
-        )
-        
-        # 10. 检查是否出现 please wait
-        def check_please_wait():
-            try:
-                please_wait = driver.find_elements(By.XPATH, "//*[contains(text(), 'Please wait')]")
-                return len(please_wait) > 0
-            except:
-                return False
-        
-        wait_count = 0
-        while check_please_wait() and wait_count < 3:
-            logger.info("检测到 Please wait 页面，尝试刷新...")
-            wait_count += 1
-            driver.refresh()
-            random_sleep(5, 8)
-        
-        if check_please_wait():
-            raise Exception("页面持续显示 Please wait，无法加载内容")
-        
-        logger.info("成功加载视频页面")
-        random_sleep(3, 5)
-        
-        # 继续原有的评论收集逻辑...
-        logger.info("等待页面加载完成")
-        
-    except Exception as e:
-        logger.error(f"访问视频页面时发生错误: {str(e)}")
-        raise
-
+    driver.get(video_url)
     try:
         video_element = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.TAG_NAME, 'video'))
@@ -808,7 +835,7 @@ def take_screenshot(driver, prefix="screenshot"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{prefix}_{timestamp}.png"
     driver.save_screenshot(filename)
-    logger.info(f"截图已保存: {filename}")
+    logger.info(f"截图已存: {filename}")
 
 def get_public_ip():
     try:
@@ -1383,7 +1410,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             return {"success": True, "message": f"成功{action_str}", "action": action_str, "user_id": user_id}
         else:
             logger.warning(f"对用户 {user_id} 的所有操作都失败")
-            return {"success": False, "message": "所有操作都失败", "action": "none", "user_id": user_id}
+            return {"success": False, "message": "全部操作都失败", "action": "none", "user_id": user_id}
 
     except Exception as e:
         logger.error(f"发送推广消息给用户 {user_id} 时发生错误: {str(e)}")
