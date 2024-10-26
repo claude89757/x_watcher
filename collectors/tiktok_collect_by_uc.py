@@ -714,6 +714,7 @@ def process_task(task_id, keyword, server_ip):
         logger.info(f"搜索到 {len(video_data)} 个视频")
         
         # 批量添加视频到数据库
+        success_count = 0
         for video in video_data:
             try:
                 # 修改插入语句，使用 %s 占位符
@@ -736,11 +737,12 @@ def process_task(task_id, keyword, server_ip):
                 # 执行插入
                 db.execute_update(query, params)
                 logger.info(f"成功添加视频到数据库: {video['video_url']}")
+                success_count += 1
             except Exception as e:
                 logger.error(f"添加视频到数据库时发生错误: {str(e)}")
                 continue
         
-        logger.info(f"为任务 {task_id} 添加了 {len(video_data)} 个视频")
+        logger.info(f"为任务 {task_id} 添加了 {success_count} 个视频, 失败 {len(video_data) - success_count} 个")
 
         video_count = 0
         while True:
