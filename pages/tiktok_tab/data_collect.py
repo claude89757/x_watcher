@@ -329,43 +329,60 @@ def data_collect(db: MySQLDatabase):
                 else:
                     st.info("该任务暂无相关视频")
 
-    # 将评论数据展示部分改为动态更新
-    if "data_collect_keyword_input" in st.session_state:
-        current_keyword = st.session_state.data_collect_keyword_input
-        if current_keyword:
-            # 创建一个容器用于动态更新评论数据
-            comment_container = st.container()
+    # 将评论数据展示部分修改为支持选择关键字
+    st.subheader("评论数据")
+
+    # 获取所有历史关键字
+    all_keywords = db.get_all_tiktok_keywords()
+
+    # 确定默认选中的关键字
+    default_keyword = None
+    if "data_collect_keyword_input" in st.session_state and st.session_state.data_collect_keyword_input:
+        default_keyword = st.session_state.data_collect_keyword_input
+    elif all_keywords:
+        default_keyword = all_keywords[0]
+
+    # 创建关键字选择下拉框
+    selected_keyword = st.selectbox(
+        "选择关键字",
+        options=all_keywords,
+        index=all_keywords.index(default_keyword) if default_keyword in all_keywords else 0,
+        key="comment_keyword_select"
+    )
+
+    if selected_keyword:
+        # 创建一个容器用于动态更新评论数据
+        comment_container = st.container()
+        
+        with comment_container:
+            comments = db.get_tiktok_comments_by_keyword(selected_keyword)
+            st.info(f"当前关键字 '{selected_keyword}' 的评论数量：{len(comments)}")
             
-            with comment_container:
-                st.subheader("评论数据")
-                comments = db.get_tiktok_comments_by_keyword(current_keyword)
-                st.info(f"当前关键字 '{current_keyword}' 的评论数量：{len(comments)}")
+            if comments:
+                # 显示当前关键字的评论数量
+                comment_df = pd.DataFrame(comments)
+                comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
                 
-                if comments:
-                    # 显示当前关键字的评论数量
-                    comment_df = pd.DataFrame(comments)
-                    comment_df['collected_at'] = pd.to_datetime(comment_df['collected_at']).dt.strftime('%Y-%m-%d %H:%M:%S')
-                    
-                    # 重新排序列，将 'keyword' 放在第一列
-                    comment_df = comment_df[['keyword', 'user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
-                    
-                    # 使用data_editor来展示评论数据，支持排序和筛选
-                    st.data_editor(
-                        comment_df,
-                        hide_index=True,
-                        use_container_width=True,
-                        column_config={
-                            "video_url": st.column_config.LinkColumn("视频链接"),
-                            "reply_content": st.column_config.TextColumn("评论内容", width="large"),
-                            "reply_time": "评论时间",
-                            "collected_at": "采集时间",
-                            "collected_by": "采集服务器",
-                            "user_id": "用户ID",
-                            "keyword": "关键词"
-                        }
-                    )
-                else:
-                    st.write("暂无相关评论")
+                # 重新排序列，将 'keyword' 放在第一列
+                comment_df = comment_df[['keyword', 'user_id', 'reply_content', 'reply_time', 'video_url', 'collected_at', 'collected_by']]
+                
+                # 使用data_editor来展示评论数据，支持排序和筛选
+                st.data_editor(
+                    comment_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        "video_url": st.column_config.LinkColumn("视频链接"),
+                        "reply_content": st.column_config.TextColumn("评论内容", width="large"),
+                        "reply_time": "评论时间",
+                        "collected_at": "采集时间",
+                        "collected_by": "采集服务器",
+                        "user_id": "用户ID",
+                        "keyword": "关键词"
+                    }
+                )
+            else:
+                st.write("暂无相关评论")
 
 def get_running_tasks(tasks: List[Dict]) -> List[Dict]:
     """获取所有正在运行的任务"""
