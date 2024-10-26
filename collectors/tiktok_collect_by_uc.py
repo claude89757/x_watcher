@@ -638,76 +638,160 @@ def search_tiktok_video_links(driver, keyword):
         index += 1
     return video_links
 
-def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
-    """收集给定视频URL下的评论。"""
-    logger.info(f"开始收集视频评论: {video_url}")
+def visit_video_page(driver, video_url):
+    """
+    访问视频页面并处理please wait
     
-    # 访问视频URL并处理please wait
-    max_attempts = 5
+    Args:
+        driver: WebDriver实例
+        video_url: 要访问的视频URL
+        
+    Returns:
+        bool: 是否成功访问页面
+    """
+    max_attempts = 8
     attempt = 0
+    
+    # 获取登录相关的cookies
+    auth_cookies = {
+        cookie['name']: cookie['value'] for cookie in driver.get_cookies() 
+        if cookie['name'] in [
+            'sessionid',   # 会话ID
+            'sid_tt',      # TikTok会话ID
+            'uid_tt',      # TikTok用户ID
+            'msToken',     # TikTok安全令牌
+            'ttwid',       # TikTok Web ID
+            'tt_webid_v2'  # TikTok Web ID v2
+        ]  # 保留关键登录cookie
+    }
+    logger.info(f"已获取 {len(auth_cookies)} 个登录相关cookies")
     
     while attempt < max_attempts:
         attempt += 1
         logger.info(f"第 {attempt} 次尝试访问视频页面")
         
-        driver.get(video_url)
-        random_sleep(3, 5)
-        
-        # 检查是否出现please wait
-        if "Please wait" in driver.page_source:
-            logger.info("检测到Please wait页面")
-            
-            # 随机选择处理方式
-            action = random.choice(['refresh', 'enter', 'both'])
-            
-            if action == 'refresh':
-                logger.info("尝试刷新页面")
-                driver.refresh()
-            elif action == 'enter':
-                logger.info("尝试发送回车键")
-                actions = ActionChains(driver)
-                actions.send_keys(Keys.RETURN)
-                actions.perform()
-            else:
-                logger.info("尝试刷新页面并发送回车键")
-                driver.refresh()
-                random_sleep(1, 2)
-                actions = ActionChains(driver)
-                actions.send_keys(Keys.RETURN)
-                actions.perform()
-            
-            random_sleep(3, 5)
-            
-            # 再次检查是否还在please wait页面
-            if "Please wait" not in driver.page_source:
-                logger.info("成功跳过Please wait页面")
-                break
-            else:
-                logger.warning(f"第 {attempt} 次尝试未能跳过Please wait页面")
+        try:
+            # 1. 清除非登录相关的cookies和缓存
+            if attempt > 1:  # 第一次尝试保持原状
+                logger.info("清除非必要cookies和缓存...")
                 
-                # 在重试之前执行一些随机操作
-                if random.random() < 0.5:
-                    logger.info("执行随机鼠标移动")
+                # 清除所有cookies
+                driver.delete_all_cookies()
+                
+                # 只恢复登录相关的cookies
+                for cookie_name, cookie_value in auth_cookies.items():
+                    driver.add_cookie({
+                        'name': cookie_name,
+                        'value': cookie_value,
+                        'domain': '.tiktok.com'
+                    })
+                
+                # 添加新的随机cookies
+                new_cookies = [
+                    {
+                        'name': 'tt_webid_v2',
+                        'value': str(random.randint(10**18, 10**19)),
+                        'domain': '.tiktok.com'
+                    },
+                    {
+                        'name': 'ttwid',
+                        'value': ''.join(random.choices('0123456789abcdef', k=32)),
+                        'domain': '.tiktok.com'
+                    },
+                    {
+                        'name': 'msToken',
+                        'value': ''.join(random.choices('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_', k=107)),
+                        'domain': '.tiktok.com'
+                    }
+                ]
+                
+                for cookie in new_cookies:
+                    try:
+                        driver.add_cookie(cookie)
+                    except Exception as e:
+                        logger.warning(f"添加新cookie失败: {str(e)}")
+                
+                # 清除缓存和会话数据
+                driver.execute_script("window.localStorage.clear();")
+                driver.execute_script("window.sessionStorage.clear();")
+                logger.info("已清除本地存储和会话存储")
+                
+                try:
+                    # 清除其他客户端数据
+                    driver.execute_cdp_cmd('Network.clearBrowserCache', {})
+                    driver.execute_cdp_cmd('Network.clearBrowserCookies', {})
+                except Exception as e:
+                    logger.warning(f"清除浏览器缓存失败: {str(e)}")
+            
+            # 2. 先访问主页建立新会话
+            logger.info("访问TikTok主页建立新会话...")
+            driver.get("https://www.tiktok.com")
+            random_sleep(2, 3)
+            
+            # 3. 使用JavaScript间接导航到目标URL
+            logger.info(f"正在访问视频页面: {video_url}")
+            driver.execute_script(f'window.location.href = "{video_url}";')
+            random_sleep(2, 3)
+            
+            # 4. 检查是否出现please wait
+            if "Please wait" in driver.page_source:
+                logger.info("检测到Please wait页面")
+                
+                # 随机选择处理方式
+                action = random.choice(['refresh', 'enter', 'both'])
+                logger.info(f"选择处理方式: {action}")
+                
+                if action == 'refresh':
+                    driver.refresh()
+                elif action == 'enter':
                     actions = ActionChains(driver)
-                    actions.move_by_offset(random.randint(-100, 100), random.randint(-100, 100))
+                    actions.send_keys(Keys.RETURN)
+                    actions.perform()
+                else:  # both
+                    driver.refresh()
+                    random_sleep(1, 2)
+                    actions = ActionChains(driver)
+                    actions.send_keys(Keys.RETURN)
                     actions.perform()
                 
-                if random.random() < 0.3:
-                    logger.info("执行随机页面滚动")
-                    driver.execute_script(f"window.scrollBy(0, {random.randint(100, 300)});")
+                # 等待一段时间
+                wait_time = min(3 + attempt, 8)
+                random_sleep(wait_time, wait_time + 2)
                 
+                # 检查页面状态
+                if "Please wait" not in driver.page_source:
+                    logger.info("成功跳过Please wait页面")
+                    return True
+                else:
+                    logger.warning(f"第 {attempt} 次尝试未能跳过Please wait页面")
+                    continue
+            else:
+                logger.info("页面正常加载，未检测到Please wait")
+                return True
+                
+        except Exception as e:
+            logger.error(f"处理过程中发生错误: {str(e)}")
+            if attempt < max_attempts:
                 continue
-        else:
-            logger.info("页面正常加载，未检测到Please wait")
-            break
+            else:
+                raise
     
-    if attempt >= max_attempts and "Please wait" in driver.page_source:
-        error_msg = f"在 {max_attempts} 次尝试后仍未能跳过Please wait页面"
+    logger.error(f"在 {max_attempts} 次尝试后仍未能跳过Please wait页面")
+    return False
+
+
+def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
+    """收集给定视频URL下的评论。"""
+    logger.info(f"开始收集视频评论: {video_url}")
+    
+    # 访问视频页面
+    if not visit_video_page(driver, video_url):
+        error_msg = "无法访问视频页面"
         logger.error(error_msg)
-        # 保存截图以供分析
         take_screenshot(driver, f"please_wait_error_{video_id}")
         raise Exception(error_msg)
     
+    # 继续处理评论收集逻辑...
     try:
         # 等待视频元素并暂停
         video_element = WebDriverWait(driver, 10).until(
@@ -716,12 +800,17 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         driver.execute_script("arguments[0].pause();", video_element)
         logger.info("视频已暂停")
     except Exception as e:
-        logger.warning("未能暂停视频，可能未找到视频元素")
+        logger.warning(f"未能暂停视频: {str(e)}")
     
-    # 继续原有的评论收集逻辑...
-    WebDriverWait(driver, 15).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
-    )
+    # 等待评论元素加载
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
+        )
+        logger.info("评论元素加载完成")
+    except Exception as e:
+        logger.error(f"等待评论元素超时: {str(e)}")
+        raise
     
     # 从数据库中获取已存储的用户ID
     logger.info(f"从数据库中获取已存储的用户ID")
@@ -903,7 +992,22 @@ def take_screenshot(driver, prefix="screenshot"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{prefix}_{timestamp}.png"
     driver.save_screenshot(filename)
-    logger.info(f"截图已���: {filename}")
+    logger.info(f"截图已: {filename}")
+
+def get_public_ip():
+    try:
+        response = requests.get('https://api.ipify.org')
+        return response.text
+    except Exception as e:
+        logger.error(f"获取公网IP失败: {str(e)}")
+        return None
+    
+def take_screenshot(driver, prefix="screenshot"):
+    """保存当前页面的截图，文件名包含时间戳。"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{prefix}_{timestamp}.png"
+    driver.save_screenshot(filename)
+    logger.info(f"截图已: {filename}")
 
 def get_public_ip():
     try:
@@ -1081,7 +1185,7 @@ def check_account_status(account_id, username, email):
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
-            logger.info(f"账号 {username} 状态更新为 active的cookies")
+            logger.info(f"账号 {username} 状态更新为 activecookies")
         else:
             db.update_tiktok_account_status(account_id, 'inactive')
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
