@@ -161,9 +161,28 @@ def data_collect(db: MySQLDatabase):
     with st.expander("任务操作", expanded=False):
         col1, col2 = st.columns(2)
         with col1:
-            selected_task_id = st.selectbox("选择任务ID", [task['id'] for task in db.get_all_tiktok_tasks()])
+            # 获取所有任务并格式化选项
+            all_tasks = db.get_all_tiktok_tasks()
+            task_options = []
+            for task in all_tasks:
+                status_emoji = {
+                    'pending': '⏳',
+                    'running': '▶️',
+                    'paused': '⏸️',
+                    'completed': '✅',
+                    'failed': '❌'
+                }.get(task['status'], '❓')
+                # 格式化选项文本：ID - 关键词 (状态)
+                option_text = f"{task['id']} - {task['keyword']} ({status_emoji} {task['status']})"
+                task_options.append((task['id'], option_text))
+            
+            selected_task_id = st.selectbox(
+                "选择任务",
+                options=[t[0] for t in task_options],
+                format_func=lambda x: next(t[1] for t in task_options if t[0] == x)
+            )
         with col2:
-            selected_task = next((task for task in db.get_all_tiktok_tasks() if task['id'] == selected_task_id), None)
+            selected_task = next((task for task in all_tasks if task['id'] == selected_task_id), None)
             if selected_task:
                 st.write(f"当前状态: {selected_task['status']}")
 
@@ -237,6 +256,7 @@ def data_collect(db: MySQLDatabase):
                             "状态": video['status'],
                             "处理服务器": video['processing_server_ip'] or "未分配",
                             "作者": video['author'] or "未知",
+                            "视频描述": video['description'] or "无描述",  # 增加视频描述字段
                             "点赞数": video['likes_count'] or 0,
                             "评论数": video['comments_count'] or 0,
                             "采集时间": video['collected_at'].strftime('%Y-%m-%d %H:%M:%S') if video['collected_at'] else "未知"
@@ -321,3 +341,4 @@ def data_collect(db: MySQLDatabase):
 def get_running_tasks(tasks: List[Dict]) -> List[Dict]:
     """获取所有正在运行的任务"""
     return [task for task in tasks if task['status'] == 'running']
+
