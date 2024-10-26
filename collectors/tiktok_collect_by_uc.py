@@ -641,20 +641,88 @@ def search_tiktok_video_links(driver, keyword):
 def collect_comments(driver, video_url, video_id, keyword, db, collected_by, task_id):
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
-    driver.get(video_url)
+    
+    # 访问视频URL并处理please wait
+    max_attempts = 5
+    attempt = 0
+    
+    while attempt < max_attempts:
+        attempt += 1
+        logger.info(f"第 {attempt} 次尝试访问视频页面")
+        
+        driver.get(video_url)
+        random_sleep(3, 5)
+        
+        # 检查是否出现please wait
+        if "Please wait" in driver.page_source:
+            logger.info("检测到Please wait页面")
+            
+            # 随机选择处理方式
+            action = random.choice(['refresh', 'enter', 'both'])
+            
+            if action == 'refresh':
+                logger.info("尝试刷新页面")
+                driver.refresh()
+            elif action == 'enter':
+                logger.info("尝试发送回车键")
+                actions = ActionChains(driver)
+                actions.send_keys(Keys.RETURN)
+                actions.perform()
+            else:
+                logger.info("尝试刷新页面并发送回车键")
+                driver.refresh()
+                random_sleep(1, 2)
+                actions = ActionChains(driver)
+                actions.send_keys(Keys.RETURN)
+                actions.perform()
+            
+            random_sleep(3, 5)
+            
+            # 再次检查是否还在please wait页面
+            if "Please wait" not in driver.page_source:
+                logger.info("成功跳过Please wait页面")
+                break
+            else:
+                logger.warning(f"第 {attempt} 次尝试未能跳过Please wait页面")
+                
+                # 在重试之前执行一些随机操作
+                if random.random() < 0.5:
+                    logger.info("执行随机鼠标移动")
+                    actions = ActionChains(driver)
+                    actions.move_by_offset(random.randint(-100, 100), random.randint(-100, 100))
+                    actions.perform()
+                
+                if random.random() < 0.3:
+                    logger.info("执行随机页面滚动")
+                    driver.execute_script(f"window.scrollBy(0, {random.randint(100, 300)});")
+                
+                continue
+        else:
+            logger.info("页面正常加载，未检测到Please wait")
+            break
+    
+    if attempt >= max_attempts and "Please wait" in driver.page_source:
+        error_msg = f"在 {max_attempts} 次尝试后仍未能跳过Please wait页面"
+        logger.error(error_msg)
+        # 保存截图以供分析
+        take_screenshot(driver, f"please_wait_error_{video_id}")
+        raise Exception(error_msg)
+    
     try:
+        # 等待视频元素并暂停
         video_element = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.TAG_NAME, 'video'))
         )
         driver.execute_script("arguments[0].pause();", video_element)
         logger.info("视频已暂停")
     except Exception as e:
-        logger.warning("未能暂停视频，可能未到视频元素")
-
+        logger.warning("未能暂停视频，可能未找到视频元素")
+    
+    # 继续原有的评论收集逻辑...
     WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="CommentItemWrapper"]'))
     )
-
+    
     # 从数据库中获取已存储的用户ID
     logger.info(f"从数据库中获取已存储的用户ID")
     existing_user_ids = set(db.get_existing_user_ids_for_keyword(keyword))
@@ -835,7 +903,7 @@ def take_screenshot(driver, prefix="screenshot"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{prefix}_{timestamp}.png"
     driver.save_screenshot(filename)
-    logger.info(f"截图已存: {filename}")
+    logger.info(f"截图已���: {filename}")
 
 def get_public_ip():
     try:
