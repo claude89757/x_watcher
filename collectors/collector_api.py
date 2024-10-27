@@ -174,12 +174,24 @@ def before_request():
 def github_webhook():
     """GitHub webhook 回调接口"""
     try:
+        # 检查 Content-Type
+        content_type = request.headers.get('Content-Type', '')
+        if 'application/x-www-form-urlencoded' in content_type:
+            payload = request.form.get('payload')
+            if payload:
+                import json
+                payload = json.loads(payload)
+            else:
+                payload = {}
+        else:
+            payload = request.get_json(silent=True) or {}
+
+        # 获取事件类型
         event = request.headers.get('X-GitHub-Event')
         if event != 'push':
             logger.info(f"忽略非push事件: {event}")
             return jsonify({'status': 'ignored', 'message': f'Event {event} is not handled'}), 200
 
-        payload = request.json
         ref = payload.get('ref')
         if ref not in ['refs/heads/main', 'refs/heads/master']:
             logger.info(f"忽略非主分支推送: {ref}")
@@ -426,3 +438,4 @@ if __name__ == '__main__':
         app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)
     except (KeyboardInterrupt, SystemExit):
         graceful_shutdown(None, None)
+
