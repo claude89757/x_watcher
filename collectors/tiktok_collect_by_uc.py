@@ -1395,6 +1395,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 )
                 logger.info(f"成功在用户 {user_id} 的视频下留言, by {account_username}")
                 comment_success = True
+                time.sleep(5)
             except TimeoutException:
                 logger.warning(f"未能确认评论是否成功发送")
                 comment_success = False
@@ -1455,6 +1456,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                     if messages_count_after > messages_count_before:
                         logger.info(f"成功发送私信给用户 {user_id}")
                         dm_success = True
+                        time.sleep(5)
                     else:
                         # 检查是否出现失败警告
                         warning_elements = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='dm-warning']")
@@ -1574,6 +1576,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                     )
                     logger.info(f"成功在用户 {user_id} 的视频下留言, by {account_username}")
                     at_comment_success = True
+                    time.sleep(5)
                 except TimeoutException:
                     logger.warning("未能确认评论是否成功发送")
                     at_comment_success = False
