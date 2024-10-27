@@ -87,6 +87,7 @@ st.title("X智能助手")
 
 # 创建数据库连接
 db = MySQLDatabase()
+db.connect()
 
 # 创建标签页
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["评论收集", "评论过滤", "评论分析_AI", "文案生成_AI", "触达用户"])
