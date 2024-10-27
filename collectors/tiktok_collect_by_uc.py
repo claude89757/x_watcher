@@ -79,7 +79,7 @@ def cleanup_chrome_processes():
         except Exception as e:
             logger.error(f"清理Chrome进程时发生错误: {str(e)}")
 
-# 注册cleanup_chrome_processes函数,确保在脚本退出时被��用
+# 注册cleanup_chrome_processes函数,确保在脚本退出时被用
 atexit.register(cleanup_chrome_processes)
 
 def cleanup_zombie_processes():
@@ -1096,22 +1096,6 @@ def process_task(task_id, keyword, server_ip):
         db.disconnect()
         cleanup_chrome_processes()  # 确保在任务结束时清理所有Chrome进程
 
-def simulate_human_input(element, text):
-    """模拟人类输入文本，确保触发发送按钮"""
-    # 先清空内容并聚焦
-    element.click()
-    element.clear()
-    
-    # 逐字符输入
-    for char in text:
-        element.send_keys(char)
-        time.sleep(random.uniform(0.1, 0.3))
-        
-        # 每输入几个字符后随机暂停
-        if random.random() < 0.2:  # 20%的概率
-            time.sleep(random.uniform(0.3, 0.8))
-
-
 def check_account_status(account_id, username, email):
     db = MySQLDatabase()
     db.connect()
@@ -1189,7 +1173,7 @@ def check_account_status(account_id, username, email):
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
 
     except Exception as e:
-        logger.error(f"检查账号 {username} 状态��发生错误: {str(e)}")
+        logger.error(f"检查账号 {username} 状态发生错误: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         db.update_tiktok_account_status(account_id, 'inactive')
     finally:
@@ -1205,7 +1189,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
     try:
         driver = setup_driver()
         
-        # 获取账号信息
+        # 获取账号信��
         account = db.get_tiktok_account_by_id(account_id)
         if not account:
             return [{"success": False, "message": "账号不存在", "action": "none", "user_id": user_msg['user_id']} for user_msg in user_messages]
@@ -1248,6 +1232,26 @@ def random_wait(min_time=1, max_time=5):
     wait_time = random.uniform(min_time, max_time)
     logger.info(f"随机等待 {wait_time:.2f} 秒")
     time.sleep(wait_time)
+
+def simulate_human_input(element, text):
+    """模拟人类输入文本，确保触发发送按钮"""
+    # 先清空内容并聚焦
+    element.click()
+    element.clear()
+    
+    # 将空格替换成下划线
+    processed_text = text.replace(' ', '_')
+    logger.info(f"原始文本: '{text}', 处理后文本: '{processed_text}'")
+    
+    # 逐字符输入
+    for char in processed_text:
+        element.send_keys(char)
+        time.sleep(random.uniform(0.1, 0.3))
+        
+        # 每输入几个字符后随机暂停
+        if random.random() < 0.2:  # 20%的概率
+            time.sleep(random.uniform(0.3, 0.8))    
+
 
 def simulate_human_scroll(driver):
     """模拟人类滚动页面"""
@@ -1554,9 +1558,6 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                         # 每输入几个字符后随机暂停
                         if random.random() < 0.2:  # 20%的概率
                             time.sleep(random.uniform(0.3, 0.8))
-                    # 确保触发发送按钮
-                    comment_input.send_keys(Keys.SPACE)
-                    comment_input.send_keys(Keys.BACKSPACE)
 
                 else:
                     raise Exception(f"未找到匹配的用户建议: {user_id}")
