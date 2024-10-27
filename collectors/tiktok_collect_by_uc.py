@@ -325,7 +325,7 @@ def load_cookies(driver, username):
                     driver.add_cookie(cookie)
                     logger.info(f"成功添加cookie: {cookie['name']}")
                 except Exception as e:
-                    logger.warning(f"添加cookie失败: {cookie['name']}. ��误: {str(e)}")
+                    logger.warning(f"添加cookie失败: {cookie['name']}. 误: {str(e)}")
         
         # 打印所有当前的cookies
         current_cookies = driver.get_cookies()
@@ -709,7 +709,7 @@ def visit_video_page(driver, video_url):
                     try:
                         driver.add_cookie(cookie)
                     except Exception as e:
-                        logger.warning(f"添��cookie失败: {str(e)}")
+                        logger.warning(f"添加cookie失败: {str(e)}")
                 
                 # 清除缓存和会话数据
                 driver.execute_script("window.localStorage.clear();")
@@ -1371,42 +1371,29 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
 
             # 修改评论输入部分
             try:
-                # 默认方案：模拟人工输入
-                actions = ActionChains(driver)
-                actions.move_to_element(comment_input).click().perform()
-                # 随机的输入速度
-                for char in message:
-                    # 模拟人类输入的随机延迟
-                    delay = random.gauss(0.15, 0.05)  # 使用高斯分布生成更自然的延迟
-                    delay = max(0.08, min(0.3, delay))  # 限制延迟范围在80ms到300ms之间
-                    time.sleep(delay)
-                    
-                    # 随机添加较长暂停，模拟思考
-                    if random.random() < 0.05:  # 5%的概率
-                        time.sleep(random.uniform(0.5, 1.0))
-                    
-                    comment_input.send_keys(char)
-                    
-                logger.info("已完成人工模拟输入评论")
+                logger.info("开始模拟人类输入评论")
+                if simulate_human_input(driver, comment_input, message):
+                    logger.info("评论输入成功")
+                else:
+                    raise Exception("评论输入失败")
             except Exception as e:
-                logger.error(f"人工模拟输入失败: {str(e)}")
-                # 备选方案1：使用JavaScript
+                logger.error(f"评论输入失败: {str(e)}")
+                # 使用备选方案
                 try:
-                    logger.info("尝试使用JavaScript方案")
+                    logger.info("尝试使用JavaScript直接设置评论内容")
                     driver.execute_script(
-                        "arguments[0].innerHTML = arguments[1];", 
+                        "arguments[0].textContent = arguments[1];", 
                         comment_input,
                         message
                     )
                     driver.execute_script(
-                        "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));",
+                        "var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);",
                         comment_input
                     )
-                except Exception as e:
-                    logger.error(f"JavaScript输入失败: {str(e)}")
-                    # 备选方案2：使用剪贴板
+                except Exception as js_error:
+                    logger.error(f"JavaScript设置评论失败: {str(js_error)}")
                     if platform.system() != 'Linux':
-                        logger.info("尝试使用剪贴板方案")
+                        logger.info("尝试使用剪贴板方法")
                         pyperclip.copy(message)
                         comment_input.send_keys(Keys.CONTROL + 'v')
                     else:
@@ -1451,43 +1438,29 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
 
                 # 修改私信输入部分
                 try:
-                    # 默认方案：模拟人工输入
-                    actions = ActionChains(driver)
-                    actions.move_to_element(message_input).click().perform()
-                    
-                    # 随机的输入速度
-                    for char in message:
-                        # 模拟人类输入的随机延迟
-                        delay = random.gauss(0.15, 0.05)
-                        delay = max(0.08, min(0.3, delay))
-                        time.sleep(delay)
-                        
-                        # 随机添加较长暂停，模拟思考
-                        if random.random() < 0.05:
-                            time.sleep(random.uniform(0.5, 1.0))
-                        
-                        message_input.send_keys(char)
-                        
-                    logger.info("已完成人工模拟输入私信")
+                    logger.info("开始模拟人类输入私信")
+                    if simulate_human_input(driver, message_input, message):
+                        logger.info("私信输入成功")
+                    else:
+                        raise Exception("私信输入失败")
                 except Exception as e:
-                    logger.error(f"人工模拟输入失败: {str(e)}")
-                    # 备选方案1：使用JavaScript
+                    logger.error(f"私信输入失败: {str(e)}")
+                    # 使用备选方案
                     try:
-                        logger.info("尝试使用JavaScript方案")
+                        logger.info("尝试使用JavaScript直接设置私信内容")
                         driver.execute_script(
-                            "arguments[0].innerHTML = arguments[1];", 
+                            "arguments[0].textContent = arguments[1];", 
                             message_input,
                             message
                         )
                         driver.execute_script(
-                            "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));",
+                            "var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);",
                             message_input
                         )
-                    except Exception as e:
-                        logger.error(f"JavaScript输入失败: {str(e)}")
-                        # 备选方案2：使用剪贴板
+                    except Exception as js_error:
+                        logger.error(f"JavaScript设置私信失败: {str(js_error)}")
                         if platform.system() != 'Linux':
-                            logger.info("尝试使用剪贴板方案")
+                            logger.info("尝试使用剪贴板方法")
                             pyperclip.copy(message)
                             message_input.send_keys(Keys.CONTROL + 'v')
                         else:
@@ -1651,7 +1624,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             pass
             # actions.append("关注")
         if comment_success:
-            actions.append("用户视频留言")
+            actions.append("用���视频留言")
         if dm_success:
             actions.append("直接私信")
         if at_comment_success:
