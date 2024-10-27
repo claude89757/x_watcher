@@ -1096,48 +1096,24 @@ def process_task(task_id, keyword, server_ip):
         db.disconnect()
         cleanup_chrome_processes()  # 确保在任务结束时清理所有Chrome进程
 
-def simulate_human_input(driver, element, text):
+def simulate_human_input(element, text):
     """模拟人类输入文本，确保触发发送按钮"""
-    try:
-        # 先清空内容并聚焦
-        element.click()
-        element.clear()
+    # 先清空内容并聚焦
+    element.click()
+    element.clear()
+    
+    # 逐字符输入
+    for char in text:
+        element.send_keys(char)
+        time.sleep(random.uniform(0.1, 0.3))
         
-        # 逐字符输入
-        for char in text:
-            element.send_keys(char)
-            time.sleep(random.uniform(0.1, 0.3))
-            
-            # 每输入几个字符后随机暂停
-            if random.random() < 0.2:  # 20%的概率
-                time.sleep(random.uniform(0.3, 0.8))
-        
-        # 验证最终文本
-        actual_text = element.get_attribute('textContent') or element.text
-        if actual_text.strip() != text.strip():
-            logger.warning(f"文本验证不匹配，使用备用输入方法。预期: '{text}', 实际: '{actual_text}'")
-            
-            # 备用方法：直接使用send_keys
-            element.clear()
-            element.click()
-            element.send_keys(text)
-        
-        # 确保触发发送按钮
-        element.send_keys(Keys.SPACE)
-        element.send_keys(Keys.BACKSPACE)
-        
-        # 最后验证
-        actual_text = element.get_attribute('textContent') or element.text
-        if actual_text.strip() == text.strip():
-            logger.info("文本输入成功")
-            return True
-        else:
-            logger.error(f"最终文本验证失败。预期: '{text}', 实际: '{actual_text}'")
-            return False
-            
-    except Exception as e:
-        logger.error(f"模拟人类输入时发生错误: {str(e)}")
-        return False
+        # 每输入几个字符后随机暂停
+        if random.random() < 0.2:  # 20%的概率
+            time.sleep(random.uniform(0.3, 0.8))
+    # 确保触发发送按钮
+    element.send_keys(Keys.SPACE)
+    element.send_keys(Keys.BACKSPACE)
+
 
 def check_account_status(account_id, username, email):
     db = MySQLDatabase()
@@ -1176,7 +1152,7 @@ def check_account_status(account_id, username, email):
         )
         
         # 输入邮箱
-        simulate_human_input(driver, email_input, email)
+        simulate_human_input(email_input, email)
         
         # 随机暂停，模拟人类思考
         time.sleep(random.uniform(0.5, 1.5))
@@ -1392,7 +1368,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
             logger.info("找到评论输入框,正在输入评论")
 
             logger.info("开始模拟人类输入评论")
-            if simulate_human_input(driver, comment_input, message):
+            if simulate_human_input(comment_input, message):
                 logger.info("评论输入成功")
             else:
                 raise Exception("评论输入失败")
@@ -1440,7 +1416,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
 
                 # 修改私信输入部分
                 logger.info("开始模拟人类输入私信")
-                if simulate_human_input(driver, message_input, message):
+                if simulate_human_input(message_input, message):
                     logger.info("私信输入成功")
                 else:
                     raise Exception("私信输入失败")
@@ -1564,16 +1540,21 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                     logger.info(f"成功选择正确的艾特用户 {user_id}")
                     
                     random_wait(1, 2)
-                    
-                    # 使用剪贴板输入评论内容
-                    pyperclip.copy(message)
-                    comment_input.send_keys(Keys.CONTROL + 'v' if platform.system() == 'Windows' else Keys.COMMAND + 'v')
-                    logger.info("使用剪贴板输入艾特评论内容")
+                    comment_input.click()
+                    # 逐字符输入
+                    for char in message:
+                        comment_input.send_keys(char)
+                        time.sleep(random.uniform(0.1, 0.3))
+                        
+                        # 每输入几个字符后随机暂停
+                        if random.random() < 0.2:  # 20%的概率
+                            time.sleep(random.uniform(0.3, 0.8))
+                    # 确保触发发送按钮
+                    comment_input.send_keys(Keys.SPACE)
+                    comment_input.send_keys(Keys.BACKSPACE)
 
                 else:
                     raise Exception(f"未找到匹配的用户建议: {user_id}")
-
-                random_wait(1, 2)
 
                 logger.info("正在尝试使用回车键发送评论")
                 comment_input.send_keys(Keys.RETURN)
