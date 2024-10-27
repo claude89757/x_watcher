@@ -1110,9 +1110,6 @@ def simulate_human_input(element, text):
         # 每输入几个字符后随机暂停
         if random.random() < 0.2:  # 20%的概率
             time.sleep(random.uniform(0.3, 0.8))
-    # 确保触发发送按钮
-    element.send_keys(Keys.SPACE)
-    element.send_keys(Keys.BACKSPACE)
 
 
 def check_account_status(account_id, username, email):
@@ -1351,16 +1348,35 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
         # 尝试在用户最新视频下留言
         try:
             logger.info("正在尝试找到最新视频")
+            # 使用更精确的选择器定位视频元素
             latest_video = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, 'video'))
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='user-post-item'] div[class*='DivVideoWrapper'] video"))
             )
+            
+            # 如果上面的选择器失败，尝试备用选择器
+            if not latest_video:
+                latest_video = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='user-post-item-list'] div[class*='DivItemContainer']:first-child"))
+                )
+            
+            # 确保视频元素在视图中可见
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", latest_video)
+            time.sleep(1)  # 等待滚动完成
+            
             logger.info("找到最新视频,正在点击")
-            latest_video.click()
-
+            # 使用JavaScript点击，避免元素不可点击的问题
+            driver.execute_script("arguments[0].click();", latest_video)
+            
+            # 等待视频页面加载完成
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[class*='DivVideoContainer']"))
+            )
+            logger.info("视频页面加载完成")
+            
             random_wait(1, 3)
-
+            
             WebDriverWait(driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-
+            
             logger.info("正在等待评论输入框出现")
             comment_input = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-input'] div.public-DraftEditor-content"))
