@@ -218,7 +218,7 @@ def init_browser_features(driver):
             originalQuery(parameters)
         );
 
-        // WebGL参数
+        // WebGL��数
         const getParameter = WebGLRenderingContext.prototype.getParameter;
         WebGLRenderingContext.prototype.getParameter = function(parameter) {
             if (parameter === 37445) {
@@ -1184,7 +1184,7 @@ def check_account_status(account_id, username, email):
                 time.sleep(5)  # 每5秒检查一次
         
         if login_success:
-            # 登录成功，保存cookies
+            # 登录成��，保存cookies
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
@@ -1230,7 +1230,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
             
             results.extend(batch_results)
             
-            # 检查是否还有剩余的消息需要发送
+            # ��查是否还有剩余的消息需要发送
             remaining_messages = len(user_messages) - len(results)
             if remaining_messages > 0:
                 logger.info(f"已发送 {len(results)} 条消息，还剩 {remaining_messages} 条，等待 {wait_time} 秒后继续...")
@@ -1304,7 +1304,7 @@ def try_follow_user(driver, user_id):
             logger.info(f"用户 {user_id} 已经被关注")
             return True
         elif button_text not in ['follow', '关注']:
-            logger.warning(f"无法确定关注按钮状态，按钮文本为: {button_text}")
+            logger.warning(f"无法确定注按钮状态，按钮文本为: {button_text}")
             return False
         
         # 如果是"关注"状态，则点击关注
@@ -1326,6 +1326,40 @@ def try_follow_user(driver, user_id):
         logger.error(f"关注用户 {user_id} 时发生错误: {str(e)}")
         return False
 
+def sanitize_text(text):
+    """
+    清理文本，移除非BMP字符并处理特殊字符。
+    
+    Args:
+        text: 原始文本
+        
+    Returns:
+        str: 处理后的文本
+    """
+    if not text:
+        return ""
+    
+    # 移除非BMP字符（Unicode码点大于0xFFFF的字符）
+    cleaned_text = ''.join(char for char in text if ord(char) < 0xFFFF)
+    
+    # 替换常见的特殊字符为其等效字符
+    replacements = {
+        '"': '"',
+        '"': '"',
+        ''': "'",
+        ''': "'",
+        '—': '-',
+        '–': '-',
+        '…': '...',
+        '\u200b': '',  # 零宽空格
+        '\ufeff': '',  # 零宽不换行空格
+    }
+    
+    for old, new in replacements.items():
+        cleaned_text = cleaned_text.replace(old, new)
+    
+    return cleaned_text
+
 def send_single_promotion_message(driver, user_id, message, keyword, db):
     try:
         # 初始化操作结果
@@ -1333,6 +1367,11 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
         comment_success = False
         dm_success = False
         at_comment_success = False
+
+        # 在发送私信之前清理消息文本
+        sanitized_message = sanitize_text(message)
+        logger.info(f"原始消息: {message}")
+        logger.info(f"清理后的消息: {sanitized_message}")
 
         # 访问用户主页
         user_profile_url = f"https://www.tiktok.com/@{user_id}"
@@ -1368,7 +1407,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             )
             logger.info("找到评论输入框,正在输入评论")
 
-            comment_input.send_keys(message)
+            comment_input.send_keys(sanitized_message)
             random_wait(1, 2)
 
             logger.info("正在尝试使用回车键发送评论")
@@ -1382,7 +1421,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             logger.error(f"留言失败: {str(e)}")
 
         if not comment_success:
-            # 如果留失败，则尝试发送私信
+            # 如果留言失败，则尝试发送私信
             try:
                 logger.info(f"重新访问用户 {user_id} 的主页")
                 driver.get(user_profile_url)
@@ -1406,7 +1445,11 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 )
                 logger.info("找到私信输入框,正在输入私信")
 
-                message_input.send_keys(message)
+                # 使用清理后的消息文本
+                for char in sanitized_message:
+                    message_input.send_keys(char)
+                    time.sleep(random.uniform(0.05, 0.15))  # 添加较短的随机延迟
+
                 random_wait(1, 2)
                 logger.info("正在尝试使用回车键发送私信")
                 message_input.send_keys(Keys.RETURN)
@@ -1534,8 +1577,11 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
 
                 random_wait(1, 2)
 
-                # 输入消息内容
-                comment_input.send_keys(message)
+                # 输入消息内容时使用清理后的文本
+                for char in sanitized_message:
+                    comment_input.send_keys(char)
+                    time.sleep(random.uniform(0.05, 0.15))
+
                 logger.info("消息内容输入完成")
 
                 random_wait(1, 2)
