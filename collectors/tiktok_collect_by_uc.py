@@ -1580,7 +1580,8 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
             except Exception as e:
                 logger.error(f"在源视频下留言并艾特用户失败: {str(e)}")
                 at_comment_success = False
-            
+        
+        logger.info(f"等待60秒后继续")
         time.sleep(60)  # test
 
         # 根据操作结果返回相应的信息
