@@ -79,7 +79,7 @@ def cleanup_chrome_processes():
         except Exception as e:
             logger.error(f"清理Chrome进程时发生错误: {str(e)}")
 
-# 注册cleanup_chrome_processes函数,确保在脚本退出时被调用
+# 注册cleanup_chrome_processes函数,确保在脚本退出时被��用
 atexit.register(cleanup_chrome_processes)
 
 def cleanup_zombie_processes():
@@ -1189,7 +1189,7 @@ def check_account_status(account_id, username, email):
             logger.info(f"账号 {username} 状态更新为 inactive（15分钟内未检测到成功登录）")
 
     except Exception as e:
-        logger.error(f"检查账号 {username} 状态时发生错误: {str(e)}")
+        logger.error(f"检查账号 {username} 状态��发生错误: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         db.update_tiktok_account_status(account_id, 'inactive')
     finally:
@@ -1348,16 +1348,16 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
         # 尝试在用户最新视频下留言
         try:
             logger.info("正在尝试找到最新视频")
-            # 使用更精确的选择器定位视频元素
-            latest_video = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='user-post-item'] div[class*='DivVideoWrapper'] video"))
+            # 首先等待视频列表容器加载
+            video_list = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='user-post-item-list']"))
             )
+            logger.info("找到视频列表容器")
             
-            # 如果上面的选择器失败，尝试备用选择器
-            if not latest_video:
-                latest_video = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='user-post-item-list'] div[class*='DivItemContainer']:first-child"))
-                )
+            # 然后定位第一个视频项
+            latest_video = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "div[data-e2e='user-post-item'][role='button']"))
+            )
             
             # 确保视频元素在视图中可见
             driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", latest_video)
@@ -1384,10 +1384,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
             logger.info("找到评论输入框,正在输入评论")
 
             logger.info("开始模拟人类输入评论")
-            if simulate_human_input(comment_input, message):
-                logger.info("评论输入成功")
-            else:
-                raise Exception("评论输入失败")
+            simulate_human_input(comment_input, message)
             
             logger.info("正在尝试使用回车键发送评论")
             comment_input.send_keys(Keys.RETURN)
@@ -1432,10 +1429,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
 
                 # 修改私信输入部分
                 logger.info("开始模拟人类输入私信")
-                if simulate_human_input(message_input, message):
-                    logger.info("私信输入成功")
-                else:
-                    raise Exception("私信输入失败")
+                simulate_human_input(message_input, message)
 
                 logger.info("正在尝试使用回车键发送私信")
                 message_input.send_keys(Keys.RETURN)
