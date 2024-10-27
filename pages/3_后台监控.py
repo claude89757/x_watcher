@@ -90,7 +90,7 @@ try:
         # 添加加载 VNC 画面的按钮
         if st.button("加载 VNC 画面"):
             # 显示 VNC 窗口
-            st.components.v1.iframe(vnc_url, width=1000, height=800)
+            st.components.v1.iframe(vnc_url, width=1200, height=800)
     
     else:
         st.info("当前没有活跃的 workers")
