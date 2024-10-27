@@ -12,6 +12,9 @@ import sys
 from pathlib import Path
 from functools import wraps
 from contextlib import contextmanager
+import hmac
+import hashlib
+import json
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, jsonify
@@ -174,17 +177,29 @@ def before_request():
 def github_webhook():
     """GitHub webhook 回调接口"""
     try:
-        # 检查 Content-Type
+        # 获取原始请求数据
+        raw_data = request.get_data()
+        if not raw_data:
+            return jsonify({'status': 'error', 'message': 'Empty request body'}), 400
+
+        # 根据 Content-Type 处理数据
         content_type = request.headers.get('Content-Type', '')
-        if 'application/x-www-form-urlencoded' in content_type:
-            payload = request.form.get('payload')
-            if payload:
-                import json
-                payload = json.loads(payload)
-            else:
-                payload = {}
+        if 'application/json' in content_type:
+            payload = request.json
+        elif 'application/x-www-form-urlencoded' in content_type:
+            payload_str = request.form.get('payload', '{}')
+            try:
+                payload = json.loads(payload_str)
+            except json.JSONDecodeError:
+                logger.error("无法解析 payload JSON")
+                return jsonify({'status': 'error', 'message': 'Invalid JSON payload'}), 400
         else:
-            payload = request.get_json(silent=True) or {}
+            # 尝试直接解析原始数据
+            try:
+                payload = json.loads(raw_data)
+            except json.JSONDecodeError:
+                logger.error(f"不支持的 Content-Type: {content_type} 且无法解析数据")
+                return jsonify({'status': 'error', 'message': 'Unable to parse request data'}), 400
 
         # 获取事件类型
         event = request.headers.get('X-GitHub-Event')
@@ -192,25 +207,30 @@ def github_webhook():
             logger.info(f"忽略非push事件: {event}")
             return jsonify({'status': 'ignored', 'message': f'Event {event} is not handled'}), 200
 
+        # 验证分支
         ref = payload.get('ref')
         if ref not in ['refs/heads/main', 'refs/heads/master']:
             logger.info(f"忽略非主分支推送: {ref}")
             return jsonify({'status': 'ignored', 'message': f'Branch {ref} is not monitored'}), 200
 
+        # 处理提交信息
         commits = payload.get('commits', [])
         commit_messages = [commit.get('message', '') for commit in commits]
         logger.info(f"收到GitHub推送: \n分支: {ref}\n提交信息: {commit_messages}")
 
+        # 执行更新和重启
         pull_and_restart()
+        
         return jsonify({
             'status': 'success',
             'message': 'Code updated and service restarted',
             'branch': ref,
             'commits': commit_messages
         }), 200
+
     except Exception as e:
         error_msg = f"处理GitHub webhook时发生错误: {str(e)}"
-        logger.error(error_msg)
+        logger.error(error_msg, exc_info=True)  # 添加完整的错误堆栈
         return jsonify({'status': 'error', 'message': error_msg}), 500
 
 # TikTok相关API路由
