@@ -412,7 +412,7 @@ def graceful_shutdown(signum, frame):
 
 # 主程序入口
 if __name__ == '__main__':
-    # 注册信号处理
+    # 注册信号处理 
     signal.signal(signal.SIGTERM, graceful_shutdown)
     signal.signal(signal.SIGINT, graceful_shutdown)
     
