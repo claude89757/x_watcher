@@ -62,10 +62,10 @@ class MySQLDatabase:
         """检查数据库连接是否仍然有效"""
         try:
             with self.connection.cursor() as cursor:
-                cursor.execute("SELECT 1")
+                cursor.execute("SELECT 1 as is_alive")
                 result = cursor.fetchone()
-                return result is not None and result[0] == 1
-        except pymysql.Error:
+                return result is not None and result['is_alive'] == 1
+        except (pymysql.Error, AttributeError):
             return False
 
     def disconnect(self):
@@ -317,7 +317,7 @@ class MySQLDatabase:
         """
 
     def create_tiktok_task(self, keyword):
-        """创建TikTok任务,如果已在相同关键字待处理任务则返回该任务ID"""
+        """创建TikTok任务,如果已��相同关键字待处理任务则返回该任务ID"""
         # 首先检查是否存在相同关键字的待处理任务
         check_query = f"""
         SELECT id FROM tiktok_tasks 
