@@ -84,7 +84,7 @@ atexit.register(cleanup_chrome_processes)
 
 def cleanup_zombie_processes():
     """
-    清理系统中僵尸进程。
+    清理系统中僵尸进。
     这个函数会查找系统中的僵尸进程并尝试终止它们。
     僵尸进程是已经结束但仍然在进程表中的进程。
     """
@@ -218,7 +218,7 @@ def init_browser_features(driver):
             originalQuery(parameters)
         );
 
-        // WebGL��数
+        // WebGL数
         const getParameter = WebGLRenderingContext.prototype.getParameter;
         WebGLRenderingContext.prototype.getParameter = function(parameter) {
             if (parameter === 37445) {
@@ -410,7 +410,7 @@ def login_by_local_cookies(driver, username=None):
     logger.info("已清理所cookies")
 
     if username:
-        # 如果指定了用户名，只尝试加载该用户的cookie文件
+        # 如果指定了用户名，只尝试加载该用的cookie文件
         cookie_files = [f"{username}-cookies.json"]
         logger.info(f"尝试加载用户 {username} 的cookies文件")
     else:
@@ -460,7 +460,7 @@ def login_by_local_cookies(driver, username=None):
                 logger.info(f"{cookie_file} 登录失败")
         
         except Exception as e:
-            logger.error(f"使用 {cookie_file} 登时发生错误: {str(e)}")
+            logger.error(f"使用 {cookie_file} ��时发生错误: {str(e)}")
 
     # 如果所有cookies文件尝试失败,抛出异常
     error_message = "所有cookies文件都无法成功登录"
@@ -474,7 +474,7 @@ def search_tiktok_videos(driver, keyword):
     driver.get(search_url)
     logger.info(f"正在访问搜索页面: {search_url}")
     
-    # 等待第一个视频加载
+    # 待第一个视频加载
     WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.TAG_NAME, 'video'))
     )
@@ -562,7 +562,7 @@ def search_tiktok_videos(driver, keyword):
             logger.info(f"本次滚动未发现新视频，连续未发现次数: {consecutive_no_new}")
             current_scroll_distance = min(current_scroll_distance + 200, max_scroll_distance)
         
-        # 如果连续多次未发现新视频，尝试更激进的滚动策略
+        # 如果连续多次未发现新视频，尝试更激进滚动策略
         if consecutive_no_new >= max_consecutive_no_new:
             logger.info("连续多次未发现新视频，尝试更激进的滚动策略")
             # 快速滚动到底部然后回到顶部
@@ -647,7 +647,7 @@ def visit_video_page(driver, video_url):
         video_url: 要访问的视频URL
         
     Returns:
-        bool: 是否成功访问页面
+        bool: 是否成���访问页面
     """
     max_attempts = 8
     attempt = 0
@@ -709,7 +709,7 @@ def visit_video_page(driver, video_url):
                     try:
                         driver.add_cookie(cookie)
                     except Exception as e:
-                        logger.warning(f"添加新cookie失败: {str(e)}")
+                        logger.warning(f"添加cookie失败: {str(e)}")
                 
                 # 清除缓存和会话数据
                 driver.execute_script("window.localStorage.clear();")
@@ -983,7 +983,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                 if result > 0:
                     inserted_count += 1
                     existing_user_ids.add(batch_comment['user_id'])
-            logger.info(f"尝试存储剩余的 {len(comments_batch)} 条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {len(comments_batch) - inserted_count} 条重复评论")
+            logger.info(f"尝试储剩余的 {len(comments_batch)} 条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {len(comments_batch) - inserted_count} 条重复评论")
         except Exception as e:
             logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
 
@@ -1184,7 +1184,7 @@ def check_account_status(account_id, username, email):
                 time.sleep(5)  # 每5秒检查一次
         
         if login_success:
-            # 登录成��，保存cookies
+            # 登录成，保存cookies
             save_cookies(driver, username)
             
             db.update_tiktok_account_status(account_id, 'active')
@@ -1230,7 +1230,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
             
             results.extend(batch_results)
             
-            # ��查是否还有剩余的消息需要发送
+            # 查是否还有剩余的消息需要发送
             remaining_messages = len(user_messages) - len(results)
             if remaining_messages > 0:
                 logger.info(f"已发送 {len(results)} 条消息，还剩 {remaining_messages} 条，等待 {wait_time} 秒后继续...")
@@ -1326,39 +1326,6 @@ def try_follow_user(driver, user_id):
         logger.error(f"关注用户 {user_id} 时发生错误: {str(e)}")
         return False
 
-def sanitize_text(text):
-    """
-    清理文本，移除非BMP字符并处理特殊字符。
-    
-    Args:
-        text: 原始文本
-        
-    Returns:
-        str: 处理后的文本
-    """
-    if not text:
-        return ""
-    
-    # 移除非BMP字符（Unicode码点大于0xFFFF的字符）
-    cleaned_text = ''.join(char for char in text if ord(char) < 0xFFFF)
-    
-    # 替换常见的特殊字符为其等效字符
-    replacements = {
-        '"': '"',
-        '"': '"',
-        ''': "'",
-        ''': "'",
-        '—': '-',
-        '–': '-',
-        '…': '...',
-        '\u200b': '',  # 零宽空格
-        '\ufeff': '',  # 零宽不换行空格
-    }
-    
-    for old, new in replacements.items():
-        cleaned_text = cleaned_text.replace(old, new)
-    
-    return cleaned_text
 
 def send_single_promotion_message(driver, user_id, message, keyword, db):
     try:
@@ -1367,11 +1334,6 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
         comment_success = False
         dm_success = False
         at_comment_success = False
-
-        # 在发送私信之前清理消息文本
-        sanitized_message = sanitize_text(message)
-        logger.info(f"原始消息: {message}")
-        logger.info(f"清理后的消息: {sanitized_message}")
 
         # 访问用户主页
         user_profile_url = f"https://www.tiktok.com/@{user_id}"
@@ -1407,7 +1369,11 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             )
             logger.info("找到评论输入框,正在输入评论")
 
-            comment_input.send_keys(sanitized_message)
+            # 使用剪贴板输入原始消息
+            pyperclip.copy(message)
+            comment_input.send_keys(Keys.CONTROL + 'v' if platform.system() == 'Windows' else Keys.COMMAND + 'v')
+            logger.info("使用剪贴板输入评论内容")
+
             random_wait(1, 2)
 
             logger.info("正在尝试使用回车键发送评论")
@@ -1445,10 +1411,10 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 )
                 logger.info("找到私信输入框,正在输入私信")
 
-                # 使用清理后的消息文本
-                for char in sanitized_message:
-                    message_input.send_keys(char)
-                    time.sleep(random.uniform(0.05, 0.15))  # 添加较短的随机延迟
+                # 使用剪贴板输入原始消息
+                pyperclip.copy(message)
+                message_input.send_keys(Keys.CONTROL + 'v' if platform.system() == 'Windows' else Keys.COMMAND + 'v')
+                logger.info("使用剪贴板输入私信内容")
 
                 random_wait(1, 2)
                 logger.info("正在尝试使用回车键发送私信")
@@ -1493,9 +1459,6 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 logger.error(f"发送私信失败: {str(e)}")
                 logger.error(f"发送私信失败的详细错误: {traceback.format_exc()}")
                 dm_success = False
-        else:
-            # 如果私信发送成功，则不再尝试在源视频下留言
-            pass
 
         if not dm_success and not comment_success:
             # 如果私信和留言都失败，则尝试在源视频下留言并艾特用户
@@ -1532,7 +1495,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 comment_input.send_keys("@")
                 time.sleep(random.uniform(0.3, 0.5))
 
-                # 逐字符输入用户ID并验证
+                # 逐字符输入用户ID
                 input_text = "@"
                 for char in user_id:
                     comment_input.send_keys(char)
@@ -1543,7 +1506,6 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                     actual_text = comment_input.text
                     if actual_text != input_text:
                         logger.warning(f"输入不匹配。预期: {input_text}, 实际: {actual_text}")
-                        # 使用JavaScript纠正输入
                         driver.execute_script("arguments[0].textContent = arguments[1];", comment_input, input_text)
                         driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", comment_input)
 
@@ -1572,17 +1534,16 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 if correct_suggestion:
                     correct_suggestion.click()
                     logger.info(f"成功选择正确的艾特用户 {user_id}")
+                    
+                    random_wait(1, 2)
+                    
+                    # 使用剪贴板输入评论内容
+                    pyperclip.copy(message)
+                    comment_input.send_keys(Keys.CONTROL + 'v' if platform.system() == 'Windows' else Keys.COMMAND + 'v')
+                    logger.info("使用剪贴板输入艾特评论内容")
+
                 else:
                     raise Exception(f"未找到匹配的用户建议: {user_id}")
-
-                random_wait(1, 2)
-
-                # 输入消息内容时使用清理后的文本
-                for char in sanitized_message:
-                    comment_input.send_keys(char)
-                    time.sleep(random.uniform(0.05, 0.15))
-
-                logger.info("消息内容输入完成")
 
                 random_wait(1, 2)
 
