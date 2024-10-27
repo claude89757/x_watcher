@@ -153,8 +153,8 @@ def setup_driver():
         chrome_processes.append(driver.service.process)
         logger.info(f"WebDriver已设置成功，使用驱动程序路径: {CHROME_DRIVER}")
         
-        
         # 初始化浏览器特征
+        driver.maximize_window()
         init_browser_features(driver)
         
         return driver
@@ -1368,10 +1368,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             )
             logger.info("找到评论输入框,正在输入评论")
 
-            for char in message:
-                comment_input.send_keys(char)
-                time.sleep(random.uniform(0.05, 0.1))
-
+            comment_input.send_keys(message)
             random_wait(1, 2)
 
             logger.info("正在尝试使用回车键发送评论")
@@ -1409,12 +1406,8 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 )
                 logger.info("找到私信输入框,正在输入私信")
 
-                for char in message:
-                    message_input.send_keys(char)
-                    time.sleep(random.uniform(0.05, 0.1))
-
+                message_input.send_keys(message)
                 random_wait(1, 2)
-
                 logger.info("正在尝试使用回车键发送私信")
                 message_input.send_keys(Keys.RETURN)
 
