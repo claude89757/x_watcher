@@ -819,6 +819,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
 
     comments_data = []
     comments_batch = []
+    total_scroll_attempts = 0
     scroll_attempts = 0
     max_scroll_attempts = 10  # 最大滚动尝试次数
     consecutive_no_new_comments = 0
@@ -838,6 +839,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
 
     while scroll_attempts < max_scroll_attempts:
         scroll_attempts += 1
+        total_scroll_attempts += 1
         logger.info(f"滚动尝试次数: {scroll_attempts}/{max_scroll_attempts}")
 
         soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -945,6 +947,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
             new_comments = comments_data[last_comments_count:]
             logger.info(f"本轮新收集到 {len(new_comments)} 条评论，累计收集 {len(comments_data)} 条评论")
             consecutive_no_new_comments = 0
+            scroll_attempts = 0
             current_scroll_distance = min_scroll_distance  # 重置滚动距离
         else:
             consecutive_no_new_comments += 1
