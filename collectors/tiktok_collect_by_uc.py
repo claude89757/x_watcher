@@ -1187,6 +1187,7 @@ def simulate_human_input(driver, element, text):
         
         # 最后再点击一次确保焦点
         element.click()
+        element.send_keys(".")
         return True
             
     except Exception as e:
@@ -1445,38 +1446,12 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             )
             logger.info("找到评论输入框,正在输入评论")
 
-            # 修改评论输入部分
-            try:
-                logger.info("开始模拟人类输入评论")
-                if simulate_human_input(driver, comment_input, message):
-                    logger.info("评论输入成功")
-                else:
-                    raise Exception("评论输入失败")
-            except Exception as e:
-                logger.error(f"评论输入失败: {str(e)}")
-                # 使用备选方案
-                try:
-                    logger.info("尝试使用JavaScript直接设置评论内容")
-                    driver.execute_script(
-                        "arguments[0].textContent = arguments[1];", 
-                        comment_input,
-                        message
-                    )
-                    driver.execute_script(
-                        "var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);",
-                        comment_input
-                    )
-                except Exception as js_error:
-                    logger.error(f"JavaScript设置评论失败: {str(js_error)}")
-                    if platform.system() != 'Linux':
-                        logger.info("尝试使用剪贴板方法")
-                        pyperclip.copy(message)
-                        comment_input.send_keys(Keys.CONTROL + 'v')
-                    else:
-                        raise
-
-            random_wait(1, 2)
-
+            logger.info("开始模拟人类输入评论")
+            if simulate_human_input(driver, comment_input, message):
+                logger.info("评论输入成功")
+            else:
+                raise Exception("评论输入失败")
+            
             logger.info("正在尝试使用回车键发送评论")
             comment_input.send_keys(Keys.RETURN)
 
@@ -1513,36 +1488,12 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 logger.info("找到私信输入框,正在输入私信")
 
                 # 修改私信输入部分
-                try:
-                    logger.info("开始模拟人类输入私信")
-                    if simulate_human_input(driver, message_input, message):
-                        logger.info("私信输入成功")
-                    else:
-                        raise Exception("私信输入失败")
-                except Exception as e:
-                    logger.error(f"私信输入失败: {str(e)}")
-                    # 使用备选方案
-                    try:
-                        logger.info("尝试使用JavaScript直接设置私信内容")
-                        driver.execute_script(
-                            "arguments[0].textContent = arguments[1];", 
-                            message_input,
-                            message
-                        )
-                        driver.execute_script(
-                            "var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);",
-                            message_input
-                        )
-                    except Exception as js_error:
-                        logger.error(f"JavaScript设置私信失败: {str(js_error)}")
-                        if platform.system() != 'Linux':
-                            logger.info("尝试使用剪贴板方法")
-                            pyperclip.copy(message)
-                            message_input.send_keys(Keys.CONTROL + 'v')
-                        else:
-                            raise
+                logger.info("开始模拟人类输入私信")
+                if simulate_human_input(driver, message_input, message):
+                    logger.info("私信输入成功")
+                else:
+                    raise Exception("私信输入失败")
 
-                random_wait(1, 2)
                 logger.info("正在尝试使用回车键发送私信")
                 message_input.send_keys(Keys.RETURN)
 
