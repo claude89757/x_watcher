@@ -1359,13 +1359,8 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "div[data-e2e='user-post-item'][role='button']"))
             )
             
-            # 确保视频元素在视图中可见
-            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", latest_video)
-            time.sleep(1)  # 等待滚动完成
-            
             logger.info("找到最新视频,正在点击")
-            # 使用JavaScript点击，避免元素不可点击的问题
-            driver.execute_script("arguments[0].click();", latest_video)
+            latest_video.click()
             
             # 等待视频页面加载完成
             WebDriverWait(driver, 10).until(
@@ -1574,17 +1569,19 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 # 检查评论是否成功发送
                 try:
                     WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, f"//div[contains(@class, 'DivCommentItemContainer')]//a[contains(@href, '/@{user_id}')]"))
+                        EC.presence_of_element_located((By.XPATH, f"//div[contains(@class, 'DivCommentItemContainer')]//a[contains(@href, '/@{account_username}')]"))
                     )
-                    logger.info(f"成功在源视频 {video_url} 下留言并艾特用户 {user_id}")
+                    logger.info(f"成功在用户 {user_id} 的视频下留言, by {account_username}")
                     at_comment_success = True
                 except TimeoutException:
-                    logger.warning(f"未能确认评论是否成功发送")
+                    logger.warning("未能确认评论是否成功发送")
                     at_comment_success = False
 
             except Exception as e:
                 logger.error(f"在源视频下留言并艾特用户失败: {str(e)}")
                 at_comment_success = False
+            
+        time.sleep(60)  # test
 
         # 根据操作结果返回相应的信息
         actions = []
