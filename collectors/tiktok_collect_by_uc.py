@@ -1302,7 +1302,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
             batch_users = user_messages[i:i+batch_size]
             batch_results = []
             for user_msg in batch_users:
-                result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'], keyword, db)
+                result = send_single_promotion_message(driver, user_msg['user_id'], user_msg['message'], keyword, db, account['username'])
                 batch_results.append(result)
             
             results.extend(batch_results)
@@ -1404,7 +1404,7 @@ def try_follow_user(driver, user_id):
         return False
 
 
-def send_single_promotion_message(driver, user_id, message, keyword, db):
+def send_single_promotion_message(driver, user_id, message, keyword, db, account_username):
     try:
         # 初始化操作结果
         follow_success = False
@@ -1455,10 +1455,16 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             logger.info("正在尝试使用回车键发送评论")
             comment_input.send_keys(Keys.RETURN)
 
-            random_wait(2, 4)
-
-            logger.info(f"成功在用户 {user_id} 的视频下留言")
-            comment_success = True
+            # 检查评论是否发送成功
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, f"//div[contains(@class, 'DivCommentItemContainer')]//a[contains(@href, '/@{account_username}')]"))
+                )
+                logger.info(f"成功在用户 {user_id} 的视频下留言, by {account_username}")
+                comment_success = True
+            except TimeoutException:
+                logger.warning(f"未能确认评论是否成功发送")
+                comment_success = False
         except Exception as e:
             logger.error(f"留言失败: {str(e)}")
 
