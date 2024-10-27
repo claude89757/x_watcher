@@ -83,7 +83,7 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # 添加大标题
-st.title("X智能助手")
+st.title("X智能助手（开发中...）")
 
 # 创建数据库连接
 db = MySQLDatabase()
