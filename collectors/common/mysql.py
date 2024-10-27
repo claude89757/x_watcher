@@ -791,7 +791,7 @@ class MySQLDatabase:
 
     def update_tiktok_video_status(self, video_id, status):
         """更新TikTok视频的状态"""
-        valid_statuses = ['pending', 'processing', 'completed', 'failed']
+        valid_statuses = ['pending', 'processing', 'completed', 'failed', 'skipped']
         if status not in valid_statuses:
             raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
         
