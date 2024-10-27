@@ -1097,17 +1097,17 @@ def process_task(task_id, keyword, server_ip):
         cleanup_chrome_processes()  # 确保在任务结束时清理所有Chrome进程
 
 def simulate_human_input(driver, element, text):
-    """模拟人类输入文本，专门针对Ubuntu系统优化"""
+    """模拟人类输入文本，专门针对Ubuntu系统优化，确保触发发送按钮"""
     try:
         # 先清空内容并聚焦
         driver.execute_script("arguments[0].textContent = '';", element)
         element.click()
         
-        # 使用JavaScript模拟输入，保持空格不变成换行
+        # 使用更完整的JavaScript代码模拟输入
         js_code = """
-        function setNativeValue(element, text) {
+        function simulateInput(element, text) {
             // 创建一个新的InputEvent
-            let inputEvent = new InputEvent('input', {
+            const inputEvent = new InputEvent('input', {
                 bubbles: true,
                 cancelable: true,
                 inputType: 'insertText',
@@ -1115,19 +1115,39 @@ def simulate_human_input(driver, element, text):
                 composed: true
             });
             
+            // 创建一个新的KeyboardEvent
+            const keyEvent = new KeyboardEvent('keydown', {
+                bubbles: true,
+                cancelable: true,
+                key: text[text.length - 1],
+                code: 'Key' + text[text.length - 1].toUpperCase(),
+                keyCode: text.charCodeAt(text.length - 1),
+                which: text.charCodeAt(text.length - 1),
+                composed: true
+            });
+            
             // 设置元素内容
             element.textContent = text;
             
-            // 触发input事件
+            // 触发事件序列
+            element.dispatchEvent(keyEvent);
             element.dispatchEvent(inputEvent);
+            
+            // 触发compositionstart和compositionend事件
+            element.dispatchEvent(new CompositionEvent('compositionstart'));
+            element.dispatchEvent(new CompositionEvent('compositionend'));
             
             // 触发change事件
             element.dispatchEvent(new Event('change', {
                 bubbles: true,
                 cancelable: true
             }));
+            
+            // 触发blur和focus事件
+            element.dispatchEvent(new FocusEvent('blur'));
+            element.dispatchEvent(new FocusEvent('focus'));
         }
-        setNativeValue(arguments[0], arguments[1]);
+        simulateInput(arguments[0], arguments[1]);
         """
         
         # 逐字符输入，包括空格
@@ -1136,13 +1156,28 @@ def simulate_human_input(driver, element, text):
             current_text += char
             driver.execute_script(js_code, element, current_text)
             time.sleep(random.uniform(0.1, 0.3))
+            
+            # 每输入一个字符后，额外触发一次点击事件
+            element.click()
+        
+        # 最后再触发一次完整的事件序列
+        driver.execute_script(js_code, element, text)
         
         # 验证最终文本
         actual_text = element.get_attribute('textContent') or element.text
         if actual_text.strip() != text.strip():
             logger.warning(f"文本验证不匹配，尝试最后一次设置。预期: '{text}', 实际: '{actual_text}'")
-            # 最后一次尝试直接设置
-            driver.execute_script(js_code, element, text)
+            
+            # 最后的补救措施：直接使用send_keys
+            try:
+                element.clear()
+                element.click()
+                for char in text:
+                    element.send_keys(char)
+                    time.sleep(random.uniform(0.1, 0.3))
+            except Exception as e:
+                logger.error(f"使用send_keys输入失败: {str(e)}")
+                return False
             
             # 再次验证
             actual_text = element.get_attribute('textContent') or element.text
@@ -1150,6 +1185,8 @@ def simulate_human_input(driver, element, text):
                 logger.error(f"最终文本验证失败。预期: '{text}', 实际: '{actual_text}'")
                 return False
         
+        # 最后再点击一次确保焦点
+        element.click()
         return True
             
     except Exception as e:
@@ -1339,7 +1376,7 @@ def try_follow_user(driver, user_id):
         
         # 检查按钮文本
         button_text = follow_button.text.lower()
-        if button_text in ['following', '已关注']:
+        if button_text in ['following', '已��注']:
             logger.info(f"用户 {user_id} 已经被关注")
             return True
         elif button_text not in ['follow', '关注']:
