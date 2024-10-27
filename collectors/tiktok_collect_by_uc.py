@@ -281,7 +281,7 @@ def random_sleep(min_seconds=1, max_seconds=3):
     time.sleep(time_to_sleep)
 
 def save_cookies(driver, username):
-    """保存当前会话的Cookies到JSON文件。"""
+    """保存当前会话的Cookies到JSON���件。"""
     logger.info("保存Cookies...")
     cookies = driver.get_cookies()
     
@@ -438,7 +438,7 @@ def login_by_local_cookies(driver, username=None):
             
             # 添加cookies
             for cookie in cookies:
-                # 移除可能导致问题的字段
+                # 移除可能导致问题的���段
                 cookie.pop('sameSite', None)
                 cookie.pop('storeId', None)
                 cookie.pop('origin', None)
@@ -616,7 +616,7 @@ def search_tiktok_video_links(driver, keyword):
     logger.info(f"开始搜索关键词: {keyword}")
     search_url = f"https://www.tiktok.com/search?q={keyword}"
     driver.get(search_url)
-    logger.info(f"正在访问搜索页面: {search_url}")
+    logger.info(f"正在访问搜��页面: {search_url}")
     WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.TAG_NAME, 'video'))
     )
@@ -659,7 +659,7 @@ def visit_video_page(driver, video_url):
             'sessionid',   # 会话ID
             'sid_tt',      # TikTok会话ID
             'uid_tt',      # TikTok用户ID
-            'msToken',     # TikTok安全令牌
+            'msToken',     # TikTok安��令牌
             'ttwid',       # TikTok Web ID
             'tt_webid_v2'  # TikTok Web ID v2
         ]  # 保留关键登录cookie
@@ -940,7 +940,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         new_height = driver.execute_script("return document.body.scrollHeight")
         
         if new_height == last_height:
-            logger.info("已到达页面底部")
+            logger.info("已到达页面��部")
             break
         
         if len(comments_data) > last_comments_count:
@@ -1097,25 +1097,62 @@ def process_task(task_id, keyword, server_ip):
         cleanup_chrome_processes()  # 确保在任务结束时清理所有Chrome进程
 
 def simulate_human_input(driver, element, text):
-    """模拟人类输入文本，并验证输入是否正确"""
-    for char in text:
-        element.send_keys(char)
-        time.sleep(random.uniform(0.2, 0.5))  # 增加随机暂停时间
-
-    # 验证输入是否正确
-    input_value = element.get_attribute('value')
-    if input_value != text:
-        # 如果输入不正确，使用JavaScript直接设置值
-        driver.execute_script("arguments[0].value = arguments[1];", element, text)
-        # 触发input事件
-        driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", element)
-        # 触发change事件
-        driver.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", element)
-
-    # 最后再次验证
-    WebDriverWait(driver, 10).until(
-        EC.text_to_be_present_in_element_value((By.XPATH, f"//*[@name='{element.get_attribute('name')}']"), text)
-    )
+    """模拟人类输入文本，并处理空格清空问题"""
+    try:
+        # 方案1：使用分段输入方式
+        words = text.split()
+        for i, word in enumerate(words):
+            # 输入单词
+            for char in word:
+                element.send_keys(char)
+                time.sleep(random.uniform(0.1, 0.3))
+            
+            # 验证当前输入
+            current_text = element.get_attribute('value') or element.text
+            expected_text = ' '.join(words[:i+1])
+            
+            # 如果输入不匹配，使用JavaScript修正
+            if current_text != expected_text:
+                driver.execute_script("arguments[0].textContent = arguments[1];", element, expected_text)
+                driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", element)
+            
+            # 如果不是最后一个单词，添加空格
+            if i < len(words) - 1:
+                element.send_keys(Keys.SPACE)
+                time.sleep(random.uniform(0.1, 0.3))
+        
+        # 最终验证
+        final_text = element.get_attribute('value') or element.text
+        if final_text != text:
+            # 如果最终文本不匹配，使用备选方案
+            try:
+                # 方案2：使用剪贴板
+                if platform.system() != 'Linux':  # Linux服务器可能没有剪贴板访问权限
+                    pyperclip.copy(text)
+                    element.clear()
+                    element.send_keys(Keys.CONTROL + 'v' if platform.system() == 'Windows' else Keys.COMMAND + 'v')
+                else:
+                    # 方案3：直接使用JavaScript设置
+                    driver.execute_script("arguments[0].textContent = arguments[1];", element, text)
+                    driver.execute_script("var event = new Event('input', { bubbles: true }); arguments[0].dispatchEvent(event);", element)
+                    driver.execute_script("var event = new Event('change', { bubbles: true }); arguments[0].dispatchEvent(event);", element)
+            except Exception as e:
+                logger.error(f"备选输入方案失败: {str(e)}")
+                raise
+        
+        # 等待文本完全设置
+        try:
+            WebDriverWait(driver, 5).until(
+                lambda d: (element.get_attribute('value') or element.text) == text
+            )
+            return True
+        except TimeoutException:
+            logger.warning("等待文本设置超时")
+            return False
+            
+    except Exception as e:
+        logger.error(f"模拟人类输入时发生错误: {str(e)}")
+        return False
 
 def check_account_status(account_id, username, email):
     db = MySQLDatabase()
@@ -1304,7 +1341,7 @@ def try_follow_user(driver, user_id):
             logger.info(f"用户 {user_id} 已经被关注")
             return True
         elif button_text not in ['follow', '关注']:
-            logger.warning(f"无法确定注按钮状态，按钮文本为: {button_text}")
+            logger.warning(f"无法确���注按钮状态，按钮文本为: {button_text}")
             return False
         
         # 如果是"关注"状态，则点击关注
@@ -1624,7 +1661,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
             pass
             # actions.append("关注")
         if comment_success:
-            actions.append("用���视频留言")
+            actions.append("用户视频留言")
         if dm_success:
             actions.append("直接私信")
         if at_comment_success:
