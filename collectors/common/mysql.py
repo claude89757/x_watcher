@@ -28,7 +28,6 @@ class MySQLDatabase:
         if not all([self.host, self.user, self.password, self.database]):
             raise ValueError("缺少必要的MySQL连接环境变量配置")
         self.connection = None
-        self.connect()
 
     def log_sql(self, query, params=None):
         """记录 SQL 查询"""
