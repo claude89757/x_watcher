@@ -1497,7 +1497,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db):
                 logger.info("正在尝试使用回车键发送私信")
                 message_input.send_keys(Keys.RETURN)
 
-                random_wait(2, 4)
+                random_wait(1, 3)
 
                 # 检查私信是否发送成功
                 try:
