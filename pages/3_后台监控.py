@@ -71,26 +71,50 @@ try:
     active_workers = db.get_worker_list()
 
     if active_workers:
-        # 创建选择框让用户选择要查看的 worker
-        worker_options = [f"{w['worker_name']} ({w['worker_ip']})" for w in active_workers]
-        selected_worker = st.selectbox("选择要查看的 Worker", options=worker_options)
+        # 创建两列布局
+        col1, col2 = st.columns(2)
         
-        # 获取选中的 worker 信息
-        selected_worker_info = next(w for w in active_workers if f"{w['worker_name']} ({w['worker_ip']})" == selected_worker)
+        with col1:
+            # 创建选择框让用户选择要查看的 worker
+            worker_options = [f"{w['worker_name']} ({w['worker_ip']})" for w in active_workers]
+            selected_worker = st.selectbox("选择要查看的 Worker", options=worker_options)
+            
+            # 获取选中的 worker 信息
+            selected_worker_info = next(w for w in active_workers if f"{w['worker_name']} ({w['worker_ip']})" == selected_worker)
+            
+            # 显示选中 worker 的信息
+            st.write(f"状态: {selected_worker_info['status']}")
+            
+            # 构造 VNC URL，包含密码参数
+            worker_ip = selected_worker_info['worker_ip']
+            novnc_password = selected_worker_info['novnc_password']
+            encoded_password = urllib.parse.quote(novnc_password)
+            vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+            
+            # 添加加载单个 VNC 画面的按钮
+            if st.button("加载选中 Worker 的 VNC 画面"):
+                # 显示 VNC 窗口
+                st.components.v1.iframe(vnc_url, width=800, height=600)
         
-        # 显示选中 worker 的信息
-        st.write(f"状态: {selected_worker_info['status']}")
-        
-        # 构造 VNC URL，包含密码参数
-        worker_ip = selected_worker_info['worker_ip']
-        novnc_password = selected_worker_info['novnc_password']
-        encoded_password = urllib.parse.quote(novnc_password)
-        vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
-        
-        # 添加加载 VNC 画面的按钮
-        if st.button("加载 VNC 画面"):
-            # 显示 VNC 窗口
-            st.components.v1.iframe(vnc_url, width=1200, height=800)
+        with col2:
+            # 添加加载所有 VNC 画面的按钮
+            if st.button("加载所有 Worker 的 VNC 画面"):
+                # 为每个 worker 创建 VNC 窗口
+                for worker in active_workers:
+                    worker_ip = worker['worker_ip']
+                    novnc_password = worker['novnc_password']
+                    encoded_password = urllib.parse.quote(novnc_password)
+                    vnc_url = f"http://{worker_ip}:6080/vnc.html?password={encoded_password}&autoconnect=true&reconnect=true"
+                    
+                    # 显示 worker 名称和状态
+                    st.write(f"Worker: {worker['worker_name']} ({worker_ip})")
+                    st.write(f"状态: {worker['status']}")
+                    
+                    # 显示 VNC 窗口
+                    st.components.v1.iframe(vnc_url, width=800, height=600)
+                    
+                    # 添加分隔线
+                    st.markdown("---")
     
     else:
         st.info("当前没有活跃的 workers")

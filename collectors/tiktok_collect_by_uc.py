@@ -581,15 +581,15 @@ def search_tiktok_videos(driver, keyword):
         # 随机暂停
         random_sleep(2, 4)
         
-        # 检查是否到达页面底部
-        last_height = driver.execute_script("return document.body.scrollHeight")
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        random_sleep(1, 2)
-        new_height = driver.execute_script("return document.body.scrollHeight")
+        # # 检查是否到达页面底部
+        # last_height = driver.execute_script("return document.body.scrollHeight")
+        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # random_sleep(1, 2)
+        # new_height = driver.execute_script("return document.body.scrollHeight")
         
-        if new_height == last_height:
-            logger.info("已到达页面底部")
-            break
+        # if new_height == last_height:
+        #     logger.info("已到达页面底部")
+        #     break
         
         # 随机完整性检查
         if random.random() < 0.2:  # 20%的概率
