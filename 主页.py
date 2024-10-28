@@ -129,7 +129,7 @@ else:
 if access_granted:
     sidebar_home()
     st.success(access_granted_message)
-    st.markdown("-----")
+    st.markdown("------")
 
     st.page_link("pages/0_智能助手_Tiktok.py", label="TikTok智能助手", icon="1️⃣", use_container_width=True)
     st.page_link("pages/1_智能助手_X.py", label="X智能助手", icon="2️⃣", use_container_width=True)
