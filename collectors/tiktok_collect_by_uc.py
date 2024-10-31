@@ -36,7 +36,7 @@ logging.basicConfig(
     filename='tiktok_collect.log',  # 日志文件名
     filemode='a',        # 追加模式 ('a') 或覆盖模式 ('w')
     level=logging.INFO,  # 日志级别
-    format='%(asctime)s - %(levelname)s - %(message)s' # 日志格式
+    format='%(asctime)s - %(levelname)s - %(message)s' # 日志��式
 )
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ def setup_driver():
     # 添加语言参数
     options.add_argument('--lang=zh-CN,zh,en-US,en')
     
-    # 添加更多浏览器特征
+    # 添加更��浏览器特征
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--start-maximized')
     
@@ -468,7 +468,7 @@ def login_by_local_cookies(driver, username=None):
     raise Exception(error_message)
 
 def search_tiktok_videos(driver, keyword):
-    """在TikTok上搜索关键字并返回视频链接列表。"""
+    """在TikTok上搜索关键字并返��视频链接列表。"""
     logger.info(f"开始搜索关键词: {keyword}")
     search_url = f"https://www.tiktok.com/search?q={keyword}"
     driver.get(search_url)
@@ -613,7 +613,7 @@ def search_tiktok_videos(driver, keyword):
 
 def search_tiktok_video_links(driver, keyword):
     """在TikTok上搜索关键字并返回视频链接列表。"""
-    logger.info(f"开始搜索关键词: {keyword}")
+    logger.info(f"开始搜索���键词: {keyword}")
     search_url = f"https://www.tiktok.com/search?q={keyword}"
     driver.get(search_url)
     logger.info(f"正在访问搜索页面: {search_url}")
@@ -784,7 +784,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
     """收集给定视频URL下的评论。"""
     logger.info(f"开始收集视频评论: {video_url}")
     
-    # 访问视频页面
+    # 访问视频页���
     if not visit_video_page(driver, video_url):
         error_msg = "无法访问视频页面"
         logger.error(error_msg)
@@ -908,61 +908,91 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                         # 检查任务状态
                         task_status = db.get_tiktok_task_status(task_id)
                         if task_status != 'running':
-                            logger.info(f"任务状态为 {task_status}，停止收集评论")
+                            logger.info(f"任务状态为 {task_status}，停收集评论")
                             return comments_data
                     except Exception as e:
                         logger.error(f"存储评论到数据库时发生错误: {str(e)}")
 
             # 处理子评论加载按钮
             try:
-                # 查找当前评论下的所有子评论按钮
-                view_buttons = driver.find_elements(
-                    By.XPATH,
-                    ".//div[contains(@class, 'DivViewRepliesContainer')]//span[contains(text(), 'View') or contains(text(), '查看')]"
-                )
+                # 初始化超时计时器
+                start_time = time.time()
+                timeout_seconds = 60
                 
-                for view_button in view_buttons:
-                    try:
-                        button_text = view_button.text.strip()
-                        if "Hide" in button_text or "隐藏" in button_text:
-                            logger.info(f"跳过隐藏按钮: {button_text}")
-                            continue
-                            
-                        if "View" in button_text or "查看" in button_text:
-                            logger.info(f"发现加载更多回复按钮: {button_text}")
-                            
-                            # 确保按钮在视图中
-                            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", view_button)
-                            random_wait(1, 2)
-                            
-                            # 点击加载更多回复
-                            driver.execute_script("arguments[0].click();", view_button)
-                            logger.info("已点击加载更多回复按钮")
-                            
-                            # 等待新回复加载
-                            random_wait(1, 6)
-                            
-                            # 等待新的子评论出现
-                            try:
-                                current_comments = len(driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]'))
-                                WebDriverWait(driver, 10).until(
-                                    lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
-                                )
-                                logger.info("新的子评论已加载")
-                                
-                                # 更新页面源码
-                                soup = BeautifulSoup(driver.page_source, 'html.parser')
-                                
-                                # 给一些时间让动画完成
-                                random_wait(1, 2)
-                            except TimeoutException:
-                                logger.warning("等待子评论加载超时")
+                # 对每个评论容器，循环点击加载更多按钮直到没有更多子评论或超时
+                while True:
+                    # 检查是否超时
+                    if time.time() - start_time > timeout_seconds:
+                        logger.info("子评论加载超过60秒，退出加载循环")
+                        break
+                    
+                    # 查找当前评论下的子评论按钮
+                    view_buttons = driver.find_elements(
+                        By.XPATH,
+                        ".//div[contains(@class, 'DivViewRepliesContainer')]//span[contains(text(), 'View') or contains(text(), '查看')]"
+                    )
+                    
+                    if not view_buttons:
+                        logger.info("没有更多子评论加载按钮")
+                        break
+                    
+                    found_loadable_button = False
+                    for view_button in view_buttons:
+                        try:
+                            button_text = view_button.text.strip()
+                            if "Hide" in button_text or "隐藏" in button_text:
                                 continue
-                            
-                    except Exception as e:
-                        logger.error(f"处理单个子评论加载按钮时发生错误: {str(e)}")
-                        continue
-                        
+                                
+                            if "View" in button_text or "查看" in button_text:
+                                # 找到新的加载按钮，重置计时器
+                                start_time = time.time()
+                                found_loadable_button = True
+                                logger.info(f"发现加载更多回复按钮: {button_text}，重置60秒计时器")
+                                
+                                # 确保按钮在视图中
+                                driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", view_button)
+                                random_wait(1, 2)
+                                
+                                # 记录当前评论数
+                                current_comments = len(driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]'))
+                                
+                                # 点击加载更多回复
+                                driver.execute_script("arguments[0].click();", view_button)
+                                logger.info("已点击加载更多回复按钮")
+                                
+                                # 等待新回复加载
+                                random_wait(2, 4)
+                                
+                                # 等待新的子评论出现
+                                try:
+                                    WebDriverWait(driver, 10).until(
+                                        lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
+                                    )
+                                    logger.info("新的子评论已加载")
+                                    
+                                    # 添加一个小幅度的向下滚动
+                                    scroll_amount = random.randint(100, 200)
+                                    driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+                                    logger.info(f"子评论加载后向下滚动 {scroll_amount} 像素")
+                                    
+                                    # 更新页面源码
+                                    soup = BeautifulSoup(driver.page_source, 'html.parser')
+                                    
+                                    # 给一些时间让动画完成
+                                    random_wait(1, 2)
+                                except TimeoutException:
+                                    logger.warning("等待子评论加载超时")
+                                    break
+                                
+                        except Exception as e:
+                            logger.error(f"处理单个子评论加载按钮时发生错误: {str(e)}")
+                            continue
+                    
+                    # 如果没有找到可以加载的按钮，退出循环
+                    if not found_loadable_button:
+                        logger.info("没有找到更多可加载的子评论按钮")
+                        break
+
             except Exception as e:
                 logger.error(f"处理评论的子评论加载按钮时发生错误: {str(e)}")
                 continue
@@ -1322,7 +1352,7 @@ def simulate_human_scroll(driver):
     scroll_to = random.randint(viewport_height, max_scroll)
     
     driver.execute_script(f"window.scrollTo(0, {scroll_to});")
-    logger.info(f"模拟人类向下滚动到 {scroll_to} 像素")
+    logger.info(f"���拟人类向下���动到 {scroll_to} 像素")
     time.sleep(scroll_pause_time)
     
     # 短暂停留
@@ -1453,7 +1483,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 comment_success = True
                 time.sleep(5)
             except TimeoutException:
-                logger.warning(f"未能确认评论是否成功发送")
+                logger.warning(f"未能确认���论是否成功发送")
                 comment_success = False
         except Exception as e:
             logger.error(f"留言失败: {str(e)}")
@@ -1587,7 +1617,6 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 # 等待艾特建议列表出现
                 WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-at-user']"))
-                )
                 
                 # 查找匹配的用户建议并点击
                 mention_suggestions = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='comment-at-list']")
