@@ -80,27 +80,36 @@ def generate_msg(db: MySQLDatabase):
     selected_keyword = st.selectbox("关键词", keywords, 
                                     index=keywords.index(st.session_state.cached_keyword) if st.session_state.cached_keyword in keywords else 0)
     
-    # 获取高意向客户数据
-    high_intent_customers = db.get_second_round_analyzed_comments(selected_keyword)
-    high_intent_df = pd.DataFrame(high_intent_customers)
+    # 获取分析后的客户数据
+    analyzed_customers = db.get_second_round_analyzed_comments(selected_keyword)
+    analyzed_df = pd.DataFrame(analyzed_customers)
     
-    if high_intent_df.empty:
-        st.warning(f"未找到关键词 '{selected_keyword}' 的高意向客户。请先进行评论分析或选择其他关键词。")
+    if analyzed_df.empty:
+        st.warning(f"未找到关键词 '{selected_keyword}' 的分析后客户数据。请先进行评论分析或选择其他关键词。")
         return  # 提前结束函数
     
-    # 根据可用的列筛选高意向客户
-    if 'second_round_classification' in high_intent_df.columns:
-        high_intent_df = high_intent_df[high_intent_df['second_round_classification'] == '高意向客户']
+    # 添加多选框，让用户选择要包含的客户意向类型
+    intent_options = ['高意向客户', '中意向客户', '低意向客户']
+    selected_intents = st.multiselect(
+        "选择要包含的客户意向类型",
+        intent_options,
+        default=['高意向客户']  # 默认选中高意向客户
+    )
+    
+    # 根据选择的意向类型筛选客户
+    if 'second_round_classification' in analyzed_df.columns:
+        filtered_df = analyzed_df[analyzed_df['second_round_classification'].isin(selected_intents)]
     else:
-        st.warning("无法找到用于筛选高意向客户的列。显示所有客户数据。")
+        st.warning("无法找到用于筛选客户的列。显示所有客户数据。")
+        filtered_df = analyzed_df
     
-    st.success(f"{len(high_intent_df)} 个高意向客户")
+    st.success(f"已筛选出 {len(filtered_df)} 个客户")
     
-    # 显示高意向客户数据
-    display_columns = ['user_id', 'reply_content']
-    if 'analysis_reason' in high_intent_df.columns:
+    # 显示筛选后的客户数据
+    display_columns = ['user_id', 'reply_content', 'second_round_classification']
+    if 'analysis_reason' in filtered_df.columns:
         display_columns.append('analysis_reason')
-    st.dataframe(high_intent_df[display_columns])
+    st.dataframe(filtered_df[display_columns])
     
     # 选择模型
     model = st.selectbox("选择GPT模型", ["gpt-4o-mini", "gpt-4o"])
@@ -156,11 +165,11 @@ def generate_msg(db: MySQLDatabase):
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        total_customers = len(high_intent_df)
+        total_customers = len(filtered_df)
         
         all_messages = {}
         for i in range(0, total_customers, batch_size):
-            batch = high_intent_df.iloc[i:min(i+batch_size, total_customers)]
+            batch = filtered_df.iloc[i:min(i+batch_size, total_customers)]
             
             user_comments = {}
             for _, row in batch.iterrows():
