@@ -333,7 +333,7 @@ def load_cookies(driver, username):
         for cookie in current_cookies:
             logger.info(f"Cookie: {cookie['name']} = {cookie['value'][:10]}... (domain: {cookie['domain']})")
         
-        logger.info(f"Cookies从 {filename} 加载")
+        logger.info(f"Cookies {filename} 加载")
         return True
     except FileNotFoundError:
         logger.info(f"未找到 {filename} 文件")
@@ -647,7 +647,7 @@ def visit_video_page(driver, video_url):
         video_url: 要访问的视频URL
         
     Returns:
-        bool: 是否成访问页面
+        bool: 是否访问页面
     """
     max_attempts = 8
     attempt = 0
@@ -843,6 +843,8 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         logger.info(f"滚动尝试次数: {scroll_attempts}/{max_scroll_attempts}")
 
         soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+        # 查找所有评论容器
         for comment_div in soup.select('div[class*="DivCommentItemWrapper"]'):
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
@@ -910,6 +912,60 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                             return comments_data
                     except Exception as e:
                         logger.error(f"存储评论到数据库时发生错误: {str(e)}")
+
+            # 处理子评论加载按钮
+            try:
+                # 查找当前评论下的所有子评论按钮
+                view_buttons = driver.find_elements(
+                    By.XPATH,
+                    ".//div[contains(@class, 'DivViewRepliesContainer')]//span[contains(text(), 'View') or contains(text(), '查看')]"
+                )
+                
+                for view_button in view_buttons:
+                    try:
+                        button_text = view_button.text.strip()
+                        if "Hide" in button_text or "隐藏" in button_text:
+                            logger.info(f"跳过隐藏按钮: {button_text}")
+                            continue
+                            
+                        if "View" in button_text or "查看" in button_text:
+                            logger.info(f"发现加载更多回复按钮: {button_text}")
+                            
+                            # 确保按钮在视图中
+                            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", view_button)
+                            random_wait(1, 2)
+                            
+                            # 点击加载更多回复
+                            driver.execute_script("arguments[0].click();", view_button)
+                            logger.info("已点击加载更多回复按钮")
+                            
+                            # 等待新回复加载
+                            random_wait(1, 6)
+                            
+                            # 等待新的子评论出现
+                            try:
+                                current_comments = len(driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]'))
+                                WebDriverWait(driver, 10).until(
+                                    lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
+                                )
+                                logger.info("新的子评论已加载")
+                                
+                                # 更新页面源码
+                                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                                
+                                # 给一些时间让动画完成
+                                random_wait(1, 2)
+                            except TimeoutException:
+                                logger.warning("等待子评论加载超时")
+                                continue
+                            
+                    except Exception as e:
+                        logger.error(f"处理单个子评论加载按钮时发生错误: {str(e)}")
+                        continue
+                        
+            except Exception as e:
+                logger.error(f"处理评论的子评论加载按钮时发生错误: {str(e)}")
+                continue
 
         # 优化的滚动策
         if consecutive_no_new_comments >= max_consecutive_no_new:
@@ -1189,7 +1245,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
     try:
         driver = setup_driver()
         
-        # 获取账号信��
+        # 获取账号信
         account = db.get_tiktok_account_by_id(account_id)
         if not account:
             return [{"success": False, "message": "账号不存在", "action": "none", "user_id": user_msg['user_id']} for user_msg in user_messages]
