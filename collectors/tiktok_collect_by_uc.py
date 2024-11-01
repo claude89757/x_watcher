@@ -1248,12 +1248,20 @@ def process_task(task_id, keyword, server_ip):
                 try:
                     comments = collect_comments(driver, video_url, video_id, keyword, db, user_id, task_id)
                     logger.info(f"任务 {task_id} 收集到 {len(comments)} 条来自 {video_url} 的评论")
+
+                    if db.is_connected:
+                        pass
+                    else:
+                        db.connect()
                     db.mark_video_completed(video_id)
                     video_count += 1
                     db.update_task_progress(task_id, 1)
                 except Exception as e:
                     logger.error(f"处理视频 {video_url} 时出错: {str(e)}")
-                    db.update_tiktok_video_status(video_id, 'failed')
+                    try:
+                        db.update_tiktok_video_status(video_id, 'failed')
+                    except Exception as e:
+                        logger.error(f"更新视频 {video_url} 状态为failed时发生错误: {str(e)}")
             else:
                 logger.info(f"任务 {task_id} 状态为 {task_status}, 退出浏览器...")
                 break
