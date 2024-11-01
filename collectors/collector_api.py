@@ -111,7 +111,7 @@ def update_worker_status(status='active'):
 # 任务管理函数
 def check_and_execute_tasks():
     """检查并执行待处理的任务"""
-    if get_chrome_process_count() > 0:
+    if get_chrome_process_count() > MAX_CONCURRENT_CHROME:
         logger.info("当前有Chrome进程正在运行，跳过任务检查")
         return
 
@@ -121,6 +121,10 @@ def check_and_execute_tasks():
         pending_tasks = list(db.get_pending_tiktok_tasks() or [])
         running_tasks = list(db.get_running_tiktok_tasks() or [])
         tasks = pending_tasks + running_tasks
+        
+        if len(tasks) == 0:
+            logger.info("没有待处理的任务")
+            return
         
         for task in tasks:
             if get_chrome_process_count() >= MAX_CONCURRENT_CHROME:
