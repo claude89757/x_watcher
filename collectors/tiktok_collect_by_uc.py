@@ -844,7 +844,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         'click_success': 0,          # 点击成功次数
         'click_failed': 0,           # 点击失败次数
         'load_success': 0,           # 加载成功次数
-        'load_timeout': 0            # 加载超时次数
+        'load_timeout': 0,           # 加载超时次数
+        'child_comments_found': 0,   # 找到的子评论总数
+        'child_comments_saved': 0    # 成功保存的子评论数
     }
 
     while scroll_attempts < max_scroll_attempts:
@@ -894,6 +896,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                     'collected_by': collected_by,
                     'video_url': video_url
                 })
+                button_stats['child_comments_saved'] += 1  # 增加成功保存的子评论计数
                 
                 # 如果缓存批次达到50条，尝试存储到数据库
                 if len(comments_batch) >= 50:
@@ -960,6 +963,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                     logger.info(f"发现 {len(view_buttons)} 个加载更多回复按钮, 已点击按钮数: {len(clicked_buttons)}, "
                                f"点击成功率: {(button_stats['click_success'] / button_stats['total_buttons_found'] * 100):.1f}%, "
                                f"加载成功率: {(button_stats['load_success'] / max(button_stats['click_success'], 1) * 100):.1f}%")
+                    logger.info(f"已找到 {button_stats['child_comments_found']} 个子评论, 已保存 {button_stats['child_comments_saved']} 个子评论")
                     
                     for view_button in view_buttons:
                         try:
@@ -1019,6 +1023,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                         
                                         # 在容器内查找子评论
                                         child_comments = reply_container.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')
+                                        button_stats['child_comments_found'] += len(child_comments)  # 增加找到的子评论计数
                                         logger.info(f"找到 {len(child_comments)} 个子评论")
                                         
                                         if child_comments:
@@ -1044,20 +1049,27 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                                         continue
                                                     
                                                     # 获取评论内容
-                                                    content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-2"] span')
-                                                    reply_content = content_element.text if content_element else None
-                                                    
-                                                    if not reply_content:
-                                                        # 尝试备用选择器
-                                                        content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[class*="TUXText"][class*="weight-normal"]')
-                                                        reply_content = content_element.text if content_element else None
+                                                    try:
+                                                        # 首先尝试获取完整的评论内容元素
+                                                        content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-2"]')
+                                                        # 然后获取其中的文本内容
+                                                        reply_content = content_element.find_element(By.CSS_SELECTOR, 'span[class*="weight-normal"]').text
+                                                    except:
+                                                        try:
+                                                            # 备用选择器1：直接查找带有评论内容的span
+                                                            content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[class*="TUXText"][class*="weight-normal"]')
+                                                            reply_content = content_element.text
+                                                        except:
+                                                            try:
+                                                                # 备用选择器2：查找评论容器内的所有normal weight文本
+                                                                content_elements = fresh_comment.find_elements(By.CSS_SELECTOR, 'span[class*="weight-normal"]')
+                                                                reply_content = next((el.text for el in content_elements if el.text.strip()), None)
+                                                            except:
+                                                                reply_content = None
                                                     
                                                     if not reply_content:
                                                         logger.warning(f"无法获取子评论内容，跳过此评论")
                                                         continue
-                                                    
-                                                    # 预处理评论内容
-                                                    reply_content = preprocess_comment(reply_content)
                                                     
                                                     # 获取评论时间
                                                     try:
@@ -1086,6 +1098,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                                             'collected_by': collected_by,
                                                             'video_url': video_url
                                                         })
+                                                        button_stats['child_comments_saved'] += 1  # 增加成功保存的子评论计数
                                                         
                                                 except Exception as e:
                                                     logger.error(f"处理子评论时发生错误: {str(e)}")
@@ -1203,17 +1216,21 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         except Exception as e:
             logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
 
-    logger.info(f"评论收集完成，共收集 {len(comments_data)} 条评论")
-    # 在函数结束前添加最终统计日志
     logger.info(f"评论收集完成，子评论加载统计:")
     logger.info(f"- 总计发现按钮数: {button_stats['total_buttons_found']}")
     logger.info(f"- 点击成功次数: {button_stats['click_success']}")
     logger.info(f"- 点击失败次数: {button_stats['click_failed']}")
     logger.info(f"- 加载成功次数: {button_stats['load_success']}")
     logger.info(f"- 加载超时次数: {button_stats['load_timeout']}")
+    logger.info(f"- 找到的子评论数: {button_stats['child_comments_found']}")
+    logger.info(f"- 保存的子评论数: {button_stats['child_comments_saved']}")
     if button_stats['total_buttons_found'] > 0:
         logger.info(f"- 点击成功率: {(button_stats['click_success'] / button_stats['total_buttons_found'] * 100):.1f}%")
         logger.info(f"- 加载成功率: {(button_stats['load_success'] / max(button_stats['click_success'], 1) * 100):.1f}%")
+    if button_stats['child_comments_found'] > 0:
+        logger.info(f"- 子评论保存率: {(button_stats['child_comments_saved'] / button_stats['child_comments_found'] * 100):.1f}%")
+
+    logger.info(f"评论收集完成，共收集 {len(comments_data)} 条评论")
     return comments_data
 
 def take_screenshot(driver, prefix="screenshot"):
