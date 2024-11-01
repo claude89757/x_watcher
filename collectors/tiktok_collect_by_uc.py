@@ -938,17 +938,14 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                         break
                     
                     found_loadable_button = False
+                    logger.info(f"发现 {len(view_buttons)} 个加载更多回复按钮, 已点击按钮数: {len(clicked_buttons)}")
                     for view_button in view_buttons:
                         try:
                             # 获取按钮的唯一标识
                             button_text = view_button.text.strip()
                             button_location = view_button.location['y']
-                            # 获取父评论的信息来帮助区分
-                            parent_comment = view_button.find_element(By.xpath("./ancestor::div[contains(@class, 'DivCommentItemContainer')]"))
-                            parent_comment_id = parent_comment.get_attribute('id') or ''
-                            parent_comment_text = parent_comment.find_element(By.xpath(".//span[@data-e2e='comment-level-1']")).text[:50] or ''  # 取前50个字符
                             # 组合多个特征生成唯一ID
-                            button_id = f"{parent_comment_id}_{parent_comment_text}_{button_text}_{button_location}"
+                            button_id = f"{button_text}_{button_location}"
                             
                             # 如果按钮已经点击过，跳过
                             if button_id in clicked_buttons:
@@ -1679,7 +1676,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 else:
                     raise Exception(f"未找到匹配的用户建议: {user_id}")
 
-                logger.info("正在尝试使用回车键发送评论")
+                logger.info("正在尝试���用回车键发送评论")
                 comment_input.send_keys(Keys.RETURN)
 
                 random_wait(2, 4)
