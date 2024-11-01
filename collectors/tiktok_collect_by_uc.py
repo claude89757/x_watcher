@@ -1034,7 +1034,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                         
                                         for child_comment in child_comments:
                                             try:
-                                                # 获取子评论用户ID
+                                                # 从当前子评论元素中获取用户链接
                                                 user_link = child_comment.find_element(By.CSS_SELECTOR, 'a[href^="/@"]')
                                                 user_id = user_link.get_attribute('href').replace('https://www.tiktok.com/@', '')
                                                 
@@ -1042,53 +1042,38 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                                 if user_id in existing_user_ids:
                                                     continue
                                                 
-                                                # 获取子评论内容
-                                                try:
-                                                    # 首先尝试获取二级评论内容
-                                                    reply_content_element = child_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-2"]')
-                                                    if not reply_content_element:
-                                                        # 如果没找到，尝试获取一级评论内容
-                                                        reply_content_element = child_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-1"]')
-                                                    if not reply_content_element:
-                                                        # 如果还是没找到，尝试更通用的选择器
-                                                        reply_content_element = child_comment.find_element(By.CSS_SELECTOR, 'span[class*="TUXText"][class*="weight-normal"]')
-                                                    
-                                                    reply_content = reply_content_element.text if reply_content_element else ''
-                                                    
-                                                    # 如果内容为空，尝试其他可能的选择器
-                                                    if not reply_content:
-                                                        possible_selectors = [
-                                                            'div[class*="CommentContentWrapper"] span',
-                                                            'div[class*="DivCommentContentWrapper"] span',
-                                                            'span[class*="TUXText"]'
-                                                        ]
-                                                        for selector in possible_selectors:
-                                                            try:
-                                                                element = child_comment.find_element(By.CSS_SELECTOR, selector)
-                                                                if element and element.text:
-                                                                    reply_content = element.text
-                                                                    break
-                                                            except:
-                                                                continue
-                                                    
-                                                    # 如果还是没有找到内容，记录日志并跳过
-                                                    if not reply_content:
-                                                        logger.warning(f"无法获取子评论内容，跳过此评论")
+                                                # 从当前子评论元素中获取评论内容
+                                                reply_content = None
+                                                # 按优先级尝试不同的选择器，但都在当前子评论元素范围内查找
+                                                selectors = [
+                                                    'span[data-e2e="comment-level-2"]',
+                                                    'span[data-e2e="comment-level-1"]',
+                                                    'span[class*="TUXText"][class*="weight-normal"]',
+                                                    'div[class*="CommentContentWrapper"] span',
+                                                    'div[class*="DivCommentContentWrapper"] span'
+                                                ]
+                                                
+                                                for selector in selectors:
+                                                    try:
+                                                        content_element = child_comment.find_element(By.CSS_SELECTOR, selector)
+                                                        if content_element and content_element.text:
+                                                            reply_content = content_element.text
+                                                            break
+                                                    except Exception:
                                                         continue
-                                                    
-                                                    # 预处理评论内容
-                                                    reply_content = preprocess_comment(reply_content)
-                                                    
-                                                except Exception as e:
-                                                    logger.error(f"获取子评论内容时发生错误: {str(e)}")
-                                                    logger.debug(f"子评论元素HTML: {child_comment.get_attribute('outerHTML')}")
+                                                
+                                                if not reply_content:
+                                                    logger.warning(f"无法获取子评论内容，跳过此评论")
                                                     continue
                                                 
-                                                # 获取评论时间
+                                                # 预处理评论内容
+                                                reply_content = preprocess_comment(reply_content)
+                                                
+                                                # 从当前子评论元素中获取评论时间
                                                 try:
-                                                    time_span = child_comment.find_element(By.CSS_SELECTOR, 'div.css-2c97me-DivCommentSubContentWrapper span')
+                                                    time_span = child_comment.find_element(By.CSS_SELECTOR, 'div[class*="CommentSubContentWrapper"] span')
                                                     reply_time = time_span.text
-                                                except:
+                                                except Exception:
                                                     reply_time = ''
                                                 
                                                 # 检查是否已经收集过这条评论
@@ -1113,28 +1098,6 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                                         'video_url': video_url
                                                     })
                                                     
-                                                    # 如果缓存批次达到50条，尝试存储到数据库
-                                                    if len(comments_batch) >= 50:
-                                                        try:
-                                                            inserted_count = 0
-                                                            for batch_comment in comments_batch:
-                                                                result = db.add_tiktok_comment(
-                                                                    video_id=batch_comment['video_id'],
-                                                                    user_id=batch_comment['user_id'],
-                                                                    reply_content=batch_comment['reply_content'],
-                                                                    reply_time=batch_comment['reply_time'],
-                                                                    keyword=batch_comment['keyword'],
-                                                                    collected_by=batch_comment['collected_by'],
-                                                                    video_url=batch_comment['video_url']
-                                                                )
-                                                                if result > 0:
-                                                                    inserted_count += 1
-                                                                    existing_user_ids.add(batch_comment['user_id'])
-                                                            logger.info(f"尝试存储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
-                                                            comments_batch.clear()  # 清空缓存
-                                                        except Exception as e:
-                                                            logger.error(f"存储评论到数据库时发生错误: {str(e)}")
-                                            
                                             except Exception as e:
                                                 logger.error(f"处理子评论时发生错误: {str(e)}")
                                                 continue
