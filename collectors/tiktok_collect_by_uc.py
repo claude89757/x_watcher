@@ -896,7 +896,6 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                     'collected_by': collected_by,
                     'video_url': video_url
                 })
-                button_stats['child_comments_saved'] += 1  # 增加成功保存的子评论计数
                 
                 # 如果缓存批次达到50条，尝试存储到数据库
                 if len(comments_batch) >= 50:
