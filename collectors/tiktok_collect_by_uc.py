@@ -1043,8 +1043,46 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                                     continue
                                                 
                                                 # 获取子评论内容
-                                                reply_content = child_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-1"]').text
-                                                reply_content = preprocess_comment(reply_content)
+                                                try:
+                                                    # 首先尝试获取二级评论内容
+                                                    reply_content_element = child_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-2"]')
+                                                    if not reply_content_element:
+                                                        # 如果没找到，尝试获取一级评论内容
+                                                        reply_content_element = child_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-1"]')
+                                                    if not reply_content_element:
+                                                        # 如果还是没找到，尝试更通用的选择器
+                                                        reply_content_element = child_comment.find_element(By.CSS_SELECTOR, 'span[class*="TUXText"][class*="weight-normal"]')
+                                                    
+                                                    reply_content = reply_content_element.text if reply_content_element else ''
+                                                    
+                                                    # 如果内容为空，尝试其他可能的选择器
+                                                    if not reply_content:
+                                                        possible_selectors = [
+                                                            'div[class*="CommentContentWrapper"] span',
+                                                            'div[class*="DivCommentContentWrapper"] span',
+                                                            'span[class*="TUXText"]'
+                                                        ]
+                                                        for selector in possible_selectors:
+                                                            try:
+                                                                element = child_comment.find_element(By.CSS_SELECTOR, selector)
+                                                                if element and element.text:
+                                                                    reply_content = element.text
+                                                                    break
+                                                            except:
+                                                                continue
+                                                    
+                                                    # 如果还是没有找到内容，记录日志并跳过
+                                                    if not reply_content:
+                                                        logger.warning(f"无法获取子评论内容，跳过此评论")
+                                                        continue
+                                                    
+                                                    # 预处理评论内容
+                                                    reply_content = preprocess_comment(reply_content)
+                                                    
+                                                except Exception as e:
+                                                    logger.error(f"获取子评论内容时发生错误: {str(e)}")
+                                                    logger.debug(f"子评论元素HTML: {child_comment.get_attribute('outerHTML')}")
+                                                    continue
                                                 
                                                 # 获取评论时间
                                                 try:
