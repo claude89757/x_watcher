@@ -985,6 +985,80 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                         start_time = time.time()
                                         logger.info("重置60秒计时器")
                                         
+                                        # 处理新加载的子评论
+                                        # 获取所有子评论
+                                        child_comments = driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"][class*="reply"]')
+                                        logger.info(f"找到 {len(child_comments)} 个子评论")
+                                        
+                                        for child_comment in child_comments:
+                                            try:
+                                                # 获取子评论用户ID
+                                                user_link = child_comment.find_element(By.CSS_SELECTOR, 'a[href^="/@"]')
+                                                user_id = user_link.get_attribute('href').replace('https://www.tiktok.com/@', '')
+                                                
+                                                # 如果用户ID已经在数据中，跳过这条评论
+                                                if user_id in existing_user_ids:
+                                                    continue
+                                                
+                                                # 获取子评论内容
+                                                reply_content = child_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-1"]').text
+                                                reply_content = preprocess_comment(reply_content)
+                                                
+                                                # 获取评论时间
+                                                try:
+                                                    time_span = child_comment.find_element(By.CSS_SELECTOR, 'div.css-2c97me-DivCommentSubContentWrapper span')
+                                                    reply_time = time_span.text
+                                                except:
+                                                    reply_time = ''
+                                                
+                                                # 检查是否已经收集过这条评论
+                                                comment_key = f"{user_id}:{reply_content}"
+                                                if reply_content and comment_key not in seen_comments:
+                                                    comments_data.append({
+                                                        'user_id': user_id,
+                                                        'reply_content': reply_content,
+                                                        'reply_time': reply_time,
+                                                        'reply_video_url': video_url
+                                                    })
+                                                    seen_comments.add(comment_key)
+                                                    
+                                                    # 将新收集的子评论添加到缓存批次
+                                                    comments_batch.append({
+                                                        'video_id': video_id,
+                                                        'user_id': user_id,
+                                                        'reply_content': reply_content,
+                                                        'reply_time': reply_time,
+                                                        'keyword': keyword,
+                                                        'collected_by': collected_by,
+                                                        'video_url': video_url
+                                                    })
+                                                    
+                                                    # 如果缓存批次达到50条，尝试存储到数据库
+                                                    if len(comments_batch) >= 50:
+                                                        try:
+                                                            inserted_count = 0
+                                                            for batch_comment in comments_batch:
+                                                                result = db.add_tiktok_comment(
+                                                                    video_id=batch_comment['video_id'],
+                                                                    user_id=batch_comment['user_id'],
+                                                                    reply_content=batch_comment['reply_content'],
+                                                                    reply_time=batch_comment['reply_time'],
+                                                                    keyword=batch_comment['keyword'],
+                                                                    collected_by=batch_comment['collected_by'],
+                                                                    video_url=batch_comment['video_url']
+                                                                )
+                                                                if result > 0:
+                                                                    inserted_count += 1
+                                                                    existing_user_ids.add(batch_comment['user_id'])
+                                                            logger.info(f"尝试存储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
+                                                            comments_batch.clear()  # 清空缓存
+                                                        except Exception as e:
+                                                            logger.error(f"存储评论到数据库时发生错误: {str(e)}")
+                                            
+                                            except Exception as e:
+                                                logger.error(f"处理子评论时发生错误: {str(e)}")
+                                                continue
+                                        
                                         # 添加一个小幅度的向下滚动
                                         scroll_amount = random.randint(100, 200)
                                         driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
@@ -1509,7 +1583,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 comment_success = True
                 time.sleep(5)
             except TimeoutException:
-                logger.warning(f"未能确认评论是否成功发送")
+                logger.warning(f"未能确认评论是否成���发送")
                 comment_success = False
         except Exception as e:
             logger.error(f"留言失败: {str(e)}")
@@ -1676,7 +1750,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 else:
                     raise Exception(f"未找到匹配的用户建议: {user_id}")
 
-                logger.info("正在尝试���用回车键发送评论")
+                logger.info("正在尝试用回车键发送评论")
                 comment_input.send_keys(Keys.RETURN)
 
                 random_wait(2, 4)
