@@ -838,6 +838,15 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
     backoff_factor = 1.5
     max_backoff_time = 20
 
+    # 在函数开始处添加统计变量
+    button_stats = {
+        'total_buttons_found': 0,    # 找到的总按钮数
+        'click_success': 0,          # 点击成功次数
+        'click_failed': 0,           # 点击失败次数
+        'load_success': 0,           # 加载成功次数
+        'load_timeout': 0            # 加载超时次数
+    }
+
     while scroll_attempts < max_scroll_attempts:
         scroll_attempts += 1
         total_scroll_attempts += 1
@@ -922,9 +931,13 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                 
                 # 对每个评论容器，循环点击加载更多按钮直到没有更多子评论或超时
                 while True:
-                    # 检查是否超时
                     if time.time() - start_time > timeout_seconds:
                         logger.info("子评论加载超过60秒，退出加载循环")
+                        logger.info(f"子评论加载统计 - 总按钮数: {button_stats['total_buttons_found']}, "
+                                   f"点击成功: {button_stats['click_success']}, "
+                                   f"点击失败: {button_stats['click_failed']}, "
+                                   f"加载成功: {button_stats['load_success']}, "
+                                   f"加载超时: {button_stats['load_timeout']}")
                         break
                     
                     # 刷新页面上所有的加载按钮
@@ -935,10 +948,19 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                     
                     if not view_buttons:
                         logger.info("没有更多子评论加载按钮")
+                        logger.info(f"最终子评论加载统计 - 总按钮数: {button_stats['total_buttons_found']}, "
+                                   f"点击成功: {button_stats['click_success']}, "
+                                   f"点击失败: {button_stats['click_failed']}, "
+                                   f"加载成功: {button_stats['load_success']}, "
+                                   f"加载超时: {button_stats['load_timeout']}")
                         break
                     
+                    button_stats['total_buttons_found'] += len(view_buttons)
                     found_loadable_button = False
-                    logger.info(f"发现 {len(view_buttons)} 个加载更多回复按钮, 已点击按钮数: {len(clicked_buttons)}")
+                    logger.info(f"发现 {len(view_buttons)} 个加载更多回复按钮, 已点击按钮数: {len(clicked_buttons)}, "
+                               f"点击成功率: {(button_stats['click_success'] / button_stats['total_buttons_found'] * 100):.1f}%, "
+                               f"加载成功率: {(button_stats['load_success'] / max(button_stats['click_success'], 1) * 100):.1f}%")
+                    
                     for view_button in view_buttons:
                         try:
                             # 获取按钮的唯一标识
@@ -969,6 +991,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                     
                                     # 尝试点击按钮
                                     driver.execute_script("arguments[0].click();", view_button)
+                                    button_stats['click_success'] += 1
                                     logger.info(f"已点击加载更多回复按钮 ID: {button_id}")
                                     
                                     # 标记按钮为已点击
@@ -979,6 +1002,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                         WebDriverWait(driver, 10).until(
                                             lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
                                         )
+                                        button_stats['load_success'] += 1
                                         logger.info("新的子评论已加载")
                                         
                                         # 重要：成功加载新评论时重置计时器
@@ -987,8 +1011,26 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                         
                                         # 处理新加载的子评论
                                         # 获取所有子评论
-                                        child_comments = driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"][class*="reply"]')
+                                        child_comments = driver.find_elements(
+                                            By.CSS_SELECTOR, 
+                                            'div[class*="DivReplyContainer"] div[class*="DivCommentItemWrapper"]'
+                                        )
                                         logger.info(f"找到 {len(child_comments)} 个子评论")
+                                        
+                                        # 如果上述选择器仍然无法找到子评论，使用更通用的备选选择器:
+                                        if not child_comments:
+                                            child_comments = driver.find_elements(
+                                                By.CSS_SELECTOR, 
+                                                'div[class*="ReplyContainer"] span[data-e2e="comment-level-2"]'
+                                            ).parent.parent
+                                            logger.info(f"使用备选选择器找到 {len(child_comments)} 个子评论")
+                                        
+                                        # 在处理子评论之前，添加调试信息
+                                        if child_comments:
+                                            logger.info("子评论元素示例:")
+                                            sample_comment = child_comments[0]
+                                            logger.info(f"元素类名: {sample_comment.get_attribute('class')}")
+                                            logger.info(f"元素HTML: {sample_comment.get_attribute('outerHTML')}")
                                         
                                         for child_comment in child_comments:
                                             try:
@@ -1074,14 +1116,17 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                                         break
                                         
                                     except TimeoutException:
+                                        button_stats['load_timeout'] += 1
                                         logger.warning(f"等待子评论加载超时，按钮 ID: {button_id}")
                                         continue
                                     
                                 except Exception as e:
+                                    button_stats['click_failed'] += 1
                                     logger.error(f"点击加载按钮时发生错误: {str(e)}, 按钮 ID: {button_id}")
                                     continue
                         
                         except Exception as e:
+                            button_stats['click_failed'] += 1
                             logger.error(f"处理按钮时发生错误: {str(e)}")
                             continue
                     
@@ -1175,6 +1220,16 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
             logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
 
     logger.info(f"评论收集完成，共收集 {len(comments_data)} 条评论")
+    # 在函数结束前添加最终统计日志
+    logger.info(f"评论收集完成，子评论加载统计:")
+    logger.info(f"- 总计发现按钮数: {button_stats['total_buttons_found']}")
+    logger.info(f"- 点击成功次数: {button_stats['click_success']}")
+    logger.info(f"- 点击失败次数: {button_stats['click_failed']}")
+    logger.info(f"- 加载成功次数: {button_stats['load_success']}")
+    logger.info(f"- 加载超时次数: {button_stats['load_timeout']}")
+    if button_stats['total_buttons_found'] > 0:
+        logger.info(f"- 点击成功率: {(button_stats['click_success'] / button_stats['total_buttons_found'] * 100):.1f}%")
+        logger.info(f"- 加载成功率: {(button_stats['load_success'] / max(button_stats['click_success'], 1) * 100):.1f}%")
     return comments_data
 
 def take_screenshot(driver, prefix="screenshot"):
@@ -1591,7 +1646,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 comment_success = True
                 time.sleep(5)
             except TimeoutException:
-                logger.warning(f"未能确认评论是否成���发送")
+                logger.warning(f"未能确认评论是否成发送")
                 comment_success = False
         except Exception as e:
             logger.error(f"留言失败: {str(e)}")
