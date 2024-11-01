@@ -36,7 +36,7 @@ logging.basicConfig(
     filename='tiktok_collect.log',  # 日志文件名
     filemode='a',        # 追加模式 ('a') 或覆盖模式 ('w')
     level=logging.INFO,  # 日志级别
-    format='%(asctime)s - %(levelname)s - %(message)s' # 日志��式
+    format='%(asctime)s - %(levelname)s - %(message)s' # 日志式
 )
 logger = logging.getLogger(__name__)
 
@@ -809,7 +809,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         )
         logger.info("评论元素加载完成")
     except Exception as e:
-        logger.error(f"等待评论元素超时: {str(e)}")
+        logger.error(f"��待评论元素超时: {str(e)}")
         raise
     
     # 从数据库中获取已存储的用户ID
@@ -915,10 +915,10 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
 
             # 处理子评论加载按钮
             try:
-                # 初始化超时计时器
+                # 初始化超时计时器和已点击按钮集合
                 start_time = time.time()
                 timeout_seconds = 60  # 设置60秒超时
-                max_retries = 3  # 每个按钮最多重试3次
+                clicked_buttons = set()  # 用于记录已点击过的按钮
                 
                 # 对每个评论容器，循环点击加载更多按钮直到没有更多子评论或超时
                 while True:
@@ -927,7 +927,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                         logger.info("子评论加载超过60秒，退出加载循环")
                         break
                     
-                    # 查找当前评论下的子评论按钮
+                    # 刷新页面上所有的加载按钮
                     view_buttons = driver.find_elements(
                         By.XPATH,
                         ".//div[contains(@class, 'DivViewRepliesContainer')]//span[contains(text(), 'View') or contains(text(), '查看')]"
@@ -939,72 +939,75 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                     
                     found_loadable_button = False
                     for view_button in view_buttons:
-                        retry_count = 0
-                        while retry_count < max_retries:
-                            try:
-                                button_text = view_button.text.strip()
-                                if "Hide" in button_text or "隐藏" in button_text:
-                                    break  # 跳过已展开的评论
+                        try:
+                            # 获取按钮的唯一标识
+                            button_text = view_button.text.strip()
+                            button_location = view_button.location['y']
+                            button_id = f"{button_text}_{button_location}"
+                            
+                            # 如果按钮已经点击过，跳过
+                            if button_id in clicked_buttons:
+                                continue
+                            
+                            if "Hide" in button_text or "隐藏" in button_text:
+                                clicked_buttons.add(button_id)  # 标记已展开的按钮
+                                continue
+                                
+                            if "View" in button_text or "查看" in button_text:
+                                found_loadable_button = True
+                                logger.info(f"发现新的加载更多回复按钮: {button_text}, 位置: {button_location}")
+                                
+                                # 记录当前评论数
+                                current_comments = len(driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]'))
+                                
+                                try:
+                                    # 确保按钮在视图中并可点击
+                                    driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", view_button)
+                                    random_wait(1, 2)
                                     
-                                if "View" in button_text or "查看" in button_text:
-                                    # 找到新的加载按钮，重置计时器
-                                    start_time = time.time()
-                                    found_loadable_button = True
-                                    logger.info(f"发现加载更多回复按钮: {button_text}，重置60秒计时器")
+                                    # 尝试点击按钮
+                                    driver.execute_script("arguments[0].click();", view_button)
+                                    logger.info(f"已点击加载更多回复按钮 ID: {button_id}")
                                     
-                                    # 记录当前评论数
-                                    current_comments = len(driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]'))
+                                    # 标记按钮为已点击
+                                    clicked_buttons.add(button_id)
                                     
+                                    # 等待新回复加载
                                     try:
-                                        # 确保按钮在视图中并可点击
-                                        driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", view_button)
+                                        WebDriverWait(driver, 10).until(
+                                            lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
+                                        )
+                                        logger.info("新的子评论已加载")
+                                        
+                                        # 重要：成功加载新评论时重置计时器
+                                        start_time = time.time()
+                                        logger.info("重置60秒计时器")
+                                        
+                                        # 添加一个小幅度的向下滚动
+                                        scroll_amount = random.randint(100, 200)
+                                        driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+                                        logger.info(f"子评论加载后向下滚动 {scroll_amount} 像素")
+                                        
+                                        # 更新页面源码
+                                        soup = BeautifulSoup(driver.page_source, 'html.parser')
+                                        
+                                        # 给一些时间让动画完成
                                         random_wait(1, 2)
                                         
-                                        # 尝试点击按钮
-                                        driver.execute_script("arguments[0].click();", view_button)
-                                        logger.info("已点击加载更多回复按钮")
+                                        # 重新开始循环，检查新出现的按钮
+                                        break
                                         
-                                        # 等待新回复加载
-                                        try:
-                                            WebDriverWait(driver, 10).until(
-                                                lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
-                                            )
-                                            logger.info("新的子评论已加载")
-                                            
-                                            # 添加一个小幅度的向下滚动
-                                            scroll_amount = random.randint(100, 200)
-                                            driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
-                                            logger.info(f"子评论加载后向下滚动 {scroll_amount} 像素")
-                                            
-                                            # 更新页面源码
-                                            soup = BeautifulSoup(driver.page_source, 'html.parser')
-                                            
-                                            # 给一些时间让动画完成
-                                            random_wait(1, 2)
-                                            break  # 成功加载，退出重试循环
-                                            
-                                        except TimeoutException:
-                                            logger.warning(f"等待子评论加载超时，重试次数: {retry_count + 1}")
-                                            retry_count += 1
-                                            if retry_count >= max_retries:
-                                                logger.error("达到最大重试次数，跳过此按钮")
-                                                break
-                                            continue
-                                            
-                                    except Exception as e:
-                                        logger.error(f"点击加载按钮时发生错误: {str(e)}")
-                                        retry_count += 1
-                                        if retry_count >= max_retries:
-                                            logger.error("达到最大重试次数，跳过此按钮")
-                                            break
+                                    except TimeoutException:
+                                        logger.warning(f"等待子评论加载超时，按钮 ID: {button_id}")
                                         continue
-                            
-                            except Exception as e:
-                                logger.error(f"处理按钮时发生错误: {str(e)}")
-                                retry_count += 1
-                                if retry_count >= max_retries:
-                                    break
-                                continue
+                                    
+                                except Exception as e:
+                                    logger.error(f"点击加载按钮时发生错误: {str(e)}, 按钮 ID: {button_id}")
+                                    continue
+                        
+                        except Exception as e:
+                            logger.error(f"处理按钮时发生错误: {str(e)}")
+                            continue
                     
                     # 如果没有找到可以加载的按钮，退出循环
                     if not found_loadable_button:
@@ -1320,7 +1323,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
             # 查是否还有剩余的消息需要发送
             remaining_messages = len(user_messages) - len(results)
             if remaining_messages > 0:
-                logger.info(f"已发送 {len(results)} 条消息，还剩 {remaining_messages} 条，等待 {wait_time} 秒后继续...")
+                logger.info(f"已发�� {len(results)} 条消息，还剩 {remaining_messages} 条，等待 {wait_time} 秒后继续...")
                 time.sleep(wait_time)
             else:
                 logger.info("所有消息已发送完毕，结束处理。")
