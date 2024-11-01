@@ -809,7 +809,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         )
         logger.info("评论元素加载完成")
     except Exception as e:
-        logger.error(f"��待评论元素超时: {str(e)}")
+        logger.error(f"待评论元素超时: {str(e)}")
         raise
     
     # 从数据库中获取已存储的用户ID
@@ -824,6 +824,7 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
     max_scroll_attempts = 10  # 最大滚动尝试次数
     consecutive_no_new_comments = 0
     max_consecutive_no_new = 5  # 连续无新评的最大次数
+    clicked_buttons = set()  # 移到这里，用于记录所有已点击过的按钮
 
     last_comments_count = 0
     seen_comments = set()
@@ -915,10 +916,9 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
 
             # 处理子评论加载按钮
             try:
-                # 初始化超时计时器和已点击按钮集合
+                # 初始化超时计时器
                 start_time = time.time()
                 timeout_seconds = 60  # 设置60秒超时
-                clicked_buttons = set()  # 用于记录已点击过的按钮
                 
                 # 对每个评论容器，循环点击加载更多按钮直到没有更多子评论或超时
                 while True:
@@ -943,7 +943,12 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                             # 获取按钮的唯一标识
                             button_text = view_button.text.strip()
                             button_location = view_button.location['y']
-                            button_id = f"{button_text}_{button_location}"
+                            # 获取父评论的信息来帮助区分
+                            parent_comment = view_button.find_element(By.xpath("./ancestor::div[contains(@class, 'DivCommentItemContainer')]"))
+                            parent_comment_id = parent_comment.get_attribute('id') or ''
+                            parent_comment_text = parent_comment.find_element(By.xpath(".//span[@data-e2e='comment-level-1']")).text[:50] or ''  # 取前50个字符
+                            # 组合多个特征生成唯一ID
+                            button_id = f"{parent_comment_id}_{parent_comment_text}_{button_text}_{button_location}"
                             
                             # 如果按钮已经点击过，跳过
                             if button_id in clicked_buttons:
@@ -1150,7 +1155,7 @@ def process_task(task_id, keyword, server_ip):
         # 搜索视频并添加到数据库
         video_links = search_tiktok_video_links(driver, keyword)
         db.add_tiktok_videos_batch(task_id, video_links, keyword)
-        logger.info(f"为任务 {task_id} 添加了 {len(video_links)} 个视频")
+        logger.info(f"为务 {task_id} 添加了 {len(video_links)} 个视频")
 
         video_count = 0
         while True:
@@ -1323,7 +1328,7 @@ def send_promotion_messages(user_messages, account_id, batch_size=5, wait_time=6
             # 查是否还有剩余的消息需要发送
             remaining_messages = len(user_messages) - len(results)
             if remaining_messages > 0:
-                logger.info(f"已发�� {len(results)} 条消息，还剩 {remaining_messages} 条，等待 {wait_time} 秒后继续...")
+                logger.info(f"已发 {len(results)} 条消息，还剩 {remaining_messages} 条，等待 {wait_time} 后继续...")
                 time.sleep(wait_time)
             else:
                 logger.info("所有消息已发送完毕，结束处理。")
@@ -1473,7 +1478,6 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
             latest_video = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "div[data-e2e='user-post-item'][role='button']"))
             )
-            
             logger.info("找到最新视频,正在点击")
             latest_video.click()
             
