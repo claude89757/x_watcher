@@ -1617,6 +1617,7 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
                 # 等待艾特建议列表出现
                 WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-e2e='comment-at-user']"))
+                )
                 
                 # 查找匹配的用户建议并点击
                 mention_suggestions = driver.find_elements(By.CSS_SELECTOR, "div[data-e2e='comment-at-list']")
