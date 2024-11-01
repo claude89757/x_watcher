@@ -111,8 +111,9 @@ def update_worker_status(status='active'):
 # 任务管理函数
 def check_and_execute_tasks():
     """检查并执行待处理的任务"""
-    if get_chrome_process_count() > 0:
-        logger.info("当前有Chrome进程正在运行，跳过任务检查")
+    current_chrome_count = get_chrome_process_count()
+    if current_chrome_count > 0:
+        logger.info(f"当前有 {current_chrome_count} 个Chrome进程正在运行，跳过任务检查")
         return
 
     db = MySQLDatabase()
