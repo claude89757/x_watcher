@@ -111,7 +111,7 @@ def update_worker_status(status='active'):
 # 任务管理函数
 def check_and_execute_tasks():
     """检查并执行待处理的任务"""
-    if get_chrome_process_count() > MAX_CONCURRENT_CHROME:
+    if get_chrome_process_count() > 0:
         logger.info("当前有Chrome进程正在运行，跳过任务检查")
         return
 
