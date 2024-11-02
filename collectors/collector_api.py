@@ -435,8 +435,8 @@ def graceful_shutdown(signum, frame):
     """优雅关闭处理"""
     logger.info("收关闭信号，开始清理...")
     
-    # 停止定时任务
-    scheduler.shutdown()
+    # # 停止定时任务
+    # scheduler.shutdown()
     
     # 结束所有Chrome进程
     kill_chrome_processes()
