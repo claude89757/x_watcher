@@ -812,11 +812,6 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
         logger.error(f"待评论元素超时: {str(e)}")
         raise
     
-    # 从数据库中获取已存储的用户ID
-    logger.info(f"从数据库中获取已存储的用户ID")
-    existing_user_ids = set(db.get_existing_user_ids_for_keyword(keyword))
-    logger.info(f"从数据库中获取到 {len(existing_user_ids)} 个已存储的用户ID")
-
     comments_data = []
     comments_batch = []
     total_scroll_attempts = 0
@@ -861,10 +856,6 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
             user_link = comment_div.select_one('a[href^="/@"]')
             user_id = user_link.get('href', '').replace('/@', '') if user_link else ''
             
-            # 如果用户ID已经在数据中，跳过这条评论
-            if user_id in existing_user_ids:
-                continue
-
             reply_content_span = comment_div.select_one('span[data-e2e="comment-level-1"]')
             reply_content = reply_content_span.get_text(strip=True) if reply_content_span else ''
             
@@ -899,256 +890,244 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                 
                 # 如果缓存批次达到50条，尝试存储到数据库
                 if len(comments_batch) >= 50:
-                    try:
-                        inserted_count = 0
-                        for batch_comment in comments_batch:
-                            result = db.add_tiktok_comment(
-                                video_id=batch_comment['video_id'],
-                                user_id=batch_comment['user_id'],
-                                reply_content=batch_comment['reply_content'],
-                                reply_time=batch_comment['reply_time'],
-                                keyword=batch_comment['keyword'],
-                                collected_by=batch_comment['collected_by'],
-                                video_url=batch_comment['video_url']
-                            )
-                            if result > 0:
-                                inserted_count += 1
-                                existing_user_ids.add(batch_comment['user_id'])
-                        logger.info(f"尝试储50条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {50 - inserted_count} 条重复评论")
-                        comments_batch.clear()  # 清空缓存
-                        
-                        # 检查任务状态
-                        task_status = db.get_tiktok_task_status(task_id)
-                        if task_status != 'running':
-                            logger.info(f"任务状态为 {task_status}，停收集评论")
-                            return comments_data
-                    except Exception as e:
-                        logger.error(f"存储评论到数据库时发生错误: {str(e)}")
+                    inserted_count = batch_store_comments(comments_batch, db, task_id)
+                    if inserted_count == -1:  # 任务已停止
+                        return comments_data
+                    comments_batch.clear()  # 清空缓存
 
-            # 处理子评论加载按钮
-            try:
-                # 初始化超时计时器
-                start_time = time.time()
-                timeout_seconds = 60  # 设置60秒超时
+        # 处理子评论加载按钮
+        try:
+            # 初始化超时计时器
+            start_time = time.time()
+            timeout_seconds = 60  # 设置60秒超时
+            
+            # 对每个评论容器，循环点击加载更多按钮直到没有更多子评论或超时
+            while True:
+                if time.time() - start_time > timeout_seconds:
+                    logger.info("子评论加载超过60秒，退出加载循环")
+                    logger.info(f"子评论加载统计 - 总按钮数: {button_stats['total_buttons_found']}, "
+                                f"点击成功: {button_stats['click_success']}, "
+                                f"点击失败: {button_stats['click_failed']}, "
+                                f"加载成功: {button_stats['load_success']}, "
+                                f"加载超时: {button_stats['load_timeout']}")
+                    break
                 
-                # 对每个评论容器，循环点击加载更多按钮直到没有更多子评论或超时
-                while True:
-                    if time.time() - start_time > timeout_seconds:
-                        logger.info("子评论加载超过60秒，退出加载循环")
-                        logger.info(f"子评论加载统计 - 总按钮数: {button_stats['total_buttons_found']}, "
-                                   f"点击成功: {button_stats['click_success']}, "
-                                   f"点击失败: {button_stats['click_failed']}, "
-                                   f"加载成功: {button_stats['load_success']}, "
-                                   f"加载超时: {button_stats['load_timeout']}")
-                        break
-                    
-                    # 刷新页面上所有的加载按钮
-                    view_buttons = driver.find_elements(
-                        By.XPATH,
-                        ".//div[contains(@class, 'DivViewRepliesContainer')]//span[contains(text(), 'View') or contains(text(), '查看')]"
-                    )
-                    
-                    if not view_buttons:
-                        logger.info("没有更多子评论加载按钮")
-                        logger.info(f"最终子评论加载统计 - 总按钮数: {button_stats['total_buttons_found']}, "
-                                   f"点击成功: {button_stats['click_success']}, "
-                                   f"点击失败: {button_stats['click_failed']}, "
-                                   f"加载成功: {button_stats['load_success']}, "
-                                   f"加载超时: {button_stats['load_timeout']}")
-                        break
-                    
-                    button_stats['total_buttons_found'] += len(view_buttons)
-                    found_loadable_button = False
-                    logger.info(f"发现 {len(view_buttons)} 个加载更多回复按钮, 已点击按钮数: {len(clicked_buttons)}, "
-                               f"点击成功率: {(button_stats['click_success'] / button_stats['total_buttons_found'] * 100):.1f}%, "
-                               f"加载成功率: {(button_stats['load_success'] / max(button_stats['click_success'], 1) * 100):.1f}%")
-                    logger.info(f"已找到 {button_stats['child_comments_found']} 个子评论, 已保存 {button_stats['child_comments_saved']} 个子评论")
-                    
-                    for view_button in view_buttons:
-                        try:
-                            # 获取按钮的唯一标识
-                            button_text = view_button.text.strip()
-                            button_location = view_button.location['y']
-                            # 组合多个特征生成唯一ID
-                            button_id = f"{button_text}_{button_location}"
+                # 刷新页面上所有的加载按钮
+                view_buttons = driver.find_elements(
+                    By.XPATH,
+                    ".//div[contains(@class, 'DivViewRepliesContainer')]//span[contains(text(), 'View') or contains(text(), '查看')]"
+                )
+                
+                if not view_buttons:
+                    logger.info("没有更多子评论加载按钮")
+                    logger.info(f"最终子评论加载统计 - 总按钮数: {button_stats['total_buttons_found']}, "
+                                f"点击成功: {button_stats['click_success']}, "
+                                f"点击失败: {button_stats['click_failed']}, "
+                                f"加载成功: {button_stats['load_success']}, "
+                                f"加载超时: {button_stats['load_timeout']}")
+                    break
+                
+                button_stats['total_buttons_found'] += len(view_buttons)
+                found_loadable_button = False
+                logger.info(f"发现 {len(view_buttons)} 个加载更多回复按钮, 已点击按钮数: {len(clicked_buttons)}, "
+                            f"点击成功率: {(button_stats['click_success'] / button_stats['total_buttons_found'] * 100):.1f}%, "
+                            f"加载成功率: {(button_stats['load_success'] / max(button_stats['click_success'], 1) * 100):.1f}%")
+                logger.info(f"已找到 {button_stats['child_comments_found']} 个子评论, 已保存 {button_stats['child_comments_saved']} 个子评论")
+                
+                for view_button in view_buttons:
+                    try:
+                        # 获取按钮的唯一标识
+                        button_text = view_button.text.strip()
+                        button_location = view_button.location['y']
+                        # 组合多个特征生成唯一ID
+                        button_id = f"{button_text}_{button_location}"
+                        
+                        # 如果按钮已经点击过，跳过
+                        if button_id in clicked_buttons:
+                            continue
+                        
+                        if "Hide" in button_text or "隐藏" in button_text:
+                            clicked_buttons.add(button_id)  # 标记已展开的按钮
+                            continue
                             
-                            # 如果按钮已经点击过，跳过
-                            if button_id in clicked_buttons:
-                                continue
+                        if "View" in button_text or "查看" in button_text:
+                            found_loadable_button = True
+                            logger.info(f"发现新的加载更多回复按钮: {button_text}, 位置: {button_location}")
                             
-                            if "Hide" in button_text or "隐藏" in button_text:
-                                clicked_buttons.add(button_id)  # 标记已展开的按钮
-                                continue
+                            # 记录当前评论数
+                            current_comments = len(driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]'))
+                            
+                            try:
+                                # 确保按钮在视图中并可点击
+                                driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", view_button)
+                                random_wait(1, 2)
                                 
-                            if "View" in button_text or "查看" in button_text:
-                                found_loadable_button = True
-                                logger.info(f"发现新的加载更多回复按钮: {button_text}, 位置: {button_location}")
+                                # 尝试点击按钮
+                                driver.execute_script("arguments[0].click();", view_button)
+                                button_stats['click_success'] += 1
+                                logger.info(f"已点击加载更多回复按钮 ID: {button_id}")
                                 
-                                # 记录当前评论数
-                                current_comments = len(driver.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]'))
+                                # 标记按钮为已点击
+                                clicked_buttons.add(button_id)
                                 
+                                # 等待新回复加载
                                 try:
-                                    # 确保按钮在视图中并可点击
-                                    driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", view_button)
+                                    WebDriverWait(driver, 10).until(
+                                        lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
+                                    )
+                                    button_stats['load_success'] += 1
+                                    logger.info("新的子评论已加载")
+                                    
+                                    # 重要：成功加载新评论时重置计时器
+                                    start_time = time.time()
+                                    logger.info("重置60秒计时器")
+                                    
+                                    # 给页面一点时间完全加载
                                     random_wait(1, 2)
                                     
-                                    # 尝试点击按钮
-                                    driver.execute_script("arguments[0].click();", view_button)
-                                    button_stats['click_success'] += 1
-                                    logger.info(f"已点击加载更多回复按钮 ID: {button_id}")
+                                    # 重新获取子评论容器
+                                    reply_container = WebDriverWait(driver, 5).until(
+                                        EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="DivReplyContainer"]'))
+                                    )
                                     
-                                    # 标记按钮为已点击
-                                    clicked_buttons.add(button_id)
+                                    # 在容器内查找子评论
+                                    child_comments = reply_container.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')
+                                    button_stats['child_comments_found'] += len(child_comments)  # 增加找到的子评论计数
+                                    logger.info(f"找到 {len(child_comments)} 个子评论")
                                     
-                                    # 等待新回复加载
-                                    try:
-                                        WebDriverWait(driver, 10).until(
-                                            lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')) > current_comments
-                                        )
-                                        button_stats['load_success'] += 1
-                                        logger.info("新的子评论已加载")
+                                    if child_comments:
+                                        logger.info("子评论元素示例:")
+                                        sample_comment = child_comments[0]
+                                        logger.info(f"元素类名: {sample_comment.get_attribute('class')}")
+                                        logger.info(f"元素HTML: {sample_comment.get_attribute('outerHTML')}")
                                         
-                                        # 重要：成功加载新评论时重置计时器
-                                        start_time = time.time()
-                                        logger.info("重置60秒计时器")
-                                        
-                                        # 给页面一点时间完全加载
-                                        random_wait(1, 2)
-                                        
-                                        # 重新获取子评论容器
-                                        reply_container = WebDriverWait(driver, 5).until(
-                                            EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="DivReplyContainer"]'))
-                                        )
-                                        
-                                        # 在容器内查找子评论
-                                        child_comments = reply_container.find_elements(By.CSS_SELECTOR, 'div[class*="DivCommentItemWrapper"]')
-                                        button_stats['child_comments_found'] += len(child_comments)  # 增加找到的子评论计数
-                                        logger.info(f"找到 {len(child_comments)} 个子评论")
-                                        
-                                        if child_comments:
-                                            logger.info("子评论元素示例:")
-                                            sample_comment = child_comments[0]
-                                            logger.info(f"元素类名: {sample_comment.get_attribute('class')}")
-                                            logger.info(f"元素HTML: {sample_comment.get_attribute('outerHTML')}")
-                                            
-                                            # 处理每个子评论
-                                            for child_comment in child_comments:
+                                        # 处理每个子评论
+                                        for child_comment in child_comments:
+                                            try:
+                                                # 在每次访问元素前重新获取最新的引用
+                                                comment_id = child_comment.get_attribute('id') or child_comment.get_attribute('data-e2e') or child_comment.location['y']
+                                                fresh_comment = WebDriverWait(driver, 5).until(
+                                                    EC.presence_of_element_located((By.CSS_SELECTOR, f'div[class*="DivCommentItemWrapper"]'))
+                                                )
+                                                
+                                                # 获取用户链接
+                                                user_link = fresh_comment.find_element(By.CSS_SELECTOR, 'a[href^="/@"]')
+                                                user_id = user_link.get_attribute('href').replace('https://www.tiktok.com/@', '')
+                                                
+                                                # 获取评论内容
                                                 try:
-                                                    # 在每次访问元素前重新获取最新的引用
-                                                    comment_id = child_comment.get_attribute('id') or child_comment.get_attribute('data-e2e') or child_comment.location['y']
-                                                    fresh_comment = WebDriverWait(driver, 5).until(
-                                                        EC.presence_of_element_located((By.CSS_SELECTOR, f'div[class*="DivCommentItemWrapper"]'))
-                                                    )
-                                                    
-                                                    # 获取用户链接
-                                                    user_link = fresh_comment.find_element(By.CSS_SELECTOR, 'a[href^="/@"]')
-                                                    user_id = user_link.get_attribute('href').replace('https://www.tiktok.com/@', '')
-                                                    
-                                                    if user_id in existing_user_ids:
-                                                        continue
-                                                    
-                                                    # 获取评论内容
+                                                    # 首先尝试获取完整的评论内容元素
+                                                    content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-2"]')
+                                                    # 然后获取其中的文本内容
+                                                    reply_content = content_element.find_element(By.CSS_SELECTOR, 'span[class*="weight-normal"]').text
+                                                except:
                                                     try:
-                                                        # 首先尝试获取完整的评论内容元素
-                                                        content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[data-e2e="comment-level-2"]')
-                                                        # 然后获取其中的文本内容
-                                                        reply_content = content_element.find_element(By.CSS_SELECTOR, 'span[class*="weight-normal"]').text
+                                                        # 备用选择器1：直接查找带有评论内容的span
+                                                        content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[class*="TUXText"][class*="weight-normal"]')
+                                                        reply_content = content_element.text
                                                     except:
                                                         try:
-                                                            # 备用选择器1：直接查找带有评论内容的span
-                                                            content_element = fresh_comment.find_element(By.CSS_SELECTOR, 'span[class*="TUXText"][class*="weight-normal"]')
-                                                            reply_content = content_element.text
+                                                            # 备用选择器2：查找评论容器内的所有normal weight文本
+                                                            content_elements = fresh_comment.find_elements(By.CSS_SELECTOR, 'span[class*="weight-normal"]')
+                                                            reply_content = next((el.text for el in content_elements if el.text.strip()), None)
                                                         except:
-                                                            try:
-                                                                # 备用选择器2：查找评论容器内的所有normal weight文本
-                                                                content_elements = fresh_comment.find_elements(By.CSS_SELECTOR, 'span[class*="weight-normal"]')
-                                                                reply_content = next((el.text for el in content_elements if el.text.strip()), None)
-                                                            except:
-                                                                reply_content = None
-                                                    
-                                                    if not reply_content:
-                                                        logger.warning(f"无法获取子评论内容，跳过此评论")
-                                                        continue
-                                                    
-                                                    # 获取评论时间
-                                                    try:
-                                                        time_span = fresh_comment.find_element(By.CSS_SELECTOR, 'div[class*="CommentSubContentWrapper"] span')
-                                                        reply_time = time_span.text
-                                                    except:
-                                                        reply_time = ''
-                                                    
-                                                    # 添加到评论集合
-                                                    comment_key = f"{user_id}:{reply_content}"
-                                                    if reply_content and comment_key not in seen_comments:
-                                                        comments_data.append({
-                                                            'user_id': user_id,
-                                                            'reply_content': reply_content,
-                                                            'reply_time': reply_time,
-                                                            'reply_video_url': video_url
-                                                        })
-                                                        seen_comments.add(comment_key)
-                                                        
-                                                        comments_batch.append({
-                                                            'video_id': video_id,
-                                                            'user_id': user_id,
-                                                            'reply_content': reply_content,
-                                                            'reply_time': reply_time,
-                                                            'keyword': keyword,
-                                                            'collected_by': collected_by,
-                                                            'video_url': video_url
-                                                        })
-                                                        button_stats['child_comments_saved'] += 1  # 增加成功保存的子评论计数
-                                                        
-                                                except Exception as e:
-                                                    logger.error(f"处理子评论时发生错误: {str(e)}")
+                                                            reply_content = None
+                                                
+                                                if not reply_content:
+                                                    logger.warning(f"无法获取子评论内容，跳过此评论")
                                                     continue
-                                            
-                                            # 添加一个小幅度的向下滚动
-                                            scroll_amount = random.randint(100, 200)
-                                            driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
-                                            logger.info(f"子评论加载后向下滚动 {scroll_amount} 像素")
-                                            
-                                            # 给一些时间让动画完成
-                                            random_wait(1, 2)
-                                            
-                                    except TimeoutException:
-                                        button_stats['load_timeout'] += 1
-                                        logger.warning(f"等待子评论加载超时，按钮 ID: {button_id}")
-                                        continue
-                                    
-                                except Exception as e:
-                                    button_stats['click_failed'] += 1
-                                    logger.error(f"点击加载按钮时发生错误: {str(e)}, 按钮 ID: {button_id}")
+                                                
+                                                # 获取评论时间
+                                                try:
+                                                    time_span = fresh_comment.find_element(By.CSS_SELECTOR, 'div[class*="CommentSubContentWrapper"] span')
+                                                    reply_time = time_span.text
+                                                except:
+                                                    reply_time = ''
+                                                
+                                                # 添加到评论集合
+                                                comment_key = f"{user_id}:{reply_content}"
+                                                if reply_content and comment_key not in seen_comments:
+                                                    comments_data.append({
+                                                        'user_id': user_id,
+                                                        'reply_content': reply_content,
+                                                        'reply_time': reply_time,
+                                                        'reply_video_url': video_url
+                                                    })
+                                                    seen_comments.add(comment_key)
+                                                    
+                                                    comments_batch.append({
+                                                        'video_id': video_id,
+                                                        'user_id': user_id,
+                                                        'reply_content': reply_content,
+                                                        'reply_time': reply_time,
+                                                        'keyword': keyword,
+                                                        'collected_by': collected_by,
+                                                        'video_url': video_url
+                                                    })
+                                                    button_stats['child_comments_saved'] += 1  # 增加成功保存的子评论计数
+
+                                                    # 如果缓存批次达到50条，尝试存储到数据库
+                                                    if len(comments_batch) >= 50:
+                                                        inserted_count = batch_store_comments(comments_batch, db, task_id)
+                                                        if inserted_count == -1:  # 任务已停止
+                                                            return comments_data
+                                                        comments_batch.clear()  # 清空缓存
+                                                    
+                                            except Exception as e:
+                                                logger.error(f"处理子评论时发生错误: {str(e)}")
+                                                continue
+                                        
+                                        # 添加一个小幅度的向下滚动
+                                        scroll_amount = random.randint(100, 200)
+                                        driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
+                                        logger.info(f"子评论加载后向下滚动 {scroll_amount} 像素")
+                                        
+                                        # 给一些时间让动画完成
+                                        random_wait(1, 2)
+                                        
+                                except TimeoutException:
+                                    button_stats['load_timeout'] += 1
+                                    logger.warning(f"等待子评论加载超时，按钮 ID: {button_id}")
                                     continue
-                        
-                        except Exception as e:
-                            button_stats['click_failed'] += 1
-                            logger.error(f"处理按钮时发生错误: {str(e)}")
-                            continue
+                                
+                            except Exception as e:
+                                button_stats['click_failed'] += 1
+                                logger.error(f"点击加载按钮时发生错误: {str(e)}, 按钮 ID: {button_id}")
+                                continue
                     
-                    # 如果没有找到可以加载的按钮，退出循环
-                    if not found_loadable_button:
-                        logger.info("没有找到更多可加载的子评论按钮")
-                        break
-                    
-                    # 检查是否需要暂停来防止频繁请求
-                    random_wait(1, 3)
+                    except Exception as e:
+                        button_stats['click_failed'] += 1
+                        logger.error(f"处理按钮时发生错误: {str(e)}")
+                        continue
+                
+                # 如果没有找到可以加载的按钮，退出循环
+                if not found_loadable_button:
+                    logger.info("没有找到更多可加载的子评论按钮")
+                    break
+                
+                # 检查是否需要暂停来防止频繁请求
+                random_wait(1, 3)
 
-            except Exception as e:
-                logger.error(f"处理评论的子评论加载按钮时发生错误: {str(e)}")
-                # 继续处理其他评论，不中断整个流程
-                continue
+        except Exception as e:
+            logger.error(f"处理评论的子评论加载按钮时发生错误: {str(e)}")
+            # 继续处理其他评论，不中断整个流程
 
-        # 优化的滚动策
+        # 优化的滚动策略
         if consecutive_no_new_comments >= max_consecutive_no_new:
-            logger.info("连续多次未加载新评论，尝更激进的滚动策略")
-            # 尝试快速滚动到底部然后回到顶部
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            random_sleep(1, 2)
-            driver.execute_script("window.scrollTo(0, 0);")
-            random_sleep(1, 2)
+            logger.info("连续多次未加载新评论，尝试更激进的滚动策略")
+            
+            # 执行滚动到底部并回滚的操作
+            reached_bottom, scroll_distance = scroll_to_bottom_and_up(driver)
+            
+            if reached_bottom:
+                logger.info("已确认到达页面底部")
+                break
+                
             consecutive_no_new_comments = 0
             current_scroll_distance = min_scroll_distance
+            
+            # 给页面一些时间加载
+            random_sleep(2, 4)
         else:
             # 动态调整滚动距离
             scroll_distance = random.randint(current_scroll_distance, current_scroll_distance + 200)
@@ -1210,7 +1189,6 @@ def collect_comments(driver, video_url, video_id, keyword, db, collected_by, tas
                 )
                 if result > 0:
                     inserted_count += 1
-                    existing_user_ids.add(batch_comment['user_id'])
             logger.info(f"尝试储剩余的 {len(comments_batch)} 条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {len(comments_batch) - inserted_count} 条重复评论")
         except Exception as e:
             logger.error(f"存储剩余评论到数据库时发生错误: {str(e)}")
@@ -1285,7 +1263,10 @@ def process_task(task_id, keyword, server_ip):
 
         video_count = 0
         while True:
-            # 检查任务状态
+            # 检查数据库连接
+            db.is_connected() or db.connect()
+            
+            # 获取任务状态
             task_status = db.get_tiktok_task_status(task_id)
             
             if task_status == 'running':
@@ -1304,10 +1285,8 @@ def process_task(task_id, keyword, server_ip):
                     comments = collect_comments(driver, video_url, video_id, keyword, db, user_id, task_id)
                     logger.info(f"任务 {task_id} 收集到 {len(comments)} 条来自 {video_url} 的评论")
 
-                    if db.is_connected:
-                        pass
-                    else:
-                        db.connect()
+                    db.is_connected() or db.connect()
+
                     db.mark_video_completed(video_id)
                     video_count += 1
                     db.update_task_progress(task_id, 1)
@@ -1320,6 +1299,9 @@ def process_task(task_id, keyword, server_ip):
             else:
                 logger.info(f"任务 {task_id} 状态为 {task_status}, 退出浏览器...")
                 break
+        
+        # 检查数据库连接
+        db.is_connected() or db.connect()
 
         logger.info(f"任务 {task_id} 完成，处理了 {video_count} 个视频")
         if task_status == 'running':
@@ -1333,10 +1315,8 @@ def process_task(task_id, keyword, server_ip):
             db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
     except Exception as e:
         logger.error(f"处理任务时发生错误: {str(e)}")
-        # db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
-        db.add_tiktok_task_log(task_id, 'error', str(e))
-        if driver:
-            take_screenshot(driver, f"error_task_{task_id}")
+        db.is_connected or db.connect()
+        db.update_tiktok_task_details(task_id, status='failed', end_time=datetime.now())
     finally:
         if driver:
             try:
@@ -1858,3 +1838,102 @@ def send_single_promotion_message(driver, user_id, message, keyword, db, account
         logger.error(f"发送推广消息给用户 {user_id} 时发生错误: {str(e)}")
         logger.error(f"发送推广消息失败的详细错误: {traceback.format_exc()}")
         return {"success": False, "message": f"发生错误: {str(e)}", "action": "none", "user_id": user_id}
+
+def batch_store_comments(comments_batch, db: MySQLDatabase, task_id):
+    """
+    批量存储评论到数据库
+    
+    Args:
+        comments_batch: 待存储的评论列表
+        db: 数据库连接对象
+        task_id: 任务ID
+
+    Returns:
+        inserted_count: 成功插入的评论数量
+    """
+    try:
+        db.is_connected() or db.connect()
+        inserted_count = 0
+        for batch_comment in comments_batch:
+            result = db.add_tiktok_comment(
+                video_id=batch_comment['video_id'],
+                user_id=batch_comment['user_id'],
+                reply_content=batch_comment['reply_content'],
+                reply_time=batch_comment['reply_time'],
+                keyword=batch_comment['keyword'],
+                collected_by=batch_comment['collected_by'],
+                video_url=batch_comment['video_url']
+            )
+            if result > 0:
+                inserted_count += 1
+        
+        logger.info(f"尝试储存{len(comments_batch)}条评论到数据库,成功插入 {inserted_count} 条新评论,忽略 {len(comments_batch) - inserted_count} 条重复评论")
+        
+        # 检查任务状态
+        task_status = db.get_tiktok_task_status(task_id)
+        if task_status != 'running':
+            logger.info(f"任务状态为 {task_status}，停止收集评论")
+            return -1  # 返回特殊值表示任务已停止
+            
+        return inserted_count
+        
+    except Exception as e:
+        logger.error(f"存储评论到数据库时发生错误: {str(e)}")
+        return 0
+
+    
+def scroll_to_bottom_and_up(driver):
+    """
+    快速滚动到页面底部，然后往上翻滚一些距离
+    
+    Args:
+        driver: WebDriver实例
+        
+    Returns:
+        tuple: (是否到达底部, 实际滚动距离)
+    """
+    try:
+        # 获取当前位置和页面高度
+        current_position = driver.execute_script("return window.pageYOffset;")
+        total_height = driver.execute_script("return document.body.scrollHeight")
+        viewport_height = driver.execute_script("return window.innerHeight")
+        
+        logger.info(f"当前位置: {current_position}, 总高度: {total_height}, 视口高度: {viewport_height}")
+        
+        # 快速滚动到底部
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        random_sleep(1, 2)
+        
+        # 获取新的页面高度
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        logger.info(f"滚动到底部后的高度: {new_height}")
+        
+        # 计算向上滚动的距离(随机20%-40%的视口高度)
+        up_scroll_distance = random.randint(int(viewport_height * 0.2), int(viewport_height * 0.4))
+        
+        # 分步向上滚动，使动作更自然
+        steps = random.randint(3, 5)  # 分3-5步向上滚动
+        for step in range(steps):
+            step_distance = up_scroll_distance // steps
+            current_position = driver.execute_script("return window.pageYOffset;")
+            new_position = max(0, current_position - step_distance)
+            
+            driver.execute_script(f"window.scrollTo(0, {new_position});")
+            logger.info(f"向上滚动步骤 {step + 1}/{steps}, 滚动到位置: {new_position}")
+            random_sleep(0.3, 0.7)  # 每步之间短暂停顿
+        
+        # 最终位置
+        final_position = driver.execute_script("return window.pageYOffset;")
+        logger.info(f"最终停留位置: {final_position}")
+        
+        # 判断是否真的到达了底部
+        reached_bottom = new_height == total_height
+        actual_scroll_distance = new_height - total_height
+        
+        return reached_bottom, actual_scroll_distance
+        
+    except Exception as e:
+        logger.error(f"执行滚动操作时发生错误: {str(e)}")
+        return False, 0
+    
+    
