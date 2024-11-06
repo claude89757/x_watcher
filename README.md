@@ -58,7 +58,7 @@
 本项目采用 MIT 许可证。详情请参阅 `LICENSE` 文件。
 
 ## 联系
-如有任何问题或建议，请通过 [email@example.com](mailto:email@example.com) 联系我们。
+如有任何问题或建议，请通过 [claude89757@gmail.com](mailto:claude89757@gmail.com) 联系我们。
 
 ## 常见问题
 - **如何获取 OpenAI API 密钥？**
