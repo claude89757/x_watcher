@@ -111,8 +111,9 @@ def update_worker_status(status='active'):
 # 任务管理函数
 def check_and_execute_tasks():
     """检查并执行待处理的任务"""
-    if get_chrome_process_count() > 0:
-        logger.info("当前有Chrome进程正在运行，跳过任务检查")
+    current_chrome_count = get_chrome_process_count()
+    if current_chrome_count > 0:
+        logger.info(f"当前有 {current_chrome_count} 个Chrome进程正在运行，跳过任务检查")
         return
 
     db = MySQLDatabase()
@@ -121,6 +122,10 @@ def check_and_execute_tasks():
         pending_tasks = list(db.get_pending_tiktok_tasks() or [])
         running_tasks = list(db.get_running_tiktok_tasks() or [])
         tasks = pending_tasks + running_tasks
+        
+        if len(tasks) == 0:
+            logger.info("没有待处理的任务")
+            return
         
         for task in tasks:
             if get_chrome_process_count() >= MAX_CONCURRENT_CHROME:
@@ -430,8 +435,8 @@ def graceful_shutdown(signum, frame):
     """优雅关闭处理"""
     logger.info("收关闭信号，开始清理...")
     
-    # 停止定时任务
-    scheduler.shutdown()
+    # # 停止定时任务
+    # scheduler.shutdown()
     
     # 结束所有Chrome进程
     kill_chrome_processes()
@@ -450,9 +455,9 @@ if __name__ == '__main__':
     
     register_worker()
     
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(check_and_execute_tasks, 'interval', minutes=1)
-    scheduler.start()
+    # scheduler = BackgroundScheduler()
+    # scheduler.add_job(check_and_execute_tasks, 'interval', minutes=1)
+    # scheduler.start()
     
     try:
         app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)
