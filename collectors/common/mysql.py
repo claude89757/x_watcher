@@ -125,7 +125,6 @@ class MySQLDatabase:
             self._create_tiktok_filtered_comments_table(),
             self._create_tiktok_analyzed_comments_table(),
             self._create_tiktok_second_round_analyzed_comments_table(),
-            self._create_tiktok_analysis_tasks_table(),
         ]
 
         for query in create_tables_queries:
@@ -297,22 +296,6 @@ class MySQLDatabase:
             analysis_reason TEXT,
             analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_comment (keyword, user_id, reply_content(255))
-        )
-        """
-
-    def _create_tiktok_analysis_tasks_table(self):
-        return """
-        CREATE TABLE IF NOT EXISTS tiktok_analysis_tasks (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            keyword VARCHAR(255) NOT NULL,
-            status ENUM('pending', 'running', 'completed', 'failed') DEFAULT 'pending',
-            current_round ENUM('first', 'second') DEFAULT 'first',
-            total_comments INT DEFAULT 0,
-            processed_comments INT DEFAULT 0,
-            start_time TIMESTAMP NULL,
-            end_time TIMESTAMP NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
         """
 
@@ -1031,40 +1014,6 @@ class MySQLDatabase:
         query = "DELETE FROM tiktok_second_round_analyzed_comments WHERE keyword = %s"
         result = self.execute_update(query, (keyword,))
         return result > 0  # 如果影响的行数大于0，则返回True
-
-    def create_analysis_task(self, keyword, total_comments):
-        query = """
-        INSERT INTO tiktok_analysis_tasks (keyword, total_comments)
-        VALUES (%s, %s)
-        """
-        task_id = self.execute_update(query, (keyword, total_comments))
-        return task_id
-
-    def get_analysis_task(self, task_id):
-        query = "SELECT * FROM tiktok_analysis_tasks WHERE id = %s"
-        result = self.execute_query(query, (task_id,))
-        return result[0] if result else None
-
-    def update_analysis_task(self, task_id, **kwargs):
-        allowed_fields = ['status', 'current_round', 'processed_comments', 'start_time', 'end_time']
-        update_fields = []
-        update_values = []
-
-        for key, value in kwargs.items():
-            if key in allowed_fields:
-                update_fields.append(f"{key} = %s")
-                update_values.append(value)
-
-        if not update_fields:
-            return 0
-
-        query = f"""
-        UPDATE tiktok_analysis_tasks
-        SET {', '.join(update_fields)}
-        WHERE id = %s
-        """
-        update_values.append(task_id)
-        return self.execute_update(query, tuple(update_values))
 
     def save_tiktok_message(self, keyword, user_id, message, delivery_method='unknown'):
         """保存TikTok私信到数据库"""
